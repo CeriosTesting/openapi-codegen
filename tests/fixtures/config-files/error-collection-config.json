@@ -1,0 +1,12 @@
+{
+	"specs": [
+		{
+			"input": "tests/fixtures/invalid-yaml.yaml",
+			"output": "tests/output/invalid.ts"
+		},
+		{
+			"input": "tests/fixtures/simple.yaml",
+			"output": "tests/output/valid.ts"
+		}
+	]
+}

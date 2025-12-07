@@ -1,2 +1,3 @@
 export { ZodSchemaGenerator } from "./generator";
-export type { GeneratorOptions } from "./types";
+export type { ConfigFile, ExecutionMode, GeneratorOptions, SpecConfig } from "./types";
+export { defineConfig } from "./types";

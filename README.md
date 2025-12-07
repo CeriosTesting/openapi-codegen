@@ -1,4 +1,4 @@
-# @cerios/zod-openapi
+# @cerios/openapi-to-zod
 
 Transform OpenAPI YAML specifications into Zod v4 compliant schemas with full TypeScript support.
 
@@ -30,60 +30,258 @@ Transform OpenAPI YAML specifications into Zod v4 compliant schemas with full Ty
 ## Installation
 
 ```bash
-npm install @cerios/zod-openapi
+npm install @cerios/openapi-to-zod
 # or
-pnpm add @cerios/zod-openapi
+pnpm add @cerios/openapi-to-zod
 # or
-yarn add @cerios/zod-openapi
+yarn add @cerios/openapi-to-zod
 ```
 
 ## CLI Usage
 
+### Single Spec Mode
+
 ```bash
 # Basic usage
-zod-openapi -i openapi.yaml -o schemas.ts
+openapi-to-zod -i openapi.yaml -o schemas.ts
 
 # Strict mode (no additional properties)
-zod-openapi -i openapi.yaml -o schemas.ts --mode strict
+openapi-to-zod -i openapi.yaml -o schemas.ts --mode strict
 
 # Loose mode (allows additional properties)
-zod-openapi -i openapi.yaml -o schemas.ts --mode loose
+openapi-to-zod -i openapi.yaml -o schemas.ts --mode loose
 
 # Without JSDoc descriptions
-zod-openapi -i openapi.yaml -o schemas.ts --no-descriptions
+openapi-to-zod -i openapi.yaml -o schemas.ts --no-descriptions
 
 # Add .describe() for runtime error messages
-zod-openapi -i openapi.yaml -o schemas.ts --use-describe
+openapi-to-zod -i openapi.yaml -o schemas.ts --use-describe
 
 # Generate request schemas (excludes readOnly properties)
-zod-openapi -i openapi.yaml -o request-schemas.ts -s request
+openapi-to-zod -i openapi.yaml -o request-schemas.ts -s request
 
 # Generate response schemas (excludes writeOnly properties)
-zod-openapi -i openapi.yaml -o response-schemas.ts -s response
+openapi-to-zod -i openapi.yaml -o response-schemas.ts -s response
 
 # Use TypeScript enums instead of Zod enums
-zod-openapi -i openapi.yaml -o schemas.ts -e typescript
+openapi-to-zod -i openapi.yaml -o schemas.ts -e typescript
 
 # Add prefix to schema names
-zod-openapi -i openapi.yaml -o schemas.ts -p api
+openapi-to-zod -i openapi.yaml -o schemas.ts -p api
 # Result: apiUserSchema, apiProductSchema, etc.
 
 # Add suffix to schema names
-zod-openapi -i openapi.yaml -o schemas.ts --suffix dto
+openapi-to-zod -i openapi.yaml -o schemas.ts --suffix dto
 # Result: userDtoSchema, productDtoSchema, etc.
 
 # Combine prefix and suffix
-zod-openapi -i openapi.yaml -o schemas.ts -p api --suffix dto
+openapi-to-zod -i openapi.yaml -o schemas.ts -p api --suffix dto
 # Result: apiUserDtoSchema, apiProductDtoSchema, etc.
 
 # Disable generation statistics (enabled by default)
-zod-openapi -i openapi.yaml -o schemas.ts --no-stats
+openapi-to-zod -i openapi.yaml -o schemas.ts --no-stats
+```
+
+### Batch Mode with Config Files
+
+Process multiple OpenAPI specs with a single command using config files:
+
+```bash
+# Auto-discover config file (openapi-to-zod.config.ts or openapi-to-zod.config.json)
+openapi-to-zod --config
+
+# Explicit config path
+openapi-to-zod --config path/to/config.json
+
+# Override execution mode
+openapi-to-zod --config --execution-mode sequential
+
+# Override config options for all specs
+openapi-to-zod --config --mode strict --no-descriptions
+```
+
+#### Config File Formats
+
+**TypeScript Config** (`openapi-to-zod.config.ts`) - Recommended for type safety:
+
+```typescript
+import { defineConfig } from '@cerios/openapi-to-zod';
+
+export default defineConfig({
+  // Global defaults applied to all specs
+  defaults: {
+    mode: 'strict',
+    includeDescriptions: true,
+    enumType: 'zod',
+    showStats: false,
+  },
+
+  // Array of specs to process
+  specs: [
+    {
+      name: 'api-v1',
+      input: 'specs/api-v1.yaml',
+      output: 'src/schemas/v1.ts',
+    },
+    {
+      name: 'api-v2',
+      input: 'specs/api-v2.yaml',
+      output: 'src/schemas/v2.ts',
+      mode: 'normal', // Override default
+      prefix: 'v2',
+    },
+    {
+      name: 'admin-api',
+      input: 'specs/admin.yaml',
+      output: 'src/schemas/admin.ts',
+      prefix: 'admin',
+      suffix: 'dto',
+    },
+  ],
+
+  // Execution mode: 'parallel' (default) or 'sequential'
+  executionMode: 'parallel',
+});
+```
+
+**JSON Config** (`openapi-to-zod.config.json`):
+
+```json
+{
+  "defaults": {
+    "mode": "strict",
+    "includeDescriptions": true,
+    "enumType": "zod",
+    "showStats": false
+  },
+  "specs": [
+    {
+      "name": "api-v1",
+      "input": "specs/api-v1.yaml",
+      "output": "src/schemas/v1.ts"
+    },
+    {
+      "name": "api-v2",
+      "input": "specs/api-v2.yaml",
+      "output": "src/schemas/v2.ts",
+      "mode": "normal",
+      "prefix": "v2"
+    }
+  ],
+  "executionMode": "parallel"
+}
+```
+
+**Package.json** (under `"openapi-to-zod"` key):
+
+```json
+{
+  "name": "my-project",
+  "openapi-to-zod": {
+    "defaults": {
+      "mode": "strict"
+    },
+    "specs": [
+      {
+        "input": "openapi.yaml",
+        "output": "src/schemas.ts"
+      }
+    ]
+  }
+}
+```
+
+#### Config File Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `defaults` | `object` | Global options applied to all specs (can be overridden per-spec) |
+| `specs` | `array` | Array of spec configurations (required, minimum 1) |
+| `executionMode` | `"parallel"` \| `"sequential"` | How to process specs (default: `"parallel"`) |
+
+Each spec in the `specs` array supports all generator options:
+
+| Spec Option | Type | Description |
+|-------------|------|-------------|
+| `name` | `string` | Optional identifier for logging |
+| `input` | `string` | Input OpenAPI YAML file path (required) |
+| `output` | `string` | Output TypeScript file path (required) |
+| `mode` | `"strict"` \| `"normal"` \| `"loose"` | Validation mode |
+| `includeDescriptions` | `boolean` | Include JSDoc comments |
+| `enumType` | `"zod"` \| `"typescript"` | Enum generation type |
+| `useDescribe` | `boolean` | Add `.describe()` calls |
+| `schemaType` | `"all"` \| `"request"` \| `"response"` | Schema filtering |
+| `prefix` | `string` | Prefix for schema names |
+| `suffix` | `string` | Suffix for schema names |
+| `showStats` | `boolean` | Include generation statistics |
+
+#### Option Precedence
+
+Options are merged in the following order (highest precedence first):
+
+1. **CLI arguments** - Override everything
+2. **Per-spec config** - Override defaults
+3. **Defaults** - From config file
+4. **Built-in defaults** - Hardcoded fallbacks
+
+Example:
+```bash
+# Config has defaults.mode = "strict"
+# Spec has mode = "normal"
+# CLI has --mode loose
+
+# Result: "loose" (CLI wins)
+openapi-to-zod --config myconfig.json --mode loose
+```
+
+#### Batch Execution
+
+**Parallel Mode** (default):
+- Processes all specs concurrently
+- Faster for multiple specs
+- Recommended for most use cases
+- Live progress shows all specs processing simultaneously
+
+**Sequential Mode**:
+- Processes specs one at a time
+- Useful for resource-constrained environments
+- Easier to debug issues
+- Live progress shows specs processing in order
+
+Both modes:
+- Continue processing even if some specs fail
+- Collect all errors and report at the end
+- Exit with code 1 if any spec fails
+- Show live progress updates to stderr
+
+Example output:
+```
+Executing 3 spec(s) in parallel...
+
+Processing [1/3] api-v1...
+✓ Successfully generated src/schemas/v1.ts
+Processing [2/3] api-v2...
+✓ Successfully generated src/schemas/v2.ts
+Processing [3/3] admin-api...
+✗ Failed to generate src/schemas/admin.ts: Invalid YAML syntax
+
+==================================================
+Batch Execution Summary
+==================================================
+Total specs: 3
+Successful: 2
+Failed: 1
+
+Failed specs:
+  ✗ admin-api
+    Error: Failed to parse OpenAPI YAML file at specs/admin.yaml: Invalid YAML syntax
+==================================================
 ```
 
 ## Programmatic Usage
 
 ```typescript
-import { generateZodSchemas } from '@cerios/zod-openapi';
+import { generateZodSchemas } from '@cerios/openapi-to-zod';
 
 generateZodSchemas({
   input: 'path/to/openapi.yaml',
@@ -169,7 +367,7 @@ components:
 ### Generated Output
 
 ```typescript
-// Auto-generated by @cerios/zod-openapi
+// Auto-generated by @cerios/openapi-to-zod
 // Do not edit this file manually
 
 import { z } from "zod";
@@ -259,15 +457,15 @@ Customize schema names with prefixes and suffixes:
 
 ```bash
 # Add API prefix
-zod-openapi -i openapi.yaml -o schemas.ts -p api
+openapi-to-zod -i openapi.yaml -o schemas.ts -p api
 # Output: apiUserSchema, apiProductSchema, etc.
 
 # Add DTO suffix
-zod-openapi -i openapi.yaml -o schemas.ts --suffix dto
+openapi-to-zod -i openapi.yaml -o schemas.ts --suffix dto
 # Output: userDtoSchema, productDtoSchema, etc.
 
 # Combine both
-zod-openapi -i openapi.yaml -o schemas.ts -p api --suffix dto
+openapi-to-zod -i openapi.yaml -o schemas.ts -p api --suffix dto
 # Output: apiUserDtoSchema, apiProductDtoSchema, etc.
 ```
 
@@ -295,7 +493,7 @@ Helpful for:
 - Tracking changes over time
 - Debugging generation issues
 
-To disable: `zod-openapi -i openapi.yaml -o schemas.ts --no-stats`
+To disable: `openapi-to-zod -i openapi.yaml -o schemas.ts --no-stats`
 
 ## OpenAPI Features Supported
 
@@ -772,4 +970,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-For issues and questions, please use the [GitHub issues](https://github.com/CeriosTesting/zod-openapi/issues) page.
+For issues and questions, please use the [GitHub issues](https://github.com/CeriosTesting/openapi-to-zod/issues) page.

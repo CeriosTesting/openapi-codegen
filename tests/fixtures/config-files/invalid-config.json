@@ -1,0 +1,12 @@
+{
+	"defaults": {
+		"mode": "strict",
+		"unknownProperty": "should fail validation"
+	},
+	"specs": [
+		{
+			"input": "tests/fixtures/simple.yaml",
+			"output": "tests/output/invalid.ts"
+		}
+	]
+}

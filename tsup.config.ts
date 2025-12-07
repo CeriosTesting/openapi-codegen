@@ -12,4 +12,5 @@ export default defineConfig({
 	clean: true,
 	outDir: "dist",
 	shims: true,
+	external: ["esbuild"],
 });

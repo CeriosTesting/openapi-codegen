@@ -123,3 +123,68 @@ export interface OpenAPISpec {
 		schemas?: Record<string, OpenAPISchema>;
 	};
 }
+
+/**
+ * Execution mode for batch processing
+ * - 'parallel': Process all specs concurrently (default, faster)
+ * - 'sequential': Process specs one at a time (safer for resource constraints)
+ */
+export type ExecutionMode = "parallel" | "sequential";
+
+/**
+ * Configuration for a single OpenAPI spec
+ * Extends GeneratorOptions with all the same properties
+ */
+export interface SpecConfig extends GeneratorOptions {
+	/**
+	 * Optional name/identifier for this spec (for logging purposes)
+	 */
+	name?: string;
+}
+
+/**
+ * Root configuration file structure
+ */
+export interface ConfigFile {
+	/**
+	 * Global default options applied to all specs
+	 * Can be overridden by individual spec configurations
+	 */
+	defaults?: Partial<Omit<GeneratorOptions, "input" | "output">>;
+
+	/**
+	 * Array of OpenAPI specifications to process
+	 * Each spec must have input and output paths
+	 */
+	specs: SpecConfig[];
+
+	/**
+	 * Execution mode for batch processing
+	 * @default "parallel"
+	 */
+	executionMode?: ExecutionMode;
+}
+
+/**
+ * Helper function for type-safe config file creation
+ * Provides IDE autocomplete and type checking for config files
+ *
+ * @example
+ * ```typescript
+ * import { defineConfig } from '@cerios/openapi-to-zod';
+ *
+ * export default defineConfig({
+ *   defaults: {
+ *     mode: 'strict',
+ *     includeDescriptions: true
+ *   },
+ *   specs: [
+ *     { input: 'api-v1.yaml', output: 'schemas/v1.ts' },
+ *     { input: 'api-v2.yaml', output: 'schemas/v2.ts', mode: 'normal' }
+ *   ]
+ * });
+ * ```
+ */
+export function defineConfig(config: ConfigFile): ConfigFile {
+	return config;
+}

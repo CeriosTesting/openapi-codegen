@@ -1,0 +1,21 @@
+{
+	"defaults": {
+		"mode": "normal",
+		"showStats": false
+	},
+	"specs": [
+		{
+			"input": "tests/fixtures/simple.yaml",
+			"output": "tests/output/seq-simple.ts"
+		},
+		{
+			"input": "tests/fixtures/composition.yaml",
+			"output": "tests/output/seq-composition.ts"
+		},
+		{
+			"input": "tests/fixtures/constraints.yaml",
+			"output": "tests/output/seq-constraints.ts"
+		}
+	],
+	"executionMode": "sequential"
+}

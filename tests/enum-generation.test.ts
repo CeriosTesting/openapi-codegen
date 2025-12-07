@@ -8,11 +8,12 @@ describe("Enum Generation", () => {
 	const tsOutputPath = "tests/output/enum-ts.ts";
 
 	afterEach(() => {
-		[zodOutputPath, tsOutputPath].forEach(path => {
-			if (existsSync(path)) {
-				unlinkSync(path);
+		const outputFiles = [zodOutputPath, tsOutputPath];
+		for (const file of outputFiles) {
+			if (existsSync(file)) {
+				unlinkSync(file);
 			}
-		});
+		}
 	});
 
 	describe("Zod Enums", () => {
