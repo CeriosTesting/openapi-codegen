@@ -48,7 +48,7 @@ function validateCliOptions(options: unknown): asserts options is z.infer<typeof
 		CliOptionsSchema.parse(options);
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			const formattedErrors = error.errors.map(err => `  --${err.path.join(".")}: ${err.message}`).join("\n");
+			const formattedErrors = error.issues.map(err => `  --${err.path.join(".")}: ${err.message}`).join("\n");
 			throw new CliOptionsError(`Invalid CLI options:\n${formattedErrors}`, { zodError: error });
 		}
 		throw error;

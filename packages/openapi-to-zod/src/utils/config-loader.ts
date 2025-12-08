@@ -148,7 +148,7 @@ export async function loadConfig(configPath?: string): Promise<ConfigFile> {
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			const formattedErrors =
-				error.errors
+				error.issues
 					?.map(err => {
 						const path = err.path.length > 0 ? err.path.join(".") : "root";
 						return `  - ${path}: ${err.message}`;

@@ -36,7 +36,9 @@ class LRUCache<K, V> {
 		// Evict oldest if over limit
 		if (this.cache.size > this.maxSize) {
 			const firstKey = this.cache.keys().next().value;
-			this.cache.delete(firstKey);
+			if (firstKey !== undefined) {
+				this.cache.delete(firstKey);
+			}
 		}
 	}
 }
@@ -201,7 +203,7 @@ export class PlaywrightGenerator {
 			return cached;
 		}
 
-		const errorContext = { inputPath: this.options.input };
+		const errorContext: { inputPath: string; fileSize?: string } = { inputPath: this.options.input };
 
 		try {
 			const content = readFileSync(this.options.input, "utf-8");
@@ -237,7 +239,7 @@ export class PlaywrightGenerator {
 			}
 
 			// Validate basic spec structure
-			if (!spec.openapi && !spec.swagger) {
+			if (!("openapi" in spec) && !("swagger" in spec)) {
 				throw new SpecValidationError(
 					`Invalid OpenAPI specification: Missing 'openapi' or 'swagger' version field\n` +
 						`File: ${this.options.input}\n` +

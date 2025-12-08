@@ -177,7 +177,7 @@ export interface GeneratorOptions {
 }
 
 export interface OpenAPISchema {
-	type?: string;
+	type?: string | string[];
 	format?: string;
 	enum?: (string | number)[];
 	const?: string | number | boolean | null;
