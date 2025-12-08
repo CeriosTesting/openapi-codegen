@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noConsole: openapi-to-zod CLI uses console for logging */
 import { ZodSchemaGenerator } from "./generator";
 import type { ExecutionMode, SpecConfig } from "./types";
 
@@ -135,21 +134,41 @@ export async function executeBatch(
 		throw new Error("No specs provided for batch execution");
 	}
 
-	// Execute based on mode
-	const results = executionMode === "parallel" ? await executeParallel(specs) : await executeSequential(specs);
+	let results: SpecResult[] = [];
 
-	// Calculate summary
-	const summary: BatchExecutionSummary = {
-		total: results.length,
-		successful: results.filter(r => r.success).length,
-		failed: results.filter(r => !r.success).length,
-		results,
-	};
+	try {
+		// Execute based on mode
+		results = executionMode === "parallel" ? await executeParallel(specs) : await executeSequential(specs);
 
-	// Print summary
-	printSummary(summary);
+		// Calculate summary
+		const summary: BatchExecutionSummary = {
+			total: results.length,
+			successful: results.filter(r => r.success).length,
+			failed: results.filter(r => !r.success).length,
+			results,
+		};
 
-	return summary;
+		// Print summary
+		printSummary(summary);
+
+		return summary;
+	} finally {
+		// Memory leak prevention: Clear large result objects and hint GC for large batches
+		if (results.length > 10) {
+			// Clear spec references to allow GC
+			for (const result of results) {
+				// Keep only essential info, clear large objects
+				if (result.spec) {
+					(result.spec as any) = null;
+				}
+			}
+
+			// Hint to V8 garbage collector for large batches (if available)
+			if (global.gc) {
+				global.gc();
+			}
+		}
+	}
 }
 
 /**

@@ -24,6 +24,11 @@ export class ZodSchemaGenerator {
 	private needsZodImport = false;
 
 	constructor(options: GeneratorOptions) {
+		// Validate input path early
+		if (!options.input) {
+			throw new Error("Input path is required");
+		}
+
 		this.options = {
 			mode: options.mode || "normal",
 			input: options.input,
@@ -41,12 +46,35 @@ export class ZodSchemaGenerator {
 			response: options.response,
 		};
 
+		// Validate input file exists
+		try {
+			const fs = require("node:fs");
+			if (!fs.existsSync(this.options.input)) {
+				throw new Error(`Input file not found: ${this.options.input}`);
+			}
+		} catch (error) {
+			if (error instanceof Error && error.message.includes("not found")) {
+				throw error;
+			}
+			// If fs.existsSync fails for another reason, continue and let readFileSync throw
+		}
+
 		try {
 			const yamlContent = readFileSync(this.options.input, "utf-8");
 			this.spec = parse(yamlContent);
 		} catch (error) {
 			if (error instanceof Error) {
-				throw new Error(`Failed to parse OpenAPI YAML file at ${this.options.input}:\n${error.message}`);
+				const errorMessage = [
+					`Failed to parse OpenAPI specification from: ${this.options.input}`,
+					"",
+					`Error: ${error.message}`,
+					"",
+					"Please ensure:",
+					"  - The file exists and is readable",
+					"  - The file contains valid YAML syntax",
+					"  - The file is a valid OpenAPI 3.x specification",
+				].join("\n");
+				throw new Error(errorMessage);
 			}
 			throw error;
 		}

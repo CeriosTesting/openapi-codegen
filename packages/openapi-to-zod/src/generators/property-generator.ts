@@ -22,12 +22,58 @@ export interface PropertyGeneratorContext {
 }
 
 /**
+ * Simple LRU Cache implementation for schema generation
+ */
+class LRUCache<K, V> {
+	private cache = new Map<K, V>();
+	private maxSize: number;
+
+	constructor(maxSize = 500) {
+		this.maxSize = maxSize;
+	}
+
+	get(key: K): V | undefined {
+		const value = this.cache.get(key);
+		if (value !== undefined) {
+			// Move to end (most recently used)
+			this.cache.delete(key);
+			this.cache.set(key, value);
+		}
+		return value;
+	}
+
+	set(key: K, value: V): void {
+		// Delete if exists to update position
+		if (this.cache.has(key)) {
+			this.cache.delete(key);
+		} else if (this.cache.size >= this.maxSize) {
+			// Remove least recently used (first item)
+			const firstKey = this.cache.keys().next().value;
+			if (firstKey !== undefined) {
+				this.cache.delete(firstKey);
+			}
+		}
+		this.cache.set(key, value);
+	}
+
+	has(key: K): boolean {
+		return this.cache.has(key);
+	}
+
+	clear(): void {
+		this.cache.clear();
+	}
+}
+
+/**
  * Property schema generator with memoization for performance
  */
 export class PropertyGenerator {
 	private context: PropertyGeneratorContext;
 	// Performance optimization: Memoize filtered property results
 	private filteredPropsCache = new Map<string, OpenAPISchema>();
+	// Performance optimization: LRU cache for generated schemas
+	private schemaCache = new LRUCache<string, string>(500);
 
 	// Performance optimization: Lookup table for faster inclusion checks
 	static readonly INCLUSION_RULES = {
@@ -314,6 +360,17 @@ export class PropertyGenerator {
 	 * Generate Zod schema for a property
 	 */
 	generatePropertySchema(schema: OpenAPISchema, currentSchema?: string, isTopLevel = false): string {
+		// Performance optimization: Check cache for simple schemas
+		// Only cache schemas without $ref or complex compositions to avoid stale circular refs
+		const isCacheable = !schema.$ref && !schema.allOf && !schema.oneOf && !schema.anyOf && !currentSchema;
+		if (isCacheable) {
+			const cacheKey = JSON.stringify({ schema, type: this.context.schemaType, mode: this.context.mode });
+			const cached = this.schemaCache.get(cacheKey);
+			if (cached) {
+				return cached;
+			}
+		}
+
 		// Apply nested property filtering if needed
 		if ((this.context.schemaType === "request" || this.context.schemaType === "response") && schema.properties) {
 			schema = this.filterNestedProperties(schema);
@@ -513,6 +570,14 @@ export class PropertyGenerator {
 				validation = addDescription(validation, schema.description, this.context.useDescribe);
 		}
 
-		return wrapNullable(validation, nullable);
+		const result = wrapNullable(validation, nullable);
+
+		// Store in cache if cacheable
+		if (isCacheable) {
+			const cacheKey = JSON.stringify({ schema, type: this.context.schemaType, mode: this.context.mode });
+			this.schemaCache.set(cacheKey, result);
+		}
+
+		return result;
 	}
 }

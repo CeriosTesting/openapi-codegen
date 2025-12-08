@@ -3,8 +3,60 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Command } from "commander";
+import { z } from "zod";
+import { CliOptionsError } from "./errors";
 import { PlaywrightGenerator } from "./playwright-generator";
-import type { PlaywrightGeneratorOptions } from "./types";
+import { type PlaywrightGeneratorOptions } from "./types";
+
+/**
+ * Zod schema for CLI options validation
+ * Ensures all options are valid before passing to generator
+ */
+const CliOptionsSchema = z.object({
+	input: z.string().min(1, "Input path cannot be empty"),
+	output: z.string().min(1, "Output path cannot be empty"),
+	mode: z.enum(["strict", "normal", "loose"]).default("normal"),
+	typeMode: z.enum(["inferred", "native"]).default("inferred"),
+	enumType: z.enum(["zod", "typescript"]).default("zod"),
+	nativeEnumType: z.enum(["union", "enum"]).default("union"),
+	descriptions: z.boolean().default(true),
+	useDescribe: z.boolean().default(false),
+	stats: z.boolean().default(true),
+	prefix: z.string().optional(),
+	suffix: z.string().optional(),
+});
+
+/**
+ * Validate CLI options using Zod schema
+ * @throws CliOptionsError if validation fails
+ */
+function validateCliOptions(options: unknown): PlaywrightGeneratorOptions {
+	try {
+		const validated = CliOptionsSchema.parse(options);
+		return {
+			input: validated.input,
+			output: validated.output,
+			mode: validated.mode,
+			typeMode: validated.typeMode,
+			enumType: validated.enumType,
+			nativeEnumType: validated.nativeEnumType,
+			includeDescriptions: validated.descriptions,
+			useDescribe: validated.useDescribe,
+			showStats: validated.stats,
+			prefix: validated.prefix,
+			suffix: validated.suffix,
+		};
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			const formattedErrors = error.errors.map(err => `  - ${err.path.join(".")}: ${err.message}`).join("\n");
+			throw new CliOptionsError(
+				`Invalid CLI options:\n${formattedErrors}\n\nPlease check your command line arguments.`,
+				error
+			);
+		}
+		throw error;
+	}
+}
 
 const program = new Command();
 
@@ -30,24 +82,12 @@ program
 	.option("--suffix <suffix>", "Suffix for schema names")
 	.action(options => {
 		try {
-			const generatorOptions: PlaywrightGeneratorOptions = {
-				input: options.input,
-				output: options.output,
-				mode: options.mode as "strict" | "normal" | "loose",
-				typeMode: options.typeMode as "inferred" | "native",
-				enumType: options.enumType as "zod" | "typescript",
-				nativeEnumType: options.nativeEnumType as "union" | "enum",
-				includeDescriptions: options.descriptions !== false,
-				useDescribe: options.useDescribe === true,
-				showStats: options.stats !== false,
-				prefix: options.prefix,
-				suffix: options.suffix,
-			};
+			// Validate CLI options with Zod
+			const generatorOptions = validateCliOptions(options);
 
 			const generator = new PlaywrightGenerator(generatorOptions);
 			generator.generate();
 		} catch (error) {
-			// biome-ignore lint/suspicious/noConsole: CLI error output
 			console.error("Error:", error instanceof Error ? error.message : String(error));
 			process.exit(1);
 		}

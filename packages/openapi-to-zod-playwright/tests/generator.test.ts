@@ -182,10 +182,36 @@ describe("PlaywrightGenerator", () => {
 				input: fixtureFile,
 			});
 
-			expect(() => generator.generate()).toThrow(
-				"Output path is required when calling generate(). " +
-					"Either provide an 'output' option or use generateString() to get the result as a string."
-			);
+			expect(() => generator.generate()).toThrow(/Output path is required when calling generate/);
+		});
+	});
+
+	describe("Error Handling", () => {
+		it("should throw FileOperationError for non-existent input file", () => {
+			expect(() => {
+				new PlaywrightGenerator({
+					input: TestUtils.getFixturePath("non-existent.yaml"),
+					output: TestUtils.getOutputPath("test.ts"),
+				});
+			}).toThrow(/Input file not found/);
+		});
+
+		it("should throw FileOperationError for missing input path", () => {
+			expect(() => {
+				new PlaywrightGenerator({
+					input: "",
+					output: TestUtils.getOutputPath("test.ts"),
+				});
+			}).toThrow(/Input path is required/);
+		});
+
+		it("should throw SpecValidationError for invalid YAML", () => {
+			const generator = new PlaywrightGenerator({
+				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
+				output: TestUtils.getOutputPath("test.ts"),
+			});
+
+			expect(() => generator.generateString()).toThrow(/Failed to parse OpenAPI specification/);
 		});
 	});
 });

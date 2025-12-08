@@ -1,6 +1,55 @@
 import type { GeneratorOptions } from "@cerios/openapi-to-zod";
 
 /**
+ * Branded type for file paths to ensure type safety at compile time
+ * Prevents mixing plain strings with validated file paths
+ */
+export type FilePath = string & { readonly __brand: "FilePath" };
+
+/**
+ * Namespace for FilePath utility functions
+ */
+export namespace FilePath {
+	/**
+	 * Create a FilePath from a string (no runtime validation, compile-time branding only)
+	 */
+	export function from(path: string): FilePath {
+		return path as FilePath;
+	}
+
+	/**
+	 * Type guard to check if a value is a FilePath
+	 */
+	export function is(value: unknown): value is FilePath {
+		return typeof value === "string";
+	}
+}
+
+/**
+ * Branded type for schema names to ensure type safety at compile time
+ */
+export type SchemaName = string & { readonly __brand: "SchemaName" };
+
+/**
+ * Namespace for SchemaName utility functions
+ */
+export namespace SchemaName {
+	/**
+	 * Create a SchemaName from a string (no runtime validation, compile-time branding only)
+	 */
+	export function from(name: string): SchemaName {
+		return name as SchemaName;
+	}
+
+	/**
+	 * Type guard to check if a value is a SchemaName
+	 */
+	export function is(value: unknown): value is SchemaName {
+		return typeof value === "string";
+	}
+}
+
+/**
  * Generator options for Playwright client generation
  * Enforces that both request and response schemas are generated
  */

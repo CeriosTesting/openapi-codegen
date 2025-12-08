@@ -20,7 +20,7 @@ describe("Error Handling", () => {
 
 			expect(() => {
 				new ZodSchemaGenerator(options);
-			}).toThrow(/Failed to parse OpenAPI YAML file/);
+			}).toThrow(/Failed to parse OpenAPI specification/);
 		});
 
 		it("should throw error for non-existent file", () => {
@@ -31,7 +31,7 @@ describe("Error Handling", () => {
 
 			expect(() => {
 				new ZodSchemaGenerator(options);
-			}).toThrow(/Failed to parse OpenAPI YAML file/);
+			}).toThrow(/Input file not found/);
 		});
 
 		it("should include file path in YAML error message", () => {

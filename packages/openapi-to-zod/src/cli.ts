@@ -1,10 +1,59 @@
 #!/usr/bin/env node
-/** biome-ignore-all lint/suspicious/noConsole: Logging for the CLI tool */
 import { Command } from "commander";
+import { z } from "zod";
 import { executeBatch, getBatchExitCode } from "./batch-executor";
+import { CliOptionsError } from "./errors";
 import { ZodSchemaGenerator } from "./generator";
 import type { ExecutionMode, GeneratorOptions } from "./types";
+import { FilePath } from "./types";
 import { loadConfig, mergeCliWithConfig, mergeConfigWithDefaults } from "./utils/config-loader";
+
+/**
+ * Zod schema for CLI options validation
+ */
+const CliOptionsSchema = z.object({
+	config: z.string().optional(),
+	input: z.string().optional(),
+	output: z.string().optional(),
+	mode: z.enum(["strict", "normal", "loose"]).optional(),
+	descriptions: z.boolean().optional(),
+	enumType: z.enum(["zod", "typescript"]).optional(),
+	useDescribe: z.boolean().optional(),
+	schemaType: z.enum(["all", "request", "response"]).optional(),
+	prefix: z.string().optional(),
+	suffix: z.string().optional(),
+	stats: z.boolean().optional(),
+	typeMode: z.enum(["inferred", "native"]).optional(),
+	nativeEnumType: z.enum(["union", "enum"]).optional(),
+	requestMode: z.enum(["strict", "normal", "loose"]).optional(),
+	requestTypeMode: z.enum(["inferred", "native"]).optional(),
+	requestEnumType: z.enum(["zod", "typescript"]).optional(),
+	requestNativeEnumType: z.enum(["union", "enum"]).optional(),
+	requestUseDescribe: z.boolean().optional(),
+	requestDescriptions: z.boolean().optional(),
+	responseMode: z.enum(["strict", "normal", "loose"]).optional(),
+	responseTypeMode: z.enum(["inferred", "native"]).optional(),
+	responseEnumType: z.enum(["zod", "typescript"]).optional(),
+	responseNativeEnumType: z.enum(["union", "enum"]).optional(),
+	responseUseDescribe: z.boolean().optional(),
+	responseDescriptions: z.boolean().optional(),
+	executionMode: z.enum(["parallel", "sequential"]).optional(),
+});
+
+/**
+ * Validate CLI options using Zod schema
+ */
+function validateCliOptions(options: unknown): asserts options is z.infer<typeof CliOptionsSchema> {
+	try {
+		CliOptionsSchema.parse(options);
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			const formattedErrors = error.errors.map(err => `  --${err.path.join(".")}: ${err.message}`).join("\n");
+			throw new CliOptionsError(`Invalid CLI options:\n${formattedErrors}`, { zodError: error });
+		}
+		throw error;
+	}
+}
 
 const program = new Command();
 
@@ -59,6 +108,9 @@ Examples:
 	)
 	.action(async options => {
 		try {
+			// Validate CLI options
+			validateCliOptions(options);
+
 			// Check if config file mode or single-spec mode
 			if (options.config || (!options.input && !options.output)) {
 				// Config file mode (batch processing)
@@ -68,7 +120,14 @@ Examples:
 				await executeSingleSpecMode(options);
 			}
 		} catch (error) {
+			if (error instanceof CliOptionsError) {
+				console.error(error.message);
+				process.exit(1);
+			}
 			console.error("Error:", error instanceof Error ? error.message : String(error));
+			if (error instanceof Error && error.stack) {
+				console.error("\nStack trace:", error.stack);
+			}
 			process.exit(1);
 		}
 	});
@@ -78,24 +137,27 @@ program.parse();
 /**
  * Execute single-spec mode (original CLI behavior)
  */
-async function executeSingleSpecMode(options: any): Promise<void> {
+async function executeSingleSpecMode(options: z.infer<typeof CliOptionsSchema>): Promise<void> {
 	if (!options.input || !options.output) {
-		throw new Error("Both --input and --output are required in single-spec mode");
+		throw new CliOptionsError("Both --input and --output are required in single-spec mode", {
+			input: options.input,
+			output: options.output,
+		});
 	}
 
 	const generatorOptions: GeneratorOptions = {
-		input: options.input,
-		output: options.output,
-		mode: options.mode as "strict" | "normal" | "loose",
+		input: FilePath.from(options.input),
+		output: FilePath.from(options.output),
+		mode: options.mode,
 		includeDescriptions: options.descriptions,
-		enumType: options.enumType as "zod" | "typescript",
+		enumType: options.enumType,
 		useDescribe: options.useDescribe || false,
-		schemaType: (options.schemaType as "all" | "request" | "response") || "all",
+		schemaType: options.schemaType || "all",
 		prefix: options.prefix,
 		suffix: options.suffix,
 		showStats: options.stats ?? true,
-		typeMode: options.typeMode as "inferred" | "native" | undefined,
-		nativeEnumType: options.nativeEnumType as "union" | "enum" | undefined,
+		typeMode: options.typeMode,
+		nativeEnumType: options.nativeEnumType,
 	};
 
 	// Build request options if any request-specific flags are set
@@ -108,10 +170,10 @@ async function executeSingleSpecMode(options: any): Promise<void> {
 		options.requestDescriptions !== undefined
 	) {
 		generatorOptions.request = {
-			mode: options.requestMode as "strict" | "normal" | "loose" | undefined,
-			typeMode: options.requestTypeMode as "inferred" | "native" | undefined,
-			enumType: options.requestEnumType as "zod" | "typescript" | undefined,
-			nativeEnumType: options.requestNativeEnumType as "union" | "enum" | undefined,
+			mode: options.requestMode,
+			typeMode: options.requestTypeMode,
+			enumType: options.requestEnumType,
+			nativeEnumType: options.requestNativeEnumType,
 			useDescribe: options.requestUseDescribe || undefined,
 			includeDescriptions: options.requestDescriptions,
 		};
@@ -127,10 +189,10 @@ async function executeSingleSpecMode(options: any): Promise<void> {
 		options.responseDescriptions !== undefined
 	) {
 		generatorOptions.response = {
-			mode: options.responseMode as "strict" | "normal" | "loose" | undefined,
-			typeMode: options.responseTypeMode as "inferred" | "native" | undefined,
-			enumType: options.responseEnumType as "zod" | "typescript" | undefined,
-			nativeEnumType: options.responseNativeEnumType as "union" | "enum" | undefined,
+			mode: options.responseMode,
+			typeMode: options.responseTypeMode,
+			enumType: options.responseEnumType,
+			nativeEnumType: options.responseNativeEnumType,
 			useDescribe: options.responseUseDescribe || undefined,
 			includeDescriptions: options.responseDescriptions,
 		};
@@ -144,7 +206,7 @@ async function executeSingleSpecMode(options: any): Promise<void> {
 /**
  * Execute batch mode from config file
  */
-async function executeBatchMode(options: any): Promise<void> {
+async function executeBatchMode(options: z.infer<typeof CliOptionsSchema>): Promise<void> {
 	// Load config file
 	const config = await loadConfig(options.config);
 

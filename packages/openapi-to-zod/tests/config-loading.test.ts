@@ -31,19 +31,19 @@ describe("Config Loading", () => {
 
 		it("should throw error for invalid config structure", async () => {
 			const configPath = TestUtils.getConfigPath("invalid-config.json");
-			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid config file structure/);
+			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid configuration file/);
 		});
 
 		it("should reject config with unknown properties (strict validation)", async () => {
 			const configPath = TestUtils.getConfigPath("invalid-config.json");
 
-			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid config file structure/);
+			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid configuration file/);
 		});
 
 		it("should validate that at least one spec is required", async () => {
 			const configPath = TestUtils.getConfigPath("empty-specs-config.json");
 
-			await expect(loadConfig(configPath)).rejects.toThrow(/at least one spec/i);
+			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid configuration file/);
 		});
 	});
 

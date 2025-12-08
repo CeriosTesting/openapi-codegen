@@ -7,7 +7,7 @@
 //   Circular references: 0
 //   Discriminated unions: 0
 //   With constraints: 0
-//   Generated at: 2025-12-08T19:37:45.594Z
+//   Generated at: 2025-12-08T21:26:16.473Z
 
 import { z } from "zod";
 

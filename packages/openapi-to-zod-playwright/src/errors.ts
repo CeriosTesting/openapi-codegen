@@ -1,0 +1,93 @@
+/**
+ * Base error class for all Playwright generator errors
+ * Provides consistent error handling and structure
+ */
+export class PlaywrightGeneratorError extends Error {
+	constructor(
+		message: string,
+		public readonly cause?: Error
+	) {
+		super(message);
+		this.name = "PlaywrightGeneratorError";
+		// Maintain proper stack trace for where error was thrown (V8 only)
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, this.constructor);
+		}
+	}
+}
+
+/**
+ * Thrown when OpenAPI spec parsing or validation fails
+ */
+export class SpecValidationError extends PlaywrightGeneratorError {
+	constructor(
+		message: string,
+		public readonly specPath: string,
+		cause?: Error
+	) {
+		super(message, cause);
+		this.name = "SpecValidationError";
+	}
+}
+
+/**
+ * Thrown when file operations fail (read/write/access)
+ */
+export class FileOperationError extends PlaywrightGeneratorError {
+	constructor(
+		message: string,
+		public readonly filePath: string,
+		cause?: Error
+	) {
+		super(message, cause);
+		this.name = "FileOperationError";
+	}
+}
+
+/**
+ * Thrown when config file validation fails
+ */
+export class ConfigValidationError extends PlaywrightGeneratorError {
+	constructor(
+		message: string,
+		public readonly configPath?: string,
+		cause?: Error
+	) {
+		super(message, cause);
+		this.name = "ConfigValidationError";
+	}
+}
+
+/**
+ * Thrown when client/service generation fails
+ */
+export class ClientGenerationError extends PlaywrightGeneratorError {
+	constructor(message: string, cause?: Error) {
+		super(message, cause);
+		this.name = "ClientGenerationError";
+	}
+}
+
+/**
+ * Thrown when circular reference is detected in schema
+ */
+export class CircularReferenceError extends PlaywrightGeneratorError {
+	constructor(
+		public readonly schemaName: string,
+		public readonly referencePath: string[]
+	) {
+		const pathStr = referencePath.join(" -> ");
+		super(`Circular reference detected in schema '${schemaName}': ${pathStr}`);
+		this.name = "CircularReferenceError";
+	}
+}
+
+/**
+ * Thrown when CLI options validation fails
+ */
+export class CliOptionsError extends PlaywrightGeneratorError {
+	constructor(message: string, cause?: Error) {
+		super(message, cause);
+		this.name = "CliOptionsError";
+	}
+}

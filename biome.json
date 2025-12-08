@@ -31,7 +31,7 @@
 			},
 			"suspicious": {
 				"noExplicitAny": "off",
-				"noConsole": "warn"
+				"noConsole": "off"
 			},
 			"complexity": {
 				"noStaticOnlyClass": "off",

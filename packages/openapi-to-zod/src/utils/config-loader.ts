@@ -147,8 +147,29 @@ export async function loadConfig(configPath?: string): Promise<ConfigFile> {
 		return validatedConfig;
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			const issues = error.issues.map(issue => `  - ${issue.path.join(".")}: ${issue.message}`).join("\n");
-			throw new Error(`Invalid config file structure:\n${issues}`);
+			const formattedErrors =
+				error.errors
+					?.map(err => {
+						const path = err.path.length > 0 ? err.path.join(".") : "root";
+						return `  - ${path}: ${err.message}`;
+					})
+					.join("\n") || "Unknown validation error";
+
+			const configSource = result.filepath || configPath || "config file";
+			const errorMessage = [
+				`Invalid configuration file at: ${configSource}`,
+				"",
+				"Validation errors:",
+				formattedErrors,
+				"",
+				"Please check your configuration file and ensure:",
+				"  - All required fields are present (specs array with input/output)",
+				"  - Field names are spelled correctly (no typos)",
+				"  - Values match the expected types (e.g., mode: 'strict' | 'normal' | 'loose')",
+				"  - No unknown/extra properties are included",
+			].join("\n");
+
+			throw new Error(errorMessage);
 		}
 		throw error;
 	}
@@ -162,6 +183,10 @@ export async function loadConfig(configPath?: string): Promise<ConfigFile> {
  * @returns Array of fully resolved SpecConfig objects
  */
 export function mergeConfigWithDefaults(config: ConfigFile): SpecConfig[] {
+	if (!config?.specs || !Array.isArray(config.specs)) {
+		throw new Error("Invalid config: specs array is required");
+	}
+
 	const defaults = config.defaults || {};
 
 	return config.specs.map(spec => {
