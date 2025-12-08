@@ -2,6 +2,22 @@ import { generateJSDoc } from "../generators/jsdoc-generator";
 import type { OpenAPISchema } from "../types";
 import { generateDependencies, generateDependentRequired, generateIfThenElse } from "./conditional-validator";
 
+/**
+ * Check if a property name needs to be quoted in TypeScript object literal
+ */
+function needsQuoting(propName: string): boolean {
+	// Valid identifier: starts with letter/underscore/$, followed by letters/digits/underscores/$
+	const validIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+	return !validIdentifier.test(propName);
+}
+
+/**
+ * Generate property access expression (use dot notation for valid identifiers, bracket notation otherwise)
+ */
+function generatePropertyAccess(propName: string): string {
+	return needsQuoting(propName) ? `obj["${propName}"]` : `obj.${propName}`;
+}
+
 export type ObjectMode = "strict" | "normal" | "loose";
 
 export interface ObjectValidatorContext {
@@ -34,7 +50,9 @@ export function generateObjectSchema(
 			const isRequired = required.has(propName);
 			const zodSchema = context.generatePropertySchema(propSchema, currentSchema);
 
-			let propertyDef = `  ${propName}: ${zodSchema}`;
+			// Quote property name if it contains special characters
+			const quotedPropName = needsQuoting(propName) ? `"${propName}"` : propName;
+			let propertyDef = `  ${quotedPropName}: ${zodSchema}`;
 			if (!isRequired) {
 				propertyDef += ".optional()";
 			}
@@ -117,7 +135,7 @@ export function generateObjectSchema(
 		if (!objectDef.includes(".passthrough()") && !objectDef.includes(".catchall(")) {
 			objectDef += ".passthrough()";
 		}
-		const requiredChecks = undefinedRequired.map(prop => `obj["${prop}"] !== undefined`).join(" && ");
+		const requiredChecks = undefinedRequired.map(prop => `${generatePropertyAccess(prop)} !== undefined`).join(" && ");
 		const propList = undefinedRequired.join(", ");
 		objectDef += `.refine((obj) => ${requiredChecks}, { message: "Missing required fields: ${propList}" })`;
 	}

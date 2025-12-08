@@ -1,6 +1,15 @@
 import type { OpenAPISchema } from "../types";
 
 /**
+ * Generate property access expression (use dot notation for valid identifiers, bracket notation otherwise)
+ */
+function generatePropertyAccess(propName: string): string {
+	// Valid identifier: starts with letter/underscore/$, followed by letters/digits/underscores/$
+	const validIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+	return validIdentifier.test(propName) ? `obj.${propName}` : `obj["${propName}"]`;
+}
+
+/**
  * Generate validation for dependencies (OpenAPI 3.0)
  */
 export function generateDependencies(
@@ -16,15 +25,15 @@ export function generateDependencies(
 	for (const [prop, dependency] of Object.entries(schema.dependencies)) {
 		if (Array.isArray(dependency)) {
 			// Property dependency - if prop exists, these properties must also exist
-			const requiredProps = dependency.map(p => `obj["${p}"] !== undefined`).join(" && ");
+			const requiredProps = dependency.map(p => `${generatePropertyAccess(p)} !== undefined`).join(" && ");
 			const propList = dependency.map(p => `'${p}'`).join(", ");
-			result += `.refine((obj) => obj["${prop}"] === undefined || (${requiredProps}), { message: "When '${prop}' is present, ${propList} must also be present" })`;
+			result += `.refine((obj) => ${generatePropertyAccess(prop)} === undefined || (${requiredProps}), { message: "When '${prop}' is present, ${propList} must also be present" })`;
 		} else if (generatePropertySchema) {
 			// Schema dependency - if prop exists, entire object must match the dependency schema
 			// In OpenAPI 3.0, dependency schemas are implicitly objects, so ensure type is set
 			const depSchema: OpenAPISchema = { ...dependency, type: dependency.type || "object" };
 			const depSchemaValidation = generatePropertySchema(depSchema, currentSchema);
-			result += `.refine((obj) => obj["${prop}"] === undefined || ${depSchemaValidation}.safeParse(obj).success, { message: "When '${prop}' is present, object must satisfy additional schema constraints" })`;
+			result += `.refine((obj) => ${generatePropertyAccess(prop)} === undefined || ${depSchemaValidation}.safeParse(obj).success, { message: "When '${prop}' is present, object must satisfy additional schema constraints" })`;
 		}
 		// Note: If generatePropertySchema is not provided, schema dependencies are silently skipped
 	}
@@ -40,18 +49,19 @@ export function generateConditionalCheck(schema: OpenAPISchema): string {
 	// Check properties
 	if (schema.properties) {
 		for (const [prop, propSchema] of Object.entries(schema.properties)) {
+			const propAccess = generatePropertyAccess(prop);
 			if (propSchema.type) {
-				conditions.push(`typeof obj["${prop}"] === "${propSchema.type}"`);
+				conditions.push(`typeof ${propAccess} === "${propSchema.type}"`);
 			}
 			if (propSchema.const !== undefined) {
 				const value = typeof propSchema.const === "string" ? `"${propSchema.const}"` : propSchema.const;
-				conditions.push(`obj["${prop}"] === ${value}`);
+				conditions.push(`${propAccess} === ${value}`);
 			}
 			if (propSchema.minimum !== undefined) {
-				conditions.push(`obj["${prop}"] >= ${propSchema.minimum}`);
+				conditions.push(`${propAccess} >= ${propSchema.minimum}`);
 			}
 			if (propSchema.maximum !== undefined) {
-				conditions.push(`obj["${prop}"] <= ${propSchema.maximum}`);
+				conditions.push(`${propAccess} <= ${propSchema.maximum}`);
 			}
 		}
 	}
@@ -59,7 +69,7 @@ export function generateConditionalCheck(schema: OpenAPISchema): string {
 	// Check required properties
 	if (schema.required) {
 		for (const prop of schema.required) {
-			conditions.push(`obj["${prop}"] !== undefined`);
+			conditions.push(`${generatePropertyAccess(prop)} !== undefined`);
 		}
 	}
 
@@ -75,18 +85,19 @@ export function generateConditionalValidation(schema: OpenAPISchema): string {
 	// Check required properties
 	if (schema.required) {
 		for (const prop of schema.required) {
-			checks.push(`obj["${prop}"] !== undefined`);
+			checks.push(`${generatePropertyAccess(prop)} !== undefined`);
 		}
 	}
 
 	// Check properties constraints
 	if (schema.properties) {
 		for (const [prop, propSchema] of Object.entries(schema.properties)) {
+			const propAccess = generatePropertyAccess(prop);
 			if (propSchema.minimum !== undefined) {
-				checks.push(`obj["${prop}"] === undefined || obj["${prop}"] >= ${propSchema.minimum}`);
+				checks.push(`${propAccess} === undefined || ${propAccess} >= ${propSchema.minimum}`);
 			}
 			if (propSchema.maximum !== undefined) {
-				checks.push(`obj["${prop}"] === undefined || obj["${prop}"] <= ${propSchema.maximum}`);
+				checks.push(`${propAccess} === undefined || ${propAccess} <= ${propSchema.maximum}`);
 			}
 		}
 	}
@@ -149,8 +160,8 @@ export function generateDependentRequired(schema: OpenAPISchema): string {
 
 	let result = "";
 	for (const [prop, requiredProps] of Object.entries(schema.dependentRequired)) {
-		const requiredChecks = requiredProps.map(rp => `obj["${rp}"] !== undefined`).join(" && ");
-		const dependentCondition = `obj["${prop}"] === undefined || (${requiredChecks})`;
+		const requiredChecks = requiredProps.map(rp => `${generatePropertyAccess(rp)} !== undefined`).join(" && ");
+		const dependentCondition = `${generatePropertyAccess(prop)} === undefined || (${requiredChecks})`;
 		const depMessage = `When '${prop}' is present, ${requiredProps.join(", ")} must also be present`;
 		result += `.refine((obj) => ${dependentCondition}, { message: "${depMessage}" })`;
 	}

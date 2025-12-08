@@ -1,26 +1,19 @@
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Zod Import Deduplication", () => {
-	const outputFile = "tests/output/zod-import-test.ts";
-
-	afterEach(() => {
-		if (existsSync(outputFile)) {
-			unlinkSync(outputFile);
-		}
-	});
+	function generateOutput(fixture: string, options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath(fixture),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	it("should only have one Zod import statement", () => {
-		const generator = new ZodSchemaGenerator({
-			input: "tests/fixtures/type-mode.yaml",
-			output: outputFile,
-			typeMode: "inferred",
-		});
-
-		generator.generate();
-
-		const content = readFileSync(outputFile, "utf-8");
+		const content = generateOutput("type-mode.yaml", { typeMode: "inferred" });
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
 		expect(zodImports).toBeDefined();
@@ -28,15 +21,7 @@ describe("Zod Import Deduplication", () => {
 	});
 
 	it("should have Zod import when generating enums in inferred mode", () => {
-		const generator = new ZodSchemaGenerator({
-			input: "tests/fixtures/type-mode.yaml",
-			output: outputFile,
-			typeMode: "inferred",
-		});
-
-		generator.generate();
-
-		const content = readFileSync(outputFile, "utf-8");
+		const content = generateOutput("type-mode.yaml", { typeMode: "inferred" });
 
 		// Should have Zod import
 		expect(content).toContain('import { z } from "zod"');
@@ -47,15 +32,7 @@ describe("Zod Import Deduplication", () => {
 	});
 
 	it("should not have Zod import when all schemas are native", () => {
-		const generator = new ZodSchemaGenerator({
-			input: "tests/fixtures/type-mode.yaml",
-			output: outputFile,
-			typeMode: "native",
-		});
-
-		generator.generate();
-
-		const content = readFileSync(outputFile, "utf-8");
+		const content = generateOutput("type-mode.yaml", { typeMode: "native" });
 
 		// Should NOT have Zod import
 		expect(content).not.toContain('import { z } from "zod"');
@@ -65,9 +42,7 @@ describe("Zod Import Deduplication", () => {
 	});
 
 	it("should have Zod import when mixing native and inferred modes", () => {
-		const generator = new ZodSchemaGenerator({
-			input: "tests/fixtures/type-mode.yaml",
-			output: outputFile,
+		const content = generateOutput("type-mode.yaml", {
 			request: {
 				typeMode: "native",
 			},
@@ -75,10 +50,6 @@ describe("Zod Import Deduplication", () => {
 				typeMode: "inferred",
 			},
 		});
-
-		generator.generate();
-
-		const content = readFileSync(outputFile, "utf-8");
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
 		// Should have exactly one Zod import (for response schemas)
@@ -91,15 +62,7 @@ describe("Zod Import Deduplication", () => {
 	});
 
 	it("should have single Zod import even with multiple enum schemas", () => {
-		const generator = new ZodSchemaGenerator({
-			input: "tests/fixtures/composition.yaml",
-			output: outputFile,
-			typeMode: "inferred",
-		});
-
-		generator.generate();
-
-		const content = readFileSync(outputFile, "utf-8");
+		const content = generateOutput("composition.yaml", { typeMode: "inferred" });
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
 		// Should have exactly one Zod import regardless of number of schemas

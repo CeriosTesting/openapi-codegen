@@ -1,25 +1,18 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
 import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Integration Tests", () => {
-	const outputPath = "tests/output/integration.ts";
-	const tempTestFile = "tests/output/integration-test.ts";
-
-	afterEach(() => {
-		[outputPath, tempTestFile].forEach(path => {
-			if (existsSync(path)) {
-				unlinkSync(path);
-			}
-		});
-	});
+	const outputPath = TestUtils.getOutputPath("integration.ts");
+	const tempTestFile = TestUtils.getOutputPath("integration-test.ts");
 
 	describe("TypeScript Compilation", () => {
 		it("should generate TypeScript code that compiles without errors", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
+				input: TestUtils.getFixturePath("simple.yaml"),
 				output: outputPath,
 				mode: "normal",
 			};
@@ -37,7 +30,7 @@ describe("Integration Tests", () => {
 
 		it("should generate valid TypeScript enums that compile", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/complex.yaml",
+				input: TestUtils.getFixturePath("complex.yaml"),
 				output: outputPath,
 				mode: "normal",
 				enumType: "typescript",
@@ -55,7 +48,7 @@ describe("Integration Tests", () => {
 
 		it("should generate circular references that compile", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/circular.yaml",
+				input: TestUtils.getFixturePath("circular.yaml"),
 				output: outputPath,
 				mode: "normal",
 			};
@@ -74,7 +67,7 @@ describe("Integration Tests", () => {
 	describe("Runtime Validation", () => {
 		it("should generate schemas that can validate data", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
+				input: TestUtils.getFixturePath("simple.yaml"),
 				output: outputPath,
 				mode: "normal",
 			};
@@ -84,7 +77,6 @@ describe("Integration Tests", () => {
 
 			// Create a test file that imports and uses the schema
 			const testCode = `
-import { z } from 'zod';
 ${readFileSync(outputPath, "utf-8")}
 
 const validUser = {
@@ -107,7 +99,7 @@ console.log('Validation passed');
 
 		it("should reject invalid data", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
+				input: TestUtils.getFixturePath("simple.yaml"),
 				output: outputPath,
 				mode: "normal",
 			};
@@ -116,7 +108,6 @@ console.log('Validation passed');
 			generator.generate();
 
 			const testCode = `
-import { z } from 'zod';
 ${readFileSync(outputPath, "utf-8")}
 
 const invalidUser = {
@@ -139,7 +130,7 @@ console.log('Validation correctly failed');
 	describe("Full Pipeline", () => {
 		it("should handle complete workflow from YAML to validated TypeScript", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/complex.yaml",
+				input: TestUtils.getFixturePath("complex.yaml"),
 				output: outputPath,
 				mode: "normal",
 				enumType: "zod",

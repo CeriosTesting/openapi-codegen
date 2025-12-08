@@ -1,56 +1,30 @@
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
 import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Circular Reference Handling", () => {
-	const outputPath = "tests/output/circular.ts";
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			unlinkSync(outputPath);
-		}
-	});
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("circular.yaml"),
+			mode: "normal",
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	it("should handle circular references with z.lazy", () => {
-		const options: GeneratorOptions = {
-			input: "tests/fixtures/circular.yaml",
-			output: outputPath,
-			mode: "normal",
-		};
-
-		const generator = new ZodSchemaGenerator(options);
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 		expect(output).toContain("z.lazy(");
 	});
 
 	it("should add type annotation to lazy callbacks", () => {
-		const options: GeneratorOptions = {
-			input: "tests/fixtures/circular.yaml",
-			output: outputPath,
-			mode: "normal",
-		};
-
-		const generator = new ZodSchemaGenerator(options);
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 		expect(output).toContain("z.lazy((): z.ZodTypeAny =>");
 	});
 
 	it("should place alias schemas after their target schemas", () => {
-		const options: GeneratorOptions = {
-			input: "tests/fixtures/circular.yaml",
-			output: outputPath,
-			mode: "normal",
-		};
-
-		const generator = new ZodSchemaGenerator(options);
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// Find positions of schemas
 		const nodePos = output.indexOf("export const nodeSchema");
@@ -63,32 +37,12 @@ describe("Circular Reference Handling", () => {
 	});
 
 	it("should handle arrays of circular references", () => {
-		const options: GeneratorOptions = {
-			input: "tests/fixtures/circular.yaml",
-			output: outputPath,
-			mode: "normal",
-		};
-
-		const generator = new ZodSchemaGenerator(options);
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 		expect(output).toContain("z.array(z.lazy(");
 	});
 
 	it("should maintain correct dependency order", () => {
-		const options: GeneratorOptions = {
-			input: "tests/fixtures/circular.yaml",
-			output: outputPath,
-			mode: "normal",
-		};
-
-		const generator = new ZodSchemaGenerator(options);
-		generator.generate();
-
-		// Should not throw and should generate valid file
-		expect(existsSync(outputPath)).toBe(true);
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// Should have all expected schemas
 		expect(output).toContain("export const nodeSchema");

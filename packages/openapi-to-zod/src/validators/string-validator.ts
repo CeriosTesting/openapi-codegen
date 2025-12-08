@@ -107,7 +107,7 @@ export function generateStringValidation(schema: OpenAPISchema, useDescribe: boo
 			validation += `.refine((val) => { try { if (typeof DOMParser !== "undefined") { const parser = new DOMParser(); const doc = parser.parseFromString(val, "text/xml"); return !doc.querySelector("parsererror"); } return /^\\s*<[^>]+>/.test(val); } catch { return false; } }, { message: "Must be valid XML" })`;
 		} else if (mediaType === "application/yaml" || mediaType === "application/x-yaml" || mediaType === "text/yaml") {
 			// Basic YAML validation - check for basic YAML structure
-			validation += `.refine((val) => { try { return val.trim().length > 0 && !/^[\\[\\{]/.test(val.trim()); } catch { return false; } }, { message: "Must be valid YAML" })`;
+			validation += `.refine((val) => { try { return val.trim().length > 0 && !/^[[{]/.test(val.trim()); } catch { return false; } }, { message: "Must be valid YAML" })`;
 		} else if (mediaType === "text/html") {
 			// Basic HTML validation - check for HTML tags
 			validation += `.refine((val) => /<[^>]+>/.test(val), { message: "Must contain HTML tags" })`;

@@ -1,15 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanupTestOutput, generateFromFixture } from "./utils/test-utils";
+import { describe, expect, it } from "vitest";
+import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Nested WriteOnly/ReadOnly Filtering", () => {
-	const outputPath = "tests/output/nested-writeonly.ts";
-
-	afterEach(cleanupTestOutput(outputPath));
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("nested-writeonly.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	it("should filter nested writeOnly properties in response schemas", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "response",
 		});
 
@@ -25,9 +29,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	});
 
 	it("should filter nested readOnly properties in request schemas", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "request",
 		});
 
@@ -43,9 +45,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	});
 
 	it("should filter writeOnly in nested arrays", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "response",
 		});
 
@@ -57,9 +57,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	});
 
 	it("should filter properties in composition schemas", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "response",
 		});
 
@@ -71,9 +69,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	});
 
 	it("should include all properties in 'all' schema type", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "all",
 		});
 
@@ -87,9 +83,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	});
 
 	it("should handle deeply nested structures", () => {
-		const output = generateFromFixture({
-			fixture: "nested-writeonly.yaml",
-			outputPath,
+		const output = generateOutput({
 			schemaType: "response",
 		});
 

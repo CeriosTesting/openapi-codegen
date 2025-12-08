@@ -1,34 +1,20 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { PlaywrightGenerator } from "../src/playwright-generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("PlaywrightGenerator", () => {
-	const outputDir = "tests/output";
-	const outputPath = `${outputDir}/simple-api.ts`;
+	const fixtureFile = TestUtils.getFixturePath("simple-api.yaml");
 
-	beforeEach(() => {
-		if (!existsSync(outputDir)) {
-			mkdirSync(outputDir, { recursive: true });
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	function generateOutput(): string {
+		const generator = new PlaywrightGenerator({
+			input: fixtureFile,
+			output: TestUtils.getOutputPath("simple-api.ts"),
+		});
+		return generator.generateString();
+	}
 
 	it("should generate schemas, client, and service classes", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
-
-		generator.generate();
-
-		expect(existsSync(outputPath)).toBe(true);
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// Check for Zod schemas
 		expect(output).toContain("export const userSchema");
@@ -49,14 +35,7 @@ describe("PlaywrightGenerator", () => {
 	});
 
 	it("should generate client methods with correct names", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
-
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// Check client method names
 		expect(output).toContain("async getUsers(");
@@ -66,20 +45,13 @@ describe("PlaywrightGenerator", () => {
 	});
 
 	it("should generate service methods with status codes for multiple responses", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
-
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// GET /users has only 200 - no suffix
 		expect(output).toContain("async getUsers()");
 
 		// POST /users has only 201 (400 is error) - no suffix for single success response
-		expect(output).toContain("async postUsers(options?: { data?: CreateUserRequest })");
+		expect(output).toContain("async postUsers(options: { data: CreateUserRequest })");
 
 		// GET /users/{userId} has only 200 - no suffix
 		expect(output).toContain("async getUsersByUserId(userId: string");
@@ -89,31 +61,17 @@ describe("PlaywrightGenerator", () => {
 	});
 
 	it("should generate error methods for endpoints with error responses", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
+		const output = generateOutput();
 
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
-
-		// POST /users has 400 error - should have error method
-		expect(output).toContain("async postUsersError(options?: { data?: any })");
+		// POST /users has 400 error - should have error method with Partial data
+		expect(output).toContain("async postUsersError(options?: { data?: Partial<CreateUserRequest> })");
 
 		// GET /users/{userId} has 404 error - should have error method
-		expect(output).toContain("async getUsersByUserIdError(userId: string, options?: {  })");
+		expect(output).toContain("async getUsersByUserIdError(userId: string)");
 	});
 
 	it("should use expect for status validation", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
-
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// Check for Playwright expect usage
 		expect(output).toContain("expect(response.status()).toBe(200)");
@@ -122,33 +80,112 @@ describe("PlaywrightGenerator", () => {
 	});
 
 	it("should return null for 204 responses", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
-		});
-
-		generator.generate();
-
-		const output = readFileSync(outputPath, "utf-8");
+		const output = generateOutput();
 
 		// DELETE returns 204 with null
-		expect(output).toContain("async deleteUsersByUserId(userId: string, options?: {  }): Promise<null>");
+		expect(output).toContain("async deleteUsersByUserId(userId: string): Promise<null>");
 		expect(output).toContain("return null;");
 	});
 
-	it("should make all client options partial", () => {
-		const generator = new PlaywrightGenerator({
-			input: "tests/fixtures/simple-api.yaml",
-			output: outputPath,
+	it("should make client data options partial", () => {
+		const output = generateOutput();
+
+		// Client methods should have Partial<Type> for data
+		expect(output).toContain("async postUsers(options?: { data?: Partial<CreateUserRequest> })");
+	});
+
+	describe("String Generation Methods", () => {
+		it("should generate schemas as string without writing to file", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
+
+			const schemasString = generator.generateSchemasString();
+
+			// Should contain Zod schemas
+			expect(schemasString).toContain("export const userSchema");
+			expect(schemasString).toContain("export const createUserRequestSchema");
+			expect(schemasString).toContain('import { z } from "zod"');
+
+			// Should NOT contain client or service classes
+			expect(schemasString).not.toContain("export class ApiClient");
+			expect(schemasString).not.toContain("export class ApiService");
 		});
 
-		generator.generate();
+		it("should generate client class as string", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
 
-		const output = readFileSync(outputPath, "utf-8");
+			const clientString = generator.generateClientString();
 
-		// Client methods should have Partial<> for options
-		expect(output).toContain(
-			"options?: Partial<{ query?: Record<string, any>; headers?: Record<string, string>; data?: any"
-		);
+			// Should contain ApiClient class
+			expect(clientString).toContain("export class ApiClient");
+			expect(clientString).toContain("constructor(private readonly request: APIRequestContext)");
+			expect(clientString).toContain("async getUsers(");
+
+			// Should NOT contain schemas or service class
+			expect(clientString).not.toContain("export const userSchema");
+			expect(clientString).not.toContain("export class ApiService");
+		});
+
+		it("should generate service class as string", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should contain ApiService class
+			expect(serviceString).toContain("export class ApiService");
+			expect(serviceString).toContain("constructor(private readonly client: ApiClient)");
+
+			// Should NOT contain schemas or client class
+			expect(serviceString).not.toContain("export const userSchema");
+			expect(serviceString).not.toContain("export class ApiClient");
+		});
+
+		it("should generate complete output as string", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
+
+			const completeString = generator.generateString();
+
+			// Should contain everything
+			expect(completeString).toContain("export const userSchema");
+			expect(completeString).toContain('import { z } from "zod"');
+			expect(completeString).toContain('import type { APIRequestContext, APIResponse } from "@playwright/test"');
+			expect(completeString).toContain("export class ApiClient");
+			expect(completeString).toContain("export class ApiService");
+		});
+
+		it("should work without output path when using string methods", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
+
+			// All string methods should work without output
+			const schemas = generator.generateSchemasString();
+			const client = generator.generateClientString();
+			const service = generator.generateServiceString();
+			const complete = generator.generateString();
+
+			expect(schemas).toBeTruthy();
+			expect(client).toBeTruthy();
+			expect(service).toBeTruthy();
+			expect(complete).toBeTruthy();
+		});
+
+		it("should throw error when calling generate() without output path", () => {
+			const generator = new PlaywrightGenerator({
+				input: fixtureFile,
+			});
+
+			expect(() => generator.generate()).toThrow(
+				"Output path is required when calling generate(). " +
+					"Either provide an 'output' option or use generateString() to get the result as a string."
+			);
+		});
 	});
 });

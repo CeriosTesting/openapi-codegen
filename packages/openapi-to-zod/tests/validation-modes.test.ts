@@ -1,76 +1,45 @@
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
 import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Validation Modes", () => {
-	const outputPath = "tests/output/validation-modes.ts";
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			unlinkSync(outputPath);
-		}
-	});
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("simple.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	describe("Normal Mode", () => {
 		it("should use z.object for normal mode", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
-				output: outputPath,
-				mode: "normal",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			const output = generateOutput({ mode: "normal" });
 			expect(output).toContain("z.object({");
 			expect(output).not.toContain("z.strictObject");
 			expect(output).not.toContain("z.looseObject");
 		});
 
 		it("should default to normal mode when not specified", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
-				output: outputPath,
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			const output = generateOutput();
 			expect(output).toContain("z.object({");
 		});
 	});
 
 	describe("Strict Mode", () => {
 		it("should use z.strictObject for strict mode", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
-				output: outputPath,
-				mode: "strict",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			const output = generateOutput({ mode: "strict" });
 			expect(output).toContain("z.strictObject({");
 			expect(output).not.toContain("z.object({");
 			expect(output).not.toContain("z.looseObject");
 		});
 
 		it("should apply strict mode to all object schemas", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/complex.yaml",
-				output: outputPath,
+			const generator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("complex.yaml"),
 				mode: "strict",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			});
+			const output = generator.generateString();
 			const objectCount = (output.match(/z\.strictObject\(/g) || []).length;
 			expect(objectCount).toBeGreaterThan(0);
 		});
@@ -78,32 +47,18 @@ describe("Validation Modes", () => {
 
 	describe("Loose Mode", () => {
 		it("should use z.looseObject for loose mode", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/simple.yaml",
-				output: outputPath,
-				mode: "loose",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			const output = generateOutput({ mode: "loose" });
 			expect(output).toContain("z.looseObject({");
 			expect(output).not.toContain("z.object({");
 			expect(output).not.toContain("z.strictObject");
 		});
 
 		it("should apply loose mode to all object schemas", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/complex.yaml",
-				output: outputPath,
+			const generator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("complex.yaml"),
 				mode: "loose",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			});
+			const output = generator.generateString();
 			const objectCount = (output.match(/z\.looseObject\(/g) || []).length;
 			expect(objectCount).toBeGreaterThan(0);
 		});
@@ -111,16 +66,11 @@ describe("Validation Modes", () => {
 
 	describe("Mode Consistency", () => {
 		it("should apply the same mode to nested objects", () => {
-			const options: GeneratorOptions = {
-				input: "tests/fixtures/complex.yaml",
-				output: outputPath,
+			const generator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("complex.yaml"),
 				mode: "strict",
-			};
-
-			const generator = new ZodSchemaGenerator(options);
-			generator.generate();
-
-			const output = readFileSync(outputPath, "utf-8");
+			});
+			const output = generator.generateString();
 			// All z.object calls should be z.strictObject
 			expect(output).not.toMatch(/(?<!strict|loose)z\.object\(/);
 		});

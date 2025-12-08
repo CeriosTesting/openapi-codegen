@@ -1,20 +1,24 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanupTestOutput, generateFromFixture } from "./utils/test-utils";
+import { describe, expect, it } from "vitest";
+import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 /**
  * Tests for readOnly and writeOnly property filtering
  * Covers: request schemas, response schemas, schemaType filtering
  */
 describe("ReadOnly and WriteOnly Properties", () => {
-	const outputPath = "tests/output/readwrite-schemas.ts";
-
-	afterEach(cleanupTestOutput(outputPath));
+	function generateOutput(fixture: string, options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath(fixture),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	describe("Request Schemas (exclude readOnly)", () => {
 		it("should exclude readOnly properties in request schemas", () => {
-			const output = generateFromFixture({
-				fixture: "schema-filtering.yaml",
-				outputPath,
+			const output = generateOutput("schema-filtering.yaml", {
 				schemaType: "request",
 			});
 
@@ -29,9 +33,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 
 	describe("Response Schemas (exclude writeOnly)", () => {
 		it("should exclude writeOnly properties in response schemas", () => {
-			const output = generateFromFixture({
-				fixture: "schema-filtering.yaml",
-				outputPath,
+			const output = generateOutput("schema-filtering.yaml", {
 				schemaType: "response",
 			});
 
@@ -46,9 +48,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 
 	describe("All Properties (default)", () => {
 		it("should include all properties when schemaType is all", () => {
-			const output = generateFromFixture({
-				fixture: "schema-filtering.yaml",
-				outputPath,
+			const output = generateOutput("schema-filtering.yaml", {
 				schemaType: "all",
 			});
 
@@ -59,10 +59,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 		});
 
 		it("should include all properties by default", () => {
-			const output = generateFromFixture({
-				fixture: "schema-filtering.yaml",
-				outputPath,
-			});
+			const output = generateOutput("schema-filtering.yaml");
 
 			// Both readOnly and writeOnly should be included
 			expect(output).toContain("id:");
@@ -72,9 +69,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 
 	describe("Nested ReadOnly/WriteOnly Filtering", () => {
 		it("should filter nested readOnly properties in request schemas", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
+			const output = generateOutput("advanced-schema.yaml", {
 				schemaType: "request",
 			});
 
@@ -87,9 +82,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 		});
 
 		it("should filter nested writeOnly properties in response schemas", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
+			const output = generateOutput("advanced-schema.yaml", {
 				schemaType: "response",
 			});
 
@@ -102,9 +95,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 		});
 
 		it("should preserve nested structure when filtering", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
+			const output = generateOutput("advanced-schema.yaml", {
 				schemaType: "request",
 			});
 
@@ -118,9 +109,7 @@ describe("ReadOnly and WriteOnly Properties", () => {
 		});
 
 		it("should update required arrays when filtering nested properties", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
+			const output = generateOutput("advanced-schema.yaml", {
 				schemaType: "request",
 			});
 

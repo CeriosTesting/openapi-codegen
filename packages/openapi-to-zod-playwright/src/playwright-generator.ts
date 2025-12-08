@@ -34,20 +34,102 @@ export class PlaywrightGenerator {
 	 * Generate the complete output file
 	 */
 	generate(): void {
+		if (!this.options.output) {
+			throw new Error(
+				"Output path is required when calling generate(). " +
+					"Either provide an 'output' option or use generateString() to get the result as a string."
+			);
+		}
+
 		// biome-ignore lint/suspicious/noConsole: CLI output
 		console.log(`Generating Playwright client for ${this.options.input}...`);
 
-		// Step 1: Parse OpenAPI spec
-		this.spec = this.parseSpec();
-
-		// Step 2: Generate Zod schemas using the core generator
-		this.generateSchemas();
-
-		// Step 3: Append client and service classes
-		this.appendClasses();
+		const output = this.generateString();
+		writeFileSync(this.options.output, output, "utf-8");
 
 		// biome-ignore lint/suspicious/noConsole: CLI output
 		console.log(`✓ Successfully generated ${this.options.output}`);
+	}
+
+	/**
+	 * Generate the complete output as a string (without writing to file)
+	 * @returns The generated TypeScript code including schemas, client, and service
+	 */
+	generateString(): string {
+		// Ensure spec is parsed
+		if (!this.spec) {
+			this.spec = this.parseSpec();
+		}
+
+		const schemasString = this.generateSchemasString();
+		const clientString = this.generateClientString();
+		const serviceString = this.generateServiceString();
+
+		// Add Playwright imports at the top
+		const playwrightImports = `import type { APIRequestContext, APIResponse } from "@playwright/test";\nimport { expect } from "@playwright/test";\n\n`;
+
+		// Find where to insert imports (after existing imports)
+		let output = schemasString;
+		const importRegex = /^import\s+.*?;$/gm;
+		const matches = [...output.matchAll(importRegex)];
+
+		if (matches.length > 0) {
+			const lastImport = matches[matches.length - 1];
+			if (lastImport.index !== undefined) {
+				const insertPos = lastImport.index + lastImport[0].length + 1;
+				output = output.slice(0, insertPos) + playwrightImports + output.slice(insertPos);
+			}
+		} else {
+			// No imports found, add at the beginning
+			output = playwrightImports + output;
+		}
+
+		// Append classes at the end
+		output += `\n${clientString}`;
+		output += `\n${serviceString}`;
+
+		return output;
+	}
+
+	/**
+	 * Generate Zod schemas as a string
+	 * @returns The generated Zod schemas TypeScript code
+	 */
+	generateSchemasString(): string {
+		// Ensure spec is parsed
+		if (!this.spec) {
+			this.spec = this.parseSpec();
+		}
+
+		const schemaGenerator = new ZodSchemaGenerator(this.options);
+		return schemaGenerator.generateString();
+	}
+
+	/**
+	 * Generate the ApiClient class as a string
+	 * @returns The generated ApiClient class TypeScript code
+	 */
+	generateClientString(): string {
+		// Ensure spec is parsed
+		if (!this.spec) {
+			this.spec = this.parseSpec();
+		}
+
+		return generateClientClass(this.spec);
+	}
+
+	/**
+	 * Generate the ApiService class as a string
+	 * @returns The generated ApiService class TypeScript code
+	 */
+	generateServiceString(): string {
+		// Ensure spec is parsed
+		if (!this.spec) {
+			this.spec = this.parseSpec();
+		}
+
+		const schemaImports = new Set<string>();
+		return generateServiceClass(this.spec, schemaImports);
 	}
 
 	/**
@@ -69,59 +151,5 @@ export class PlaywrightGenerator {
 				`Failed to parse OpenAPI specification at ${this.options.input}: ${error instanceof Error ? error.message : String(error)}`
 			);
 		}
-	}
-
-	/**
-	 * Generate Zod schemas using the core generator
-	 */
-	private generateSchemas(): void {
-		const schemaGenerator = new ZodSchemaGenerator(this.options);
-		schemaGenerator.generate();
-	}
-
-	/**
-	 * Append client and service classes to the generated file
-	 */
-	private appendClasses(): void {
-		if (!this.spec) {
-			throw new Error("OpenAPI spec not parsed");
-		}
-
-		// Read the generated schemas file
-		let output = readFileSync(this.options.output, "utf-8");
-
-		// Track which schemas are used by the service layer
-		const schemaImports = new Set<string>();
-
-		// Generate client class
-		const clientClass = generateClientClass(this.spec);
-
-		// Generate service class
-		const serviceClass = generateServiceClass(this.spec, schemaImports);
-
-		// Add Playwright imports at the top
-		const playwrightImports = `import type { APIRequestContext, APIResponse } from "@playwright/test";\nimport { expect } from "@playwright/test";\n\n`;
-
-		// Find where to insert imports (after existing imports)
-		const importRegex = /^import\s+.*?;$/gm;
-		const matches = [...output.matchAll(importRegex)];
-
-		if (matches.length > 0) {
-			const lastImport = matches[matches.length - 1];
-			if (lastImport.index !== undefined) {
-				const insertPos = lastImport.index + lastImport[0].length + 1;
-				output = output.slice(0, insertPos) + playwrightImports + output.slice(insertPos);
-			}
-		} else {
-			// No imports found, add at the beginning
-			output = playwrightImports + output;
-		}
-
-		// Append classes at the end
-		output += `\n${clientClass}`;
-		output += `\n${serviceClass}`;
-
-		// Write the final output
-		writeFileSync(this.options.output, output, "utf-8");
 	}
 }

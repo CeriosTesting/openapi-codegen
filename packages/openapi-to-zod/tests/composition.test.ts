@@ -1,41 +1,40 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanupTestOutput, generateFromFixture } from "./utils/test-utils";
+import { describe, expect, it } from "vitest";
+import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 /**
  * Consolidated tests for OpenAPI schema composition features
  * Covers: allOf (merge/and), oneOf/anyOf (unions/discriminated unions), tuples (prefixItems)
  */
 describe("Schema Composition", () => {
-	const outputPath = "tests/output/schema-composition.ts";
-
-	afterEach(cleanupTestOutput(outputPath));
-
 	describe("AllOf Composition", () => {
-		it("should use .merge() for object schemas", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
+		const fixturePath = TestUtils.getFixturePath("composition.yaml");
+
+		function generateOutput(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: fixturePath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		it("should use .merge() for object schemas", () => {
+			const output = generateOutput();
 
 			expect(output).toContain(".merge(");
 			expect(output).toContain("userSchema");
 		});
 
 		it("should chain multiple .merge() calls for multiple allOf schemas", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			const userSchemaMatch = output.match(/userSchema = .*\.merge\(.*\.merge\(/s);
 			expect(userSchemaMatch).toBeTruthy();
 		});
 
 		it("should handle allOf with refs and inline objects", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("baseEntitySchema");
 			expect(output).toContain("timestampedSchema");
@@ -43,20 +42,14 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle allOf with only inline objects (no refs)", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("extendedMetadataSchema");
 			expect(output).toContain(".merge(");
 		});
 
 		it("should handle allOf with 4+ schemas", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("fullyAuditedEntitySchema");
 			const mergeCount = (output.match(/fullyAuditedEntitySchema.*?;/s)?.[0].match(/\.merge\(/g) || []).length;
@@ -64,50 +57,35 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle nullable allOf", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("nullableUserSchema");
 			expect(output).toContain(".nullable()");
 		});
 
 		it("should handle nested allOf (User extended by AdminUser)", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("adminUserSchema");
 			expect(output).toContain("userSchema.merge(");
 		});
 
 		it("should use .and() for non-object allOf", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("stringConstraintsSchema");
 			expect(output).toContain(".and(");
 		});
 
 		it("should handle numeric allOf with .and()", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("numberConstraintsSchema");
 			expect(output).toContain(".and(");
 		});
 
 		it("should maintain correct property requirements with allOf", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("userWithMetadataSchema");
 			expect(output).toMatch(/username: z\.string\(\)(?!\.optional)/);
@@ -115,29 +93,39 @@ describe("Schema Composition", () => {
 	});
 
 	describe("OneOf and AnyOf (Unions)", () => {
-		it("should use z.discriminatedUnion for oneOf with discriminator", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
+		const compositionPath = TestUtils.getFixturePath("composition.yaml");
+		const simplePath = TestUtils.getFixturePath("simple.yaml");
+
+		function generateFromComposition(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: compositionPath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		function generateFromSimple(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: simplePath,
+				...options,
+			});
+			return generator.generateString();
+		}
+
+		it("should use z.discriminatedUnion for oneOf with discriminator", () => {
+			const output = generateFromComposition();
 
 			expect(output).toContain('z.discriminatedUnion("petType"');
 		});
 
 		it("should use z.discriminatedUnion for anyOf with discriminator", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateFromComposition();
 
 			expect(output).toContain('z.discriminatedUnion("type"');
 		});
 
 		it("should use regular z.union for oneOf without discriminator", () => {
-			const output = generateFromFixture({
-				fixture: "simple.yaml",
-				outputPath,
-			});
+			const output = generateFromSimple();
 
 			// Check for unions in simple.yaml
 			if (output.includes("z.union")) {
@@ -147,20 +135,24 @@ describe("Schema Composition", () => {
 	});
 
 	describe("Tuple Validation (prefixItems)", () => {
-		it("should generate z.tuple() for prefixItems", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
+		const fixturePath = TestUtils.getFixturePath("composition.yaml");
+
+		function generateOutput(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: fixturePath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		it("should generate z.tuple() for prefixItems", () => {
+			const output = generateOutput();
 
 			expect(output).toContain("z.tuple([");
 		});
 
 		it("should handle simple tuple with numeric constraints", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toMatch(
 				/coordinatesSchema = z\.tuple\(\[z\.number\(\)\.gte\(-90\)\.lte\(90\), z\.number\(\)\.gte\(-180\)\.lte\(180\)\]\)/
@@ -168,10 +160,7 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle integer tuples", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("rGBSchema");
 			expect(output).toContain("z.tuple([");
@@ -179,10 +168,7 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle mixed type tuples", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("mixedTupleSchema");
 			expect(output).toContain("z.string()");
@@ -190,20 +176,14 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle tuples with .rest() for additional items", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("tupleWithRestSchema");
 			expect(output).toContain(".rest(");
 		});
 
 		it("should handle nested object tuples", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("nestedTupleSchema");
 			expect(output).toContain("z.tuple([");
@@ -211,31 +191,41 @@ describe("Schema Composition", () => {
 		});
 
 		it("should include descriptions for tuples", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			expect(output).toContain("/** Geographic coordinates");
 		});
 	});
 
 	describe("Combined Composition Features", () => {
-		it("should handle both tuples and allOf in same spec", () => {
-			const output = generateFromFixture({
-				fixture: "composition.yaml",
-				outputPath,
+		const compositionPath = TestUtils.getFixturePath("composition.yaml");
+		const simplePath = TestUtils.getFixturePath("simple.yaml");
+
+		function generateFromComposition(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: compositionPath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		function generateFromSimple(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: simplePath,
+				...options,
+			});
+			return generator.generateString();
+		}
+
+		it("should handle both tuples and allOf in same spec", () => {
+			const output = generateFromComposition();
 
 			expect(output).toContain("z.tuple([");
 			expect(output).toContain(".merge(");
 		});
 
 		it("should maintain backward compatibility", () => {
-			const output = generateFromFixture({
-				fixture: "simple.yaml",
-				outputPath,
-			});
+			const output = generateFromSimple();
 
 			expect(output).toContain("userSchema");
 			expect(output).not.toContain("z.tuple(");
@@ -243,21 +233,25 @@ describe("Schema Composition", () => {
 	});
 
 	describe("Edge Cases", () => {
-		it("should handle discriminated union with many variants", () => {
-			const output = generateFromFixture({
-				fixture: "edge-cases.yaml",
-				outputPath,
+		const fixturePath = TestUtils.getFixturePath("edge-cases.yaml");
+
+		function generateOutput(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: fixturePath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		it("should handle discriminated union with many variants", () => {
+			const output = generateOutput();
 
 			expect(output).toContain("z.discriminatedUnion(");
 			expect(output).toMatch(/variant1|variant2|variant3/);
 		});
 
 		it("should handle very deep nesting", () => {
-			const output = generateFromFixture({
-				fixture: "edge-cases.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// Should have nested objects (level1 -> level2 -> level3 -> level4)
 			expect(output).toMatch(/level1:.*z\.object/);
@@ -265,10 +259,7 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle nested arrays", () => {
-			const output = generateFromFixture({
-				fixture: "edge-cases.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// Should have z.array(z.array(...))
 			expect(output).toMatch(/z\.array\(z\.array\(/);
@@ -276,11 +267,18 @@ describe("Schema Composition", () => {
 	});
 
 	describe("Conditional Schemas (if/then/else)", () => {
-		it("should generate refine validation for if/then conditionals", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
+		const fixturePath = TestUtils.getFixturePath("advanced-schema.yaml");
+
+		function generateOutput(options?: Partial<GeneratorOptions>): string {
+			const generator = new ZodSchemaGenerator({
+				input: fixturePath,
+				...options,
 			});
+			return generator.generateString();
+		}
+
+		it("should generate refine validation for if/then conditionals", () => {
+			const output = generateOutput();
 
 			// Should have refine with conditional logic
 			expect(output).toContain(".refine(");
@@ -288,40 +286,28 @@ describe("Schema Composition", () => {
 		});
 
 		it("should handle if/then/else with all branches", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// ConditionalBilling should have if/then/else logic
 			expect(output).toMatch(/conditionalBillingSchema[\s\S]*?\.refine/);
 		});
 
 		it("should validate then branch when condition is met", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// Should check condition and apply then requirements
 			expect(output).toMatch(/if.*discountPercentage/s);
 		});
 
 		it("should validate else branch when condition is not met", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// AgeBasedRequirements should have else branch for minors
 			expect(output).toMatch(/ageBasedRequirementsSchema[\s\S]*?age/);
 		});
 
 		it("should handle complex conditional checks", () => {
-			const output = generateFromFixture({
-				fixture: "advanced-schema.yaml",
-				outputPath,
-			});
+			const output = generateOutput();
 
 			// Should handle property type checks, const checks, and range checks
 			expect(output).toMatch(/\.refine\(\(obj\)/);

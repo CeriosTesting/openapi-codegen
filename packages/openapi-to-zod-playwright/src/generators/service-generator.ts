@@ -183,18 +183,20 @@ function generateServiceMethod(
 
 	// Determine if we need request options
 	const hasRequestBody = requestBody?.content?.["application/json"];
-	const needsOptions = hasRequestBody || (endpoint.parameters && endpoint.parameters.length > 0);
+	const hasQueryParams = endpoint.parameters?.some((p: any) => p.in === "query");
+	const hasHeaderParams = endpoint.parameters?.some((p: any) => p.in === "header");
+	const needsOptions = hasRequestBody || hasQueryParams || hasHeaderParams;
 
 	if (needsOptions) {
 		const optionsProps: string[] = [];
 
 		// Add query parameters
-		if (endpoint.parameters?.some((p: any) => p.in === "query")) {
+		if (hasQueryParams) {
 			optionsProps.push("query?: Record<string, any>");
 		}
 
 		// Add headers
-		if (endpoint.parameters?.some((p: any) => p.in === "header")) {
+		if (hasHeaderParams) {
 			optionsProps.push("headers?: Record<string, string>");
 		}
 
@@ -303,16 +305,18 @@ function generateErrorMethod(endpoint: EndpointInfo): string {
 
 	// Add options if needed - all Partial with type outlines
 	const hasRequestBody = requestBody?.content?.["application/json"];
-	const needsOptions = hasRequestBody || (endpoint.parameters && endpoint.parameters.length > 0);
+	const hasQueryParams = endpoint.parameters?.some((p: any) => p.in === "query");
+	const hasHeaderParams = endpoint.parameters?.some((p: any) => p.in === "header");
+	const needsOptions = hasRequestBody || hasQueryParams || hasHeaderParams;
 
 	if (needsOptions) {
 		const optionsProps: string[] = [];
 
-		if (endpoint.parameters?.some((p: any) => p.in === "query")) {
+		if (hasQueryParams) {
 			optionsProps.push("query?: Record<string, any>");
 		}
 
-		if (endpoint.parameters?.some((p: any) => p.in === "header")) {
+		if (hasHeaderParams) {
 			optionsProps.push("headers?: Record<string, string>");
 		}
 

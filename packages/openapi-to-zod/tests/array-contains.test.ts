@@ -1,27 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Array Contains", () => {
-	const outputPath = join(__dirname, "output", "array-contains.ts");
-
-	beforeEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	const outputPath = TestUtils.getOutputPath("array-contains.ts");
 
 	describe("Basic Contains", () => {
 		it("should generate validation for contains", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "array-contains.yaml"),
+				input: TestUtils.getFixturePath("array-contains.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -37,7 +25,7 @@ describe("Array Contains", () => {
 
 		it("should validate arrays with at least one matching item", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "array-contains.yaml"),
+				input: TestUtils.getFixturePath("array-contains.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -67,7 +55,7 @@ describe("Array Contains", () => {
 	describe("Contains with minContains and maxContains", () => {
 		it("should validate min and max contains constraints", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "array-contains.yaml"),
+				input: TestUtils.getFixturePath("array-contains.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -102,7 +90,7 @@ describe("Array Contains", () => {
 	describe("Contains with minContains only", () => {
 		it("should validate minimum contains constraint", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "array-contains.yaml"),
+				input: TestUtils.getFixturePath("array-contains.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -133,7 +121,7 @@ describe("Array Contains", () => {
 	describe("Contains with enum values", () => {
 		it("should validate enum-based contains", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "array-contains.yaml"),
+				input: TestUtils.getFixturePath("array-contains.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,

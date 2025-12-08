@@ -1,27 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Content Media Type Expansion", () => {
-	const outputPath = join(__dirname, "output", "content-media-type.ts");
-
-	beforeEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	const outputPath = TestUtils.getOutputPath("content-media-type.ts");
 
 	describe("JSON Media Type", () => {
 		it("should validate JSON content", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -47,7 +35,7 @@ describe("Content Media Type Expansion", () => {
 	describe("XML Media Type", () => {
 		it("should validate XML content", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -73,7 +61,7 @@ describe("Content Media Type Expansion", () => {
 	describe("YAML Media Type", () => {
 		it("should validate YAML content", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -99,7 +87,7 @@ describe("Content Media Type Expansion", () => {
 	describe("HTML Media Type", () => {
 		it("should validate HTML content", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -125,7 +113,7 @@ describe("Content Media Type Expansion", () => {
 	describe("Plain Text Media Type", () => {
 		it("should validate plain text content", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -144,7 +132,7 @@ describe("Content Media Type Expansion", () => {
 	describe("Combined Encoding and Media Type", () => {
 		it("should validate base64-encoded XML", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -165,7 +153,7 @@ describe("Content Media Type Expansion", () => {
 
 		it("should validate base64-encoded JSON", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -188,7 +176,7 @@ describe("Content Media Type Expansion", () => {
 	describe("Multiple Media Types in Object", () => {
 		it("should generate schema with multiple media type validations", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -206,7 +194,7 @@ describe("Content Media Type Expansion", () => {
 
 		it("should validate document with mixed content types", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "content-media-type.yaml"),
+				input: TestUtils.getFixturePath("content-media-type.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,

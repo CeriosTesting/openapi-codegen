@@ -1,16 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanupTestOutput, generateFromFixture } from "./utils/test-utils";
+import { describe, expect, it } from "vitest";
+import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Discriminator Mapping", () => {
-	const outputPath = "tests/output/discriminator-mapping.ts";
-
-	afterEach(cleanupTestOutput(outputPath));
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("discriminator-mapping.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	it("should generate discriminated union with mapping", () => {
-		const output = generateFromFixture({
-			fixture: "discriminator-mapping.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Should have discriminated union
 		expect(output).toContain("petSchema");
@@ -21,10 +24,7 @@ describe("Discriminator Mapping", () => {
 	});
 
 	it("should define schemas before using in discriminated union", () => {
-		const output = generateFromFixture({
-			fixture: "discriminator-mapping.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Dog, Cat, Bird should be defined before Pet
 		const dogIndex = output.indexOf("const dogSchema");
@@ -44,10 +44,7 @@ describe("Discriminator Mapping", () => {
 	});
 
 	it("should handle anyOf with discriminator mapping", () => {
-		const output = generateFromFixture({
-			fixture: "discriminator-mapping.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Vehicle should use discriminated union
 		expect(output).toContain("vehicleSchema");
@@ -57,10 +54,7 @@ describe("Discriminator Mapping", () => {
 	});
 
 	it("should generate const values for discriminator properties", () => {
-		const output = generateFromFixture({
-			fixture: "discriminator-mapping.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Should have const literals for discriminator values
 		expect(output).toContain('z.literal("dog")');

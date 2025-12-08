@@ -1,34 +1,20 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Type Mode Generation", () => {
-	const outputDir = "tests/output";
-	const testOutput = `${outputDir}/type-mode-test.ts`;
-
-	beforeEach(() => {
-		if (!existsSync(outputDir)) {
-			mkdirSync(outputDir, { recursive: true });
-		}
-	});
-
-	afterEach(() => {
-		// Clean up generated files
-		if (existsSync(testOutput)) {
-			rmSync(testOutput);
-		}
-	});
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("type-mode.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	describe("typeMode: inferred (default)", () => {
 		it("should generate Zod schemas with z.infer types by default", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput();
 
 			// Should import Zod
 			expect(output).toContain('import { z } from "zod"');
@@ -47,15 +33,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should apply constraints with Zod validators", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "inferred",
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "inferred" });
 
 			// String constraints
 			expect(output).toMatch(/\.min\(1\)/);
@@ -73,15 +51,7 @@ describe("Type Mode Generation", () => {
 
 	describe("typeMode: native", () => {
 		it("should generate native TypeScript types without Zod", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native" });
 
 			// Should NOT import Zod
 			expect(output).not.toContain('import { z } from "zod"');
@@ -97,16 +67,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should generate union types for enums by default", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-				nativeEnumType: "union",
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native", nativeEnumType: "union" });
 
 			// Should generate union type
 			expect(output).toContain('export type UserStatus = "active" | "inactive" | "suspended";');
@@ -116,16 +77,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should generate TypeScript enums when nativeEnumType is enum", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-				nativeEnumType: "enum",
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native", nativeEnumType: "enum" });
 
 			// Should generate TypeScript enum with Enum suffix
 			expect(output).toContain("export enum UserStatusEnum {");
@@ -138,16 +90,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should add constraint JSDoc when includeDescriptions is true", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-				includeDescriptions: true,
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native", includeDescriptions: true });
 
 			// Should include constraint annotations in JSDoc
 			expect(output).toMatch(/@minLength 1/);
@@ -159,16 +102,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should not add constraint JSDoc when includeDescriptions is false", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-				includeDescriptions: false,
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native", includeDescriptions: false });
 
 			// Should NOT include constraint annotations
 			expect(output).not.toMatch(/@minLength/);
@@ -178,15 +112,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should handle nested objects and arrays", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
-				typeMode: "native",
-			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
+			const output = generateOutput({ typeMode: "native" });
 
 			// Should reference nested type
 			expect(output).toContain("profile?: UserProfile;");

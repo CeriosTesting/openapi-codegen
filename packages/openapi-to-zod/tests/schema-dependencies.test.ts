@@ -1,27 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Schema Dependencies (OpenAPI 3.0)", () => {
-	const outputPath = join(__dirname, "output", "schema-dependencies.ts");
-
-	beforeEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	const outputPath = TestUtils.getOutputPath("schema-dependencies.ts");
 
 	describe("Schema Dependencies with required", () => {
 		it("should generate validation for schema dependencies", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "schema-dependencies.yaml"),
+				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -37,7 +25,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 
 		it("should validate when dependent property is not present", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "schema-dependencies.yaml"),
+				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -56,7 +44,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 
 		it("should validate when dependent property exists with all required fields", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "schema-dependencies.yaml"),
+				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -79,7 +67,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 
 		it("should fail when dependent property exists but required fields are missing", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "schema-dependencies.yaml"),
+				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -112,7 +100,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 	describe("Mixed array and schema dependencies", () => {
 		it("should handle both dependency types in the same schema", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "schema-dependencies.yaml"),
+				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,

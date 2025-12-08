@@ -189,6 +189,31 @@ export class PropertyGenerator {
 	}
 
 	/**
+	 * Resolve a schema name through any aliases to get the actual schema name
+	 * If the schema is an alias (allOf with single $ref), return the target name
+	 */
+	private resolveSchemaAlias(schemaName: string): string {
+		const schema = this.context.spec.components?.schemas?.[schemaName];
+		if (!schema) return schemaName;
+
+		// Check if this is a simple alias (allOf with single $ref and nothing else)
+		if (
+			schema.allOf &&
+			schema.allOf.length === 1 &&
+			schema.allOf[0].$ref &&
+			!schema.properties &&
+			!schema.oneOf &&
+			!schema.anyOf
+		) {
+			const targetName = resolveRef(schema.allOf[0].$ref);
+			// Recursively resolve in case of chained aliases
+			return this.resolveSchemaAlias(targetName);
+		}
+
+		return schemaName;
+	}
+
+	/**
 	 * Check if this is a circular dependency through aliases
 	 */
 	private isCircularThroughAlias(fromSchema: string, toSchema: string): boolean {
@@ -305,6 +330,9 @@ export class PropertyGenerator {
 		// Handle $ref
 		if (schema.$ref) {
 			const refName = resolveRef(schema.$ref);
+			// Resolve through any aliases to get the actual schema
+			const resolvedRefName = this.resolveSchemaAlias(refName);
+
 			// Track dependency (but not if it's just an alias at top level)
 			if (currentSchema && refName !== currentSchema && !isTopLevel) {
 				if (!this.context.schemaDependencies.has(currentSchema)) {
@@ -312,7 +340,8 @@ export class PropertyGenerator {
 				}
 				this.context.schemaDependencies.get(currentSchema)?.add(refName);
 			}
-			const schemaName = `${toCamelCase(refName, this.context.namingOptions)}Schema`;
+			// Use the resolved name for the schema reference
+			const schemaName = `${toCamelCase(resolvedRefName, this.context.namingOptions)}Schema`;
 
 			// Check for circular dependency through alias
 			if (currentSchema && this.isCircularThroughAlias(currentSchema, refName)) {

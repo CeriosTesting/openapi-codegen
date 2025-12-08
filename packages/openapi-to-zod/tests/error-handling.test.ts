@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
 import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 /**
  * Comprehensive error handling tests
@@ -8,12 +9,12 @@ import type { GeneratorOptions } from "../src/types";
  * file system errors, and malformed schemas
  */
 describe("Error Handling", () => {
-	const outputPath = "tests/output/error-test.ts";
+	const outputPath = TestUtils.getOutputPath("error-test.ts");
 
 	describe("YAML Parsing Errors", () => {
 		it("should throw error for invalid YAML syntax", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-yaml.yaml",
+				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
 				output: outputPath,
 			};
 
@@ -24,7 +25,7 @@ describe("Error Handling", () => {
 
 		it("should throw error for non-existent file", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/does-not-exist.yaml",
+				input: TestUtils.getFixturePath("does-not-exist.yaml"),
 				output: outputPath,
 			};
 
@@ -35,7 +36,7 @@ describe("Error Handling", () => {
 
 		it("should include file path in YAML error message", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-yaml.yaml",
+				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
 				output: outputPath,
 			};
 
@@ -48,7 +49,7 @@ describe("Error Handling", () => {
 	describe("Spec Validation Errors", () => {
 		it("should throw error when components is missing", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/empty-components.yaml",
+				input: TestUtils.getFixturePath("empty-components.yaml"),
 				output: outputPath,
 			};
 
@@ -59,7 +60,7 @@ describe("Error Handling", () => {
 
 		it("should throw error when components.schemas is missing", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/no-schemas.yaml",
+				input: TestUtils.getFixturePath("no-schemas.yaml"),
 				output: outputPath,
 			};
 
@@ -70,7 +71,7 @@ describe("Error Handling", () => {
 
 		it("should include input file path in validation error", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/empty-components.yaml",
+				input: TestUtils.getFixturePath("empty-components.yaml"),
 				output: outputPath,
 			};
 
@@ -83,7 +84,7 @@ describe("Error Handling", () => {
 	describe("Invalid Reference Errors", () => {
 		it("should throw error for invalid $ref in properties", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -94,7 +95,7 @@ describe("Error Handling", () => {
 
 		it("should include reference path in error message", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -105,7 +106,7 @@ describe("Error Handling", () => {
 
 		it("should identify non-existent schema name", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -116,7 +117,7 @@ describe("Error Handling", () => {
 
 		it("should show full $ref path in error", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -127,7 +128,7 @@ describe("Error Handling", () => {
 
 		it("should throw error for invalid $ref in array items", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -141,7 +142,7 @@ describe("Error Handling", () => {
 	describe("Nested Reference Errors", () => {
 		it("should throw error for invalid $ref in allOf", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-specs.yaml",
+				input: TestUtils.getFixturePath("invalid-specs.yaml"),
 				output: outputPath,
 			};
 
@@ -155,7 +156,7 @@ describe("Error Handling", () => {
 
 		it("should throw error for invalid $ref in oneOf", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-oneof.yaml",
+				input: TestUtils.getFixturePath("invalid-oneof.yaml"),
 				output: outputPath,
 			};
 
@@ -166,7 +167,7 @@ describe("Error Handling", () => {
 
 		it("should throw error for invalid $ref in anyOf", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-anyof.yaml",
+				input: TestUtils.getFixturePath("invalid-anyof.yaml"),
 				output: outputPath,
 			};
 
@@ -177,7 +178,7 @@ describe("Error Handling", () => {
 
 		it("should throw error for invalid $ref in nested properties", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-nested.yaml",
+				input: TestUtils.getFixturePath("invalid-nested.yaml"),
 				output: outputPath,
 			};
 
@@ -190,7 +191,7 @@ describe("Error Handling", () => {
 	describe("Schema Structure Errors", () => {
 		it("should handle empty schemas gracefully", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/empty-schemas.yaml",
+				input: TestUtils.getFixturePath("empty-schemas.yaml"),
 				output: outputPath,
 			};
 
@@ -202,7 +203,7 @@ describe("Error Handling", () => {
 
 		it("should handle schema with only description", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/empty-schemas.yaml",
+				input: TestUtils.getFixturePath("empty-schemas.yaml"),
 				output: outputPath,
 			};
 
@@ -215,7 +216,7 @@ describe("Error Handling", () => {
 	describe("Multiple Error Detection", () => {
 		it("should report first invalid reference found", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 
@@ -227,7 +228,7 @@ describe("Error Handling", () => {
 
 		it("should include schema name in error", () => {
 			const options: GeneratorOptions = {
-				input: "tests/fixtures/invalid-refs.yaml",
+				input: TestUtils.getFixturePath("invalid-refs.yaml"),
 				output: outputPath,
 			};
 

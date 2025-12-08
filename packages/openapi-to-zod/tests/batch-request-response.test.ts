@@ -1,29 +1,16 @@
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { executeBatch } from "../src/batch-executor";
 import type { SpecConfig } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Batch Execution with Request/Response Options", () => {
-	const outputFiles = [
-		"tests/output/batch-mixed-typemode.ts",
-		"tests/output/batch-native-requests.ts",
-		"tests/output/batch-inferred-responses.ts",
-	];
-
-	afterEach(() => {
-		for (const file of outputFiles) {
-			if (existsSync(file)) {
-				unlinkSync(file);
-			}
-		}
-	});
-
 	it("should process multiple specs with different request/response options", async () => {
-		const specs: SpecConfig[] = [
+		const specs: (SpecConfig & { output: string })[] = [
 			{
 				name: "Mixed TypeMode",
-				input: "tests/fixtures/type-mode.yaml",
-				output: "tests/output/batch-mixed-typemode.ts",
+				input: TestUtils.getFixturePath("type-mode.yaml"),
+				output: TestUtils.getOutputPath("batch-mixed-typemode.ts"),
 				request: {
 					typeMode: "native",
 					includeDescriptions: true,
@@ -35,15 +22,15 @@ describe("Batch Execution with Request/Response Options", () => {
 			},
 			{
 				name: "All Native",
-				input: "tests/fixtures/simple.yaml",
-				output: "tests/output/batch-native-requests.ts",
+				input: TestUtils.getFixturePath("simple.yaml"),
+				output: TestUtils.getOutputPath("batch-native-requests.ts"),
 				typeMode: "native",
 				nativeEnumType: "enum",
 			},
 			{
 				name: "All Inferred",
-				input: "tests/fixtures/composition.yaml",
-				output: "tests/output/batch-inferred-responses.ts",
+				input: TestUtils.getFixturePath("composition.yaml"),
+				output: TestUtils.getOutputPath("batch-inferred-responses.ts"),
 				typeMode: "inferred",
 				mode: "normal",
 			},
@@ -81,17 +68,17 @@ describe("Batch Execution with Request/Response Options", () => {
 			typeMode: "inferred" as const,
 		};
 
-		const specs: SpecConfig[] = [
+		const specs: (SpecConfig & { output: string })[] = [
 			{
 				name: "Uses defaults",
-				input: "tests/fixtures/simple.yaml",
-				output: "tests/output/batch-mixed-typemode.ts",
+				input: TestUtils.getFixturePath("simple.yaml"),
+				output: TestUtils.getOutputPath("batch-mixed-typemode.ts"),
 				...defaults,
 			},
 			{
 				name: "Overrides typeMode",
-				input: "tests/fixtures/composition.yaml",
-				output: "tests/output/batch-native-requests.ts",
+				input: TestUtils.getFixturePath("composition.yaml"),
+				output: TestUtils.getOutputPath("batch-native-requests.ts"),
 				...defaults,
 				typeMode: "native", // Override
 			},
@@ -112,11 +99,11 @@ describe("Batch Execution with Request/Response Options", () => {
 	});
 
 	it("should handle complex nested options in batch mode", async () => {
-		const specs: SpecConfig[] = [
+		const specs: (SpecConfig & { output: string })[] = [
 			{
 				name: "Complex Config",
-				input: "tests/fixtures/type-mode.yaml",
-				output: "tests/output/batch-mixed-typemode.ts",
+				input: TestUtils.getFixturePath("type-mode.yaml"),
+				output: TestUtils.getOutputPath("batch-mixed-typemode.ts"),
 				mode: "normal", // Root mode
 				includeDescriptions: true,
 				request: {

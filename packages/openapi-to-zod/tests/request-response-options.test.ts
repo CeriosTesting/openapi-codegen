@@ -1,38 +1,25 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Request/Response Options", () => {
-	const outputDir = "tests/output";
-	const testOutput = `${outputDir}/request-response-test.ts`;
-
-	beforeEach(() => {
-		if (!existsSync(outputDir)) {
-			mkdirSync(outputDir, { recursive: true });
-		}
-	});
-
-	afterEach(() => {
-		// Clean up generated files
-		if (existsSync(testOutput)) {
-			rmSync(testOutput);
-		}
-	});
+	function generateOutput(options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("type-mode.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	describe("Nested options override root options", () => {
 		it("should use request options for request schemas", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "inferred",
 				request: {
 					typeMode: "native",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// CreateUserRequest (used in POST request body) should be native type
 			expect(output).toContain("export type CreateUserRequest = {");
@@ -44,18 +31,12 @@ describe("Request/Response Options", () => {
 		});
 
 		it("should use response options for response schemas", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 				response: {
 					typeMode: "inferred",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// User (used in GET response) should be Zod schema
 			expect(output).toContain("export const userSchema =");
@@ -68,33 +49,21 @@ describe("Request/Response Options", () => {
 		});
 
 		it("should generate Zod import when any schema uses inferred mode", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 				response: {
 					typeMode: "inferred",
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// Should import Zod because response uses inferred mode
 			expect(output).toContain('import { z } from "zod"');
 		});
 
 		it("should not generate Zod import when all schemas use native mode", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// Should NOT import Zod
 			expect(output).not.toContain('import { z } from "zod"');
@@ -103,9 +72,7 @@ describe("Request/Response Options", () => {
 
 	describe("Mixed configurations", () => {
 		it("should handle request: native, response: inferred", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				request: {
 					typeMode: "native",
 					nativeEnumType: "union",
@@ -116,10 +83,6 @@ describe("Request/Response Options", () => {
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// Should have both native types and Zod schemas
 			expect(output).toContain("export type CreateUserRequest = {");
 			expect(output).toContain("export const userSchema =");
@@ -127,9 +90,7 @@ describe("Request/Response Options", () => {
 		});
 
 		it("should override mode per context", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				mode: "normal",
 				request: {
 					mode: "strict",
@@ -139,28 +100,18 @@ describe("Request/Response Options", () => {
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// This test validates that different modes are applied
 			// The actual validation happens in property-generator
 			expect(output).toBeTruthy();
 		});
 
 		it("should override enumType per context", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				enumType: "zod",
 				request: {
 					enumType: "typescript",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// Should generate TypeScript enum for request context
 			// UserStatus is used in User which is a response schema
@@ -168,9 +119,7 @@ describe("Request/Response Options", () => {
 		});
 
 		it("should override includeDescriptions per context", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				includeDescriptions: true,
 				request: {
 					includeDescriptions: false,
@@ -180,10 +129,6 @@ describe("Request/Response Options", () => {
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// Both contexts should generate successfully
 			expect(output).toBeTruthy();
 		});
@@ -191,9 +136,7 @@ describe("Request/Response Options", () => {
 
 	describe("Schemas used in both contexts", () => {
 		it("should use inferred mode for schemas used in both request and response", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				request: {
 					typeMode: "native",
 				},
@@ -201,10 +144,6 @@ describe("Request/Response Options", () => {
 					typeMode: "native",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// User is used in both POST response (201 Created) and GET response
 			// UserStatus is part of User, so it's also used in responses

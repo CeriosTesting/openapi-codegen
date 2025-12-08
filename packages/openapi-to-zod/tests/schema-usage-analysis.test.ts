@@ -1,56 +1,42 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Schema Usage Analysis", () => {
-	const outputDir = "tests/output";
-	const testOutput = `${outputDir}/schema-usage-test.ts`;
-
-	beforeEach(() => {
-		if (!existsSync(outputDir)) {
-			mkdirSync(outputDir, { recursive: true });
-		}
-	});
-
-	afterEach(() => {
-		// Clean up generated files
-		if (existsSync(testOutput)) {
-			rmSync(testOutput);
-		}
-	});
+	const testOutput = TestUtils.getOutputPath("schema-usage-test.ts");
 
 	describe("Path-based detection", () => {
-		it("should detect schemas used in request bodies", () => {
+		function generateOutput(options: Partial<GeneratorOptions>): string {
 			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
+				input: TestUtils.getFixturePath("type-mode.yaml"),
 				output: testOutput,
+				...options,
+			});
+			generator.generate();
+			return readFileSync(testOutput, "utf-8");
+		}
+
+		it("should detect schemas used in request bodies", () => {
+			const output = generateOutput({
 				typeMode: "inferred",
 				request: {
 					typeMode: "native",
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// CreateUserRequest is used in POST requestBody, should be native
 			expect(output).toContain("export type CreateUserRequest = {");
 		});
 
 		it("should detect schemas used in responses", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 				response: {
 					typeMode: "inferred",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// User is used in GET response, should be Zod schema
 			expect(output).toContain("export const userSchema =");
@@ -58,18 +44,12 @@ describe("Schema Usage Analysis", () => {
 		});
 
 		it("should detect nested schema references", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/type-mode.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 				response: {
 					typeMode: "inferred",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// UserProfile is referenced by User (response schema)
 			// So UserProfile should also use response mode
@@ -81,16 +61,20 @@ describe("Schema Usage Analysis", () => {
 	});
 
 	describe("Unreferenced schemas", () => {
-		it("should use root typeMode for unreferenced schemas", () => {
+		function generateOutput(options: Partial<GeneratorOptions>): string {
 			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/empty-schemas.yaml",
+				input: TestUtils.getFixturePath("empty-schemas.yaml"),
 				output: testOutput,
+				...options,
+			});
+			generator.generate();
+			return readFileSync(testOutput, "utf-8");
+		}
+
+		it("should use root typeMode for unreferenced schemas", () => {
+			const output = generateOutput({
 				typeMode: "native",
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// Schemas not referenced in paths should use root typeMode
 			expect(output).not.toContain('import { z } from "zod"');
@@ -98,35 +82,33 @@ describe("Schema Usage Analysis", () => {
 	});
 
 	describe("Fallback to readOnly/writeOnly analysis", () => {
-		it("should detect request schemas via writeOnly properties when paths missing", () => {
+		function generateOutput(options: Partial<GeneratorOptions>): string {
 			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/nested-writeonly.yaml",
+				input: TestUtils.getFixturePath("nested-writeonly.yaml"),
 				output: testOutput,
+				...options,
+			});
+			generator.generate();
+			return readFileSync(testOutput, "utf-8");
+		}
+
+		it("should detect request schemas via writeOnly properties when paths missing", () => {
+			const output = generateOutput({
 				typeMode: "inferred",
 				request: {
 					typeMode: "native",
 				},
 			});
 
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
-
 			// Should generate successfully even without paths section
 			expect(output).toBeTruthy();
 		});
 
 		it("should handle schemas with both readOnly and writeOnly properties", () => {
-			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/nested-writeonly.yaml",
-				output: testOutput,
+			const output = generateOutput({
 				typeMode: "native",
 				schemaType: "request",
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// Should filter properties based on schemaType
 			expect(output).toBeTruthy();
@@ -134,10 +116,18 @@ describe("Schema Usage Analysis", () => {
 	});
 
 	describe("Circular references", () => {
-		it("should mark circular reference chains as both context (use inferred)", () => {
+		function generateOutput(options: Partial<GeneratorOptions>): string {
 			const generator = new ZodSchemaGenerator({
-				input: "tests/fixtures/circular.yaml",
+				input: TestUtils.getFixturePath("circular.yaml"),
 				output: testOutput,
+				...options,
+			});
+			generator.generate();
+			return readFileSync(testOutput, "utf-8");
+		}
+
+		it("should mark circular reference chains as both context (use inferred)", () => {
+			const output = generateOutput({
 				typeMode: "native",
 				request: {
 					typeMode: "native",
@@ -146,10 +136,6 @@ describe("Schema Usage Analysis", () => {
 					typeMode: "native",
 				},
 			});
-
-			generator.generate();
-
-			const output = readFileSync(testOutput, "utf-8");
 
 			// Circular schemas should be forced to inferred mode for safety
 			// This means Zod should be imported even though both contexts want native

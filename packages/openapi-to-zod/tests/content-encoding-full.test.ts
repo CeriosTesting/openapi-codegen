@@ -1,16 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanupTestOutput, generateFromFixture } from "./utils/test-utils";
+import { describe, expect, it } from "vitest";
+import { ZodSchemaGenerator } from "../src/generator";
+import type { GeneratorOptions } from "../src/types";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Content Encoding (OpenAPI 3.1)", () => {
-	const outputPath = "tests/output/content-encoding-full.ts";
-
-	afterEach(cleanupTestOutput(outputPath));
+	function generateOutput(options: Partial<GeneratorOptions> = {}): string {
+		const generator = new ZodSchemaGenerator({
+			input: TestUtils.getFixturePath("content-encoding-full.yaml"),
+			...options,
+		});
+		return generator.generateString();
+	}
 
 	it("should generate base64 validation for contentEncoding", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Should use z.base64() for base64 encoding
 		expect(output).toContain("base64ImageSchema");
@@ -18,10 +21,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should generate base64url validation", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Should use z.base64url() for base64url encoding
 		expect(output).toContain("base64UrlTokenSchema");
@@ -31,10 +31,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should generate quoted-printable validation", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Should have string validation with quoted-printable refinement
 		expect(output).toContain("quotedPrintableTextSchema");
@@ -43,10 +40,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should handle binary encoding", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// Binary should use z.string()
 		expect(output).toContain("binaryDataSchema");
@@ -54,10 +48,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should validate JSON contentMediaType", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// JSON media type should have refinement
 		expect(output).toContain("jsonStringSchema");
@@ -66,10 +57,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should validate XML contentMediaType", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// XML media type should have refinement
 		expect(output).toContain("xmlStringSchema");
@@ -77,10 +65,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should validate YAML contentMediaType", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// YAML media type should have refinement
 		expect(output).toContain("yamlStringSchema");
@@ -88,10 +73,7 @@ describe("Content Encoding (OpenAPI 3.1)", () => {
 	});
 
 	it("should validate HTML contentMediaType", () => {
-		const output = generateFromFixture({
-			fixture: "content-encoding-full.yaml",
-			outputPath,
-		});
+		const output = generateOutput();
 
 		// HTML media type should have refinement
 		expect(output).toContain("htmlStringSchema");

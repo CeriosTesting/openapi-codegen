@@ -1,27 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Dependencies (OpenAPI 3.0)", () => {
-	const outputPath = join(__dirname, "output", "dependencies.ts");
-
-	beforeEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	const outputPath = TestUtils.getOutputPath("dependencies.ts");
 
 	describe("Property Dependencies", () => {
 		it("should generate validation for dependencies", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "dependencies.yaml"),
+				input: TestUtils.getFixturePath("dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -38,7 +26,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 
 		it("should validate credit card dependencies", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "dependencies.yaml"),
+				input: TestUtils.getFixturePath("dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -89,7 +77,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 
 		it("should validate billing address dependencies", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "dependencies.yaml"),
+				input: TestUtils.getFixturePath("dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -127,7 +115,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 
 		it("should validate multiple dependencies", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "dependencies.yaml"),
+				input: TestUtils.getFixturePath("dependencies.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,

@@ -12,8 +12,10 @@ export interface PlaywrightGeneratorOptions extends Omit<GeneratorOptions, "sche
 
 	/**
 	 * Output file path for generated code
+	 * Optional when using string generation methods (generateString, etc.)
+	 * Required when calling generate() to write to a file
 	 */
-	output: string;
+	output?: string;
 
 	/**
 	 * Schema type is always "all" for Playwright generator

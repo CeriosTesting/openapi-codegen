@@ -1,45 +1,29 @@
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { ZodSchemaGenerator } from "../../src/generator";
-import type { GeneratorOptions } from "../../src/types";
+import { existsSync, unlinkSync } from "node:fs";
+import path from "node:path";
 
-/**
- * Shared test utility functions to reduce duplication across test files
- */
+export abstract class TestUtils {
+	static getConfigPath(configFileName: string): string {
+		return path.join(path.join(__dirname, "..", "fixtures", "config-files"), configFileName);
+	}
 
-export interface TestGeneratorOptions extends Partial<GeneratorOptions> {
-	fixture: string;
-	outputPath: string;
-}
+	static getOutputPath(outputFileName: string): string {
+		return path.join(path.join(__dirname, "..", "output"), outputFileName);
+	}
 
-/**
- * Generate schemas from a fixture file and return the output
- */
-export function generateFromFixture(options: TestGeneratorOptions): string {
-	const generatorOptions: GeneratorOptions = {
-		input: `tests/fixtures/${options.fixture}`,
-		output: options.outputPath,
-		mode: options.mode || "normal",
-		includeDescriptions: options.includeDescriptions,
-		useDescribe: options.useDescribe,
-		enumType: options.enumType,
-		schemaType: options.schemaType,
-		prefix: options.prefix,
-		suffix: options.suffix,
-	};
+	static getFixturePath(fixtureName: string): string {
+		return path.join(path.join(__dirname, "..", "fixtures"), fixtureName);
+	}
 
-	const generator = new ZodSchemaGenerator(generatorOptions);
-	generator.generate();
+	static getDistPath(distFileName: string): string {
+		return path.join(path.join(__dirname, "..", "..", "dist"), distFileName);
+	}
 
-	return readFileSync(options.outputPath, "utf-8");
-}
-
-/**
- * Cleanup output file after test - useful for afterEach
- */
-export function cleanupTestOutput(outputPath: string): () => void {
-	return () => {
-		if (existsSync(outputPath)) {
-			unlinkSync(outputPath);
-		}
-	};
+	static cleanupTestOutput(outputFileName: string): () => void {
+		return () => {
+			const outputFilePath = this.getOutputPath(outputFileName);
+			if (existsSync(outputFilePath)) {
+				unlinkSync(outputFilePath);
+			}
+		};
+	}
 }

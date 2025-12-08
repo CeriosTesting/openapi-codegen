@@ -1,27 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { ZodSchemaGenerator } from "../src/generator";
+import { TestUtils } from "./utils/test-utils";
 
 describe("Pattern Properties", () => {
-	const outputPath = join(__dirname, "output", "pattern-properties.ts");
-
-	beforeEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
-
-	afterEach(() => {
-		if (existsSync(outputPath)) {
-			rmSync(outputPath);
-		}
-	});
+	const outputPath = TestUtils.getOutputPath("pattern-properties.ts");
 
 	describe("Pattern Properties", () => {
 		it("should generate validation for pattern properties", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -37,7 +25,7 @@ describe("Pattern Properties", () => {
 
 		it("should validate objects with pattern properties", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -73,7 +61,7 @@ describe("Pattern Properties", () => {
 	describe("Property Names Validation", () => {
 		it("should generate validation for property name patterns", () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -88,7 +76,7 @@ describe("Pattern Properties", () => {
 
 		it("should validate property names with pattern", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -115,7 +103,7 @@ describe("Pattern Properties", () => {
 
 		it("should validate property names with maxLength", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -141,7 +129,7 @@ describe("Pattern Properties", () => {
 
 		it("should validate property names with minLength", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,
@@ -169,7 +157,7 @@ describe("Pattern Properties", () => {
 	describe("Combined Validation", () => {
 		it("should handle both pattern properties and property names", async () => {
 			const generator = new ZodSchemaGenerator({
-				input: join(__dirname, "fixtures", "pattern-properties.yaml"),
+				input: TestUtils.getFixturePath("pattern-properties.yaml"),
 				output: outputPath,
 				mode: "normal",
 				showStats: false,

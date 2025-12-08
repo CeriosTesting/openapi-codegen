@@ -75,8 +75,10 @@ export interface GeneratorOptions {
 
 	/**
 	 * Output TypeScript file path
+	 * Optional when using string generation methods (generateString)
+	 * Required when calling generate() to write to a file
 	 */
-	output: string;
+	output?: string;
 
 	/**
 	 * Whether to include descriptions as JSDoc comments
