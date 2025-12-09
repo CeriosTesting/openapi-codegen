@@ -140,8 +140,8 @@ export function generateConditionalValidation(schema: OpenAPISchema): string {
 }
 
 /**
- * Generate if/then/else conditional validation with detailed error messages
- * Uses superRefine to provide context about which branch failed
+ * Generate if/then/else conditional validation with better error messages
+ * Uses superRefine with detailed error messages for complex cases
  */
 export function generateIfThenElse(schema: OpenAPISchema): string {
 	if (!schema.if || (!schema.then && !schema.else)) {
@@ -151,26 +151,57 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 	const ifCondition = generateConditionalCheck(schema.if);
 
 	if (schema.then && schema.else) {
-		// Both then and else
+		// Both then and else - provide detailed error messages
 		const thenValidation = generateConditionalValidation(schema.then);
 		const elseValidation = generateConditionalValidation(schema.else);
+
+		// Try to detect which specific validations failed
+		const thenRequiredProps = schema.then.required || [];
+		const elseRequiredProps = schema.else.required || [];
+
 		return `.superRefine((obj, ctx) => {
 			const ifConditionMet = ${ifCondition};
 			if (ifConditionMet) {
+				// Then branch
 				const thenValid = ${thenValidation};
 				if (!thenValid) {
+					${
+						thenRequiredProps.length > 0
+							? `
+					const missingThenProps = ${JSON.stringify(thenRequiredProps)}.filter(p => obj[p] === undefined);
+					const message = missingThenProps.length > 0 
+						? \`When condition is met, required properties are missing: \${missingThenProps.join(', ')}\`
+						: "When condition is met, validation constraints failed";
+					`
+							: `
+					const message = "When condition is met, validation constraints failed";
+					`
+					}
 					ctx.addIssue({
 						code: "custom",
-						message: "If condition was met, but then validation failed",
+						message: message,
 						path: []
 					});
 				}
 			} else {
+				// Else branch
 				const elseValid = ${elseValidation};
 				if (!elseValid) {
+					${
+						elseRequiredProps.length > 0
+							? `
+					const missingElseProps = ${JSON.stringify(elseRequiredProps)}.filter(p => obj[p] === undefined);
+					const message = missingElseProps.length > 0 
+						? \`When condition is not met, required properties are missing: \${missingElseProps.join(', ')}\`
+						: "When condition is not met, validation constraints failed";
+					`
+							: `
+					const message = "When condition is not met, validation constraints failed";
+					`
+					}
 					ctx.addIssue({
 						code: "custom",
-						message: "If condition was not met, but else validation failed",
+						message: message,
 						path: []
 					});
 				}
@@ -179,16 +210,30 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 	}
 
 	if (schema.then) {
-		// Only then
+		// Only then - provide detailed error message
 		const thenValidation = generateConditionalValidation(schema.then);
+		const thenRequiredProps = schema.then.required || [];
+
 		return `.superRefine((obj, ctx) => {
 			const ifConditionMet = ${ifCondition};
 			if (ifConditionMet) {
 				const thenValid = ${thenValidation};
 				if (!thenValid) {
+					${
+						thenRequiredProps.length > 0
+							? `
+					const missingProps = ${JSON.stringify(thenRequiredProps)}.filter(p => obj[p] === undefined);
+					const message = missingProps.length > 0 
+						? \`When condition is met, required properties are missing: \${missingProps.join(', ')}\`
+						: "When condition is met, validation constraints failed";
+					`
+							: `
+					const message = "When condition is met, validation constraints failed";
+					`
+					}
 					ctx.addIssue({
 						code: "custom",
-						message: "If condition was met, but then validation failed",
+						message: message,
 						path: []
 					});
 				}
@@ -196,17 +241,31 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 		})`;
 	}
 
-	// Only else
+	// Only else - provide detailed error message
 	if (!schema.else) return "";
 	const elseValidation = generateConditionalValidation(schema.else);
+	const elseRequiredProps = schema.else.required || [];
+
 	return `.superRefine((obj, ctx) => {
 		const ifConditionMet = ${ifCondition};
 		if (!ifConditionMet) {
 			const elseValid = ${elseValidation};
 			if (!elseValid) {
+				${
+					elseRequiredProps.length > 0
+						? `
+				const missingProps = ${JSON.stringify(elseRequiredProps)}.filter(p => obj[p] === undefined);
+				const message = missingProps.length > 0 
+					? \`When condition is not met, required properties are missing: \${missingProps.join(', ')}\`
+					: "When condition is not met, validation constraints failed";
+				`
+						: `
+				const message = "When condition is not met, validation constraints failed";
+				`
+				}
 				ctx.addIssue({
 					code: "custom",
-					message: "If condition was not met, but else validation failed",
+					message: message,
 					path: []
 				});
 			}

@@ -140,44 +140,111 @@ export function generateObjectSchema(
 		objectDef += `.refine((obj) => ${requiredChecks}, { message: "Missing required fields: ${propList}" })`;
 	}
 
-	// Handle pattern properties with detailed error messages
+	// Handle pattern properties with first-match-wins priority
 	if (schema.patternProperties) {
 		const definedProps = Object.keys(schema.properties || {});
 		const definedPropsSet = `new Set(${JSON.stringify(definedProps)})`;
-		for (const [pattern, patternSchema] of Object.entries(schema.patternProperties)) {
-			const patternZodSchema = context.generatePropertySchema(patternSchema, currentSchema);
-			const escapedPattern = pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-			objectDef += `.superRefine((obj, ctx) => {
-				const definedPropsSet = ${definedPropsSet};
-				const pattern = /${escapedPattern}/;
-				const schema = ${patternZodSchema};
-				for (const key of Object.keys(obj)) {
-					if (!definedPropsSet.has(key) && pattern.test(key)) {
-						const validation = schema.safeParse(obj[key]);
+		const patterns = Object.entries(schema.patternProperties);
+
+		// Generate schemas for all patterns
+		const patternSchemas = patterns.map(([pattern, patternSchema]) => ({
+			pattern,
+			escapedPattern: pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'"),
+			zodSchema: context.generatePropertySchema(patternSchema, currentSchema),
+		}));
+
+		// Single superRefine for all patterns (more efficient)
+		objectDef += `.superRefine((obj, ctx) => {
+			const definedPropsSet = ${definedPropsSet};
+			const patterns = ${JSON.stringify(patternSchemas.map(p => ({ pattern: p.escapedPattern })))};
+			const schemas = [${patternSchemas.map(p => p.zodSchema).join(", ")}];
+			const regexps = patterns.map(p => new RegExp(p.pattern));
+
+			// Check all object keys
+			for (const key of Object.keys(obj)) {
+				// Skip properties that are explicitly defined
+				if (definedPropsSet.has(key)) continue;
+
+				// Find first matching pattern (first-match-wins priority)
+				for (let i = 0; i < regexps.length; i++) {
+					if (regexps[i].test(key)) {
+						const validation = schemas[i].safeParse(obj[key]);
 						if (!validation.success) {
-							ctx.addIssue({
-								code: "custom",
-								message: \`Property '\${key}' matches pattern '${pattern}' but fails validation: \${validation.error.issues.map(e => e.message).join(', ')}\`,
-								path: [key]
-							});
+							// Add detailed error messages with property name and pattern
+							for (const issue of validation.error.issues) {
+								ctx.addIssue({
+									...issue,
+									path: [key, ...issue.path],
+									message: \`Property '\${key}' (pattern '\${patterns[i].pattern}'): \${issue.message}\`
+								});
+							}
 						}
+						break; // First match wins, stop checking other patterns
+					}
+				}
+			}
+		})`;
+	}
+
+	// Handle property names validation (consolidated for efficiency)
+	if (schema.propertyNames) {
+		const hasPattern = schema.propertyNames.pattern !== undefined;
+		const hasMinLength = schema.propertyNames.minLength !== undefined;
+		const hasMaxLength = schema.propertyNames.maxLength !== undefined;
+
+		if (hasPattern || hasMinLength || hasMaxLength) {
+			const escapedPattern =
+				hasPattern && schema.propertyNames.pattern
+					? schema.propertyNames.pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+					: null;
+			const minLen = schema.propertyNames.minLength;
+			const maxLen = schema.propertyNames.maxLength;
+
+			objectDef += `.superRefine((obj, ctx) => {
+				${escapedPattern ? `const pattern = /${escapedPattern}/;` : ""}
+
+				for (const key of Object.keys(obj)) {
+					const failures: string[] = [];
+
+					${
+						hasPattern
+							? `
+					if (!pattern.test(key)) {
+						failures.push("must match pattern '${schema.propertyNames.pattern}'");
+					}
+					`
+							: ""
+					}
+
+					${
+						hasMinLength
+							? `
+					if (key.length < ${minLen}) {
+						failures.push("must be at least ${minLen} characters");
+					}
+					`
+							: ""
+					}
+
+					${
+						hasMaxLength
+							? `
+					if (key.length > ${maxLen}) {
+						failures.push("must be at most ${maxLen} characters");
+					}
+					`
+							: ""
+					}
+
+					if (failures.length > 0) {
+						ctx.addIssue({
+							code: "custom",
+							message: \`Property name '\${key}' \${failures.join(", ")}\`,
+							path: [key]
+						});
 					}
 				}
 			})`;
-		}
-	}
-
-	// Handle property names validation
-	if (schema.propertyNames) {
-		if (schema.propertyNames.pattern) {
-			const escapedPattern = schema.propertyNames.pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-			objectDef += `.refine((obj) => Object.keys(obj).every(key => /${escapedPattern}/.test(key)), { message: "Property names must match pattern '${schema.propertyNames.pattern}'" })`;
-		}
-		if (schema.propertyNames.minLength !== undefined) {
-			objectDef += `.refine((obj) => Object.keys(obj).every(key => key.length >= ${schema.propertyNames.minLength}), { message: "Property names must be at least ${schema.propertyNames.minLength} characters" })`;
-		}
-		if (schema.propertyNames.maxLength !== undefined) {
-			objectDef += `.refine((obj) => Object.keys(obj).every(key => key.length <= ${schema.propertyNames.maxLength}), { message: "Property names must be at most ${schema.propertyNames.maxLength} characters" })`;
 		}
 	}
 

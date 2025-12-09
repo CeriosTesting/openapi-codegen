@@ -19,7 +19,7 @@ describe("Pattern Properties", () => {
 
 			const output = readFileSync(outputPath, "utf-8");
 			expect(output).toContain("DynamicConfig");
-			expect(output).toContain("refine");
+			expect(output).toMatch(/refine|Refine/); // Accept both refine and superRefine
 			expect(output).toContain("^config_[a-z]+$");
 		});
 
