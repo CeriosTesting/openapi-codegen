@@ -1,0 +1,32 @@
+
+openapi: 3.0.3
+info:
+  title: Complex Dependencies Test
+  version: 1.0.0
+components:
+  schemas:
+    ComplexPayment:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [credit_card, bank_transfer, paypal]
+        creditCardNumber:
+          type: string
+        expiryDate:
+          type: string
+        cvv:
+          type: string
+        bankAccount:
+          type: string
+        routingNumber:
+          type: string
+        paypalEmail:
+          type: string
+      dependencies:
+        creditCardNumber:
+          required: ["expiryDate", "cvv", "paymentMethod"]
+        bankAccount:
+          required: ["routingNumber", "paymentMethod"]
+        paypalEmail:
+          required: ["paymentMethod"]

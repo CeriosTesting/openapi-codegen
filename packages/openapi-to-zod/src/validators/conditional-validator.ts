@@ -11,6 +11,7 @@ function generatePropertyAccess(propName: string): string {
 
 /**
  * Generate validation for dependencies (OpenAPI 3.0)
+ * Generates detailed error messages showing which specific fields are missing
  */
 export function generateDependencies(
 	schema: OpenAPISchema,
@@ -24,18 +25,51 @@ export function generateDependencies(
 	let result = "";
 	for (const [prop, dependency] of Object.entries(schema.dependencies)) {
 		if (Array.isArray(dependency)) {
-			// Property dependency - if prop exists, these properties must also exist
-			const requiredProps = dependency.map(p => `${generatePropertyAccess(p)} !== undefined`).join(" && ");
-			const propList = dependency.map(p => `'${p}'`).join(", ");
-			result += `.refine((obj) => ${generatePropertyAccess(prop)} === undefined || (${requiredProps}), { message: "When '${prop}' is present, ${propList} must also be present" })`;
+			// Skip empty dependency arrays (no dependencies to enforce)
+			if (dependency.length === 0) {
+				continue;
+			}
+
+			// Property dependency - show specific missing properties in error message
+			const propAccess = generatePropertyAccess(prop);
+			const checkLogic = dependency
+				.map(p => {
+					const pAccess = generatePropertyAccess(p);
+					return `if (${pAccess} === undefined) missing.push('${p}');`;
+				})
+				.join("\n\t\t");
+
+			result += `.superRefine((obj, ctx) => {
+				if (${propAccess} === undefined) return;
+				const missing: string[] = [];
+				${checkLogic}
+				if (missing.length > 0) {
+					ctx.addIssue({
+						code: "custom",
+						message: \`When '${prop}' is present, the following properties are required: \${missing.join(', ')}\`,
+						path: []
+					});
+				}
+			})`;
 		} else if (generatePropertySchema) {
-			// Schema dependency - if prop exists, entire object must match the dependency schema
-			// In OpenAPI 3.0, dependency schemas are implicitly objects, so ensure type is set
+			// Schema dependency - show detailed validation errors
 			const depSchema: OpenAPISchema = { ...dependency, type: dependency.type || "object" };
 			const depSchemaValidation = generatePropertySchema(depSchema, currentSchema);
-			result += `.refine((obj) => ${generatePropertyAccess(prop)} === undefined || ${depSchemaValidation}.safeParse(obj).success, { message: "When '${prop}' is present, object must satisfy additional schema constraints" })`;
+			const propAccess = generatePropertyAccess(prop);
+
+			result += `.superRefine((obj, ctx) => {
+				if (${propAccess} === undefined) return;
+				const validation = ${depSchemaValidation}.safeParse(obj);
+				if (!validation.success) {
+					const errors = validation.error.issues.map(i => \`  - \${i.path.join('.')}: \${i.message}\`).join('\\n');
+					ctx.addIssue({
+						code: "custom",
+						message: \`When '${prop}' is present, object must satisfy additional constraints:\\n\${errors}\`,
+						path: []
+					});
+				}
+			})`;
 		}
-		// Note: If generatePropertySchema is not provided, schema dependencies are silently skipped
 	}
 	return result;
 }
@@ -151,7 +185,8 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 }
 
 /**
- * Generate dependent required validation
+ * Generate dependent required validation (OpenAPI 3.1)
+ * Generates detailed error messages showing which specific fields are missing
  */
 export function generateDependentRequired(schema: OpenAPISchema): string {
 	if (!schema.dependentRequired) {
@@ -160,11 +195,182 @@ export function generateDependentRequired(schema: OpenAPISchema): string {
 
 	let result = "";
 	for (const [prop, requiredProps] of Object.entries(schema.dependentRequired)) {
-		const requiredChecks = requiredProps.map(rp => `${generatePropertyAccess(rp)} !== undefined`).join(" && ");
-		const dependentCondition = `${generatePropertyAccess(prop)} === undefined || (${requiredChecks})`;
-		const depMessage = `When '${prop}' is present, ${requiredProps.join(", ")} must also be present`;
-		result += `.refine((obj) => ${dependentCondition}, { message: "${depMessage}" })`;
+		// Skip empty required arrays (no dependencies to enforce)
+		if (requiredProps.length === 0) {
+			continue;
+		}
+
+		const propAccess = generatePropertyAccess(prop);
+		const checkLogic = requiredProps
+			.map(rp => {
+				const rpAccess = generatePropertyAccess(rp);
+				return `if (${rpAccess} === undefined) missing.push('${rp}');`;
+			})
+			.join("\n\t\t");
+
+		result += `.superRefine((obj, ctx) => {
+			if (${propAccess} === undefined) return;
+			const missing: string[] = [];
+			${checkLogic}
+			if (missing.length > 0) {
+				ctx.addIssue({
+					code: "custom",
+					message: \`When '${prop}' is present, the following properties are required: \${missing.join(', ')}\`,
+					path: []
+				});
+			}
+		})`;
 	}
 
 	return result;
+}
+
+/**
+ * Generate dependent schemas validation (JSON Schema 2019-09 / OpenAPI 3.1)
+ * This is the modern replacement for schema-based dependencies
+ * Generates detailed error messages showing validation failures
+ */
+export function generateDependentSchemas(
+	schema: OpenAPISchema & { dependentSchemas?: Record<string, OpenAPISchema> },
+	generatePropertySchema?: (schema: OpenAPISchema, currentSchema?: string) => string,
+	currentSchema?: string
+): string {
+	if (!schema.dependentSchemas || !generatePropertySchema) {
+		return "";
+	}
+
+	let result = "";
+	for (const [prop, depSchema] of Object.entries(schema.dependentSchemas)) {
+		const depSchemaValidation = generatePropertySchema(depSchema, currentSchema);
+		const propAccess = generatePropertyAccess(prop);
+
+		result += `.superRefine((obj, ctx) => {
+			if (${propAccess} === undefined) return;
+			const validation = ${depSchemaValidation}.safeParse(obj);
+			if (!validation.success) {
+				const errors = validation.error.issues.map(i => \`  - \${i.path.join('.')}: \${i.message}\`).join('\\n');
+				ctx.addIssue({
+					code: "custom",
+					message: \`When '${prop}' is present, dependent schema validation failed:\\n\${errors}\`,
+					path: []
+				});
+			}
+		})`;
+	}
+	return result;
+}
+
+/**
+ * Validate dependency graph for circular dependencies
+ * Returns validation result with any detected circular dependency errors
+ */
+export function validateDependencyGraph(
+	schema: OpenAPISchema,
+	schemaName: string
+): { valid: boolean; errors: string[] } {
+	const errors: string[] = [];
+
+	if (!schema.dependencies && !schema.dependentRequired) {
+		return { valid: true, errors: [] };
+	}
+
+	// Build dependency graph
+	const graph = new Map<string, Set<string>>();
+
+	// Add dependentRequired edges
+	if (schema.dependentRequired) {
+		for (const [prop, deps] of Object.entries(schema.dependentRequired)) {
+			if (!graph.has(prop)) {
+				graph.set(prop, new Set());
+			}
+			const propDeps = graph.get(prop);
+			if (propDeps) {
+				for (const dep of deps) {
+					propDeps.add(dep);
+				}
+			}
+		}
+	}
+
+	// Add dependencies (array type) edges
+	if (schema.dependencies) {
+		for (const [prop, dep] of Object.entries(schema.dependencies)) {
+			if (Array.isArray(dep)) {
+				if (!graph.has(prop)) {
+					graph.set(prop, new Set());
+				}
+				const propDeps = graph.get(prop);
+				if (propDeps) {
+					for (const d of dep) {
+						propDeps.add(d);
+					}
+				}
+			}
+		}
+	}
+
+	// Detect cycles using DFS
+	const visited = new Set<string>();
+	const recStack = new Set<string>();
+	const path: string[] = [];
+
+	function detectCycle(prop: string): boolean {
+		visited.add(prop);
+		recStack.add(prop);
+		path.push(prop);
+
+		const deps = graph.get(prop) || new Set();
+		for (const dep of deps) {
+			if (!visited.has(dep)) {
+				if (detectCycle(dep)) {
+					return true;
+				}
+			} else if (recStack.has(dep)) {
+				// Cycle detected
+				const cycleStart = path.indexOf(dep);
+				const cycle = [...path.slice(cycleStart), dep];
+				errors.push(`Circular dependency detected in schema '${schemaName}': ${cycle.join(" -> ")}`);
+				return true;
+			}
+		}
+
+		recStack.delete(prop);
+		path.pop();
+		return false;
+	}
+
+	// Check all roots
+	for (const prop of graph.keys()) {
+		if (!visited.has(prop)) {
+			detectCycle(prop);
+		}
+	}
+
+	return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Extract schema dependencies as reusable schemas
+ * Useful for code generation and schema reuse
+ */
+export function extractSchemaDependencies(schema: OpenAPISchema, schemaName: string): Map<string, OpenAPISchema> {
+	const extracted = new Map<string, OpenAPISchema>();
+
+	if (!schema.dependencies) {
+		return extracted;
+	}
+
+	for (const [prop, dependency] of Object.entries(schema.dependencies)) {
+		if (!Array.isArray(dependency)) {
+			// This is a schema dependency
+			const depSchemaName = `${schemaName}_${prop}_Dependency`;
+			const depSchema: OpenAPISchema = {
+				...dependency,
+				type: dependency.type || "object",
+			};
+			extracted.set(depSchemaName, depSchema);
+		}
+	}
+
+	return extracted;
 }

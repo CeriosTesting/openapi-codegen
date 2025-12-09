@@ -1,0 +1,14 @@
+
+openapi: 3.0.3
+info:
+  title: Self Reference Test
+  version: 1.0.0
+components:
+  schemas:
+    SelfRef:
+      type: object
+      properties:
+        prop1:
+          type: string
+      dependentRequired:
+        prop1: ["prop1"]

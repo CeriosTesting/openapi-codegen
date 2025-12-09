@@ -19,7 +19,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 
 			const output = readFileSync(outputPath, "utf-8");
 			expect(output).toContain("CreditCard");
-			expect(output).toContain("refine");
+			expect(output).toContain("superRefine");
 			expect(output).toContain("securityCode");
 			expect(output).toContain("billingZip");
 		});

@@ -1,0 +1,288 @@
+
+openapi: 3.0.3
+info:
+  title: Many Dependencies Test
+  version: 1.0.0
+components:
+  schemas:
+    ManyDeps:
+      type: object
+      properties: {
+        "prop0": {
+                "type": "string"
+        },
+        "prop1": {
+                "type": "string"
+        },
+        "prop2": {
+                "type": "string"
+        },
+        "prop3": {
+                "type": "string"
+        },
+        "prop4": {
+                "type": "string"
+        },
+        "prop5": {
+                "type": "string"
+        },
+        "prop6": {
+                "type": "string"
+        },
+        "prop7": {
+                "type": "string"
+        },
+        "prop8": {
+                "type": "string"
+        },
+        "prop9": {
+                "type": "string"
+        },
+        "prop10": {
+                "type": "string"
+        },
+        "prop11": {
+                "type": "string"
+        },
+        "prop12": {
+                "type": "string"
+        },
+        "prop13": {
+                "type": "string"
+        },
+        "prop14": {
+                "type": "string"
+        },
+        "prop15": {
+                "type": "string"
+        },
+        "prop16": {
+                "type": "string"
+        },
+        "prop17": {
+                "type": "string"
+        },
+        "prop18": {
+                "type": "string"
+        },
+        "prop19": {
+                "type": "string"
+        },
+        "prop20": {
+                "type": "string"
+        },
+        "prop21": {
+                "type": "string"
+        },
+        "prop22": {
+                "type": "string"
+        },
+        "prop23": {
+                "type": "string"
+        },
+        "prop24": {
+                "type": "string"
+        },
+        "prop25": {
+                "type": "string"
+        },
+        "prop26": {
+                "type": "string"
+        },
+        "prop27": {
+                "type": "string"
+        },
+        "prop28": {
+                "type": "string"
+        },
+        "prop29": {
+                "type": "string"
+        },
+        "prop30": {
+                "type": "string"
+        },
+        "prop31": {
+                "type": "string"
+        },
+        "prop32": {
+                "type": "string"
+        },
+        "prop33": {
+                "type": "string"
+        },
+        "prop34": {
+                "type": "string"
+        },
+        "prop35": {
+                "type": "string"
+        },
+        "prop36": {
+                "type": "string"
+        },
+        "prop37": {
+                "type": "string"
+        },
+        "prop38": {
+                "type": "string"
+        },
+        "prop39": {
+                "type": "string"
+        },
+        "prop40": {
+                "type": "string"
+        },
+        "prop41": {
+                "type": "string"
+        },
+        "prop42": {
+                "type": "string"
+        },
+        "prop43": {
+                "type": "string"
+        },
+        "prop44": {
+                "type": "string"
+        },
+        "prop45": {
+                "type": "string"
+        },
+        "prop46": {
+                "type": "string"
+        },
+        "prop47": {
+                "type": "string"
+        },
+        "prop48": {
+                "type": "string"
+        },
+        "prop49": {
+                "type": "string"
+        }
+}
+      dependencies: {
+        "prop0": [
+                "prop1",
+                "prop2",
+                "prop3"
+        ],
+        "prop2": [
+                "prop3",
+                "prop4",
+                "prop5"
+        ],
+        "prop4": [
+                "prop5",
+                "prop6",
+                "prop7"
+        ],
+        "prop6": [
+                "prop7",
+                "prop8",
+                "prop9"
+        ],
+        "prop8": [
+                "prop9",
+                "prop10",
+                "prop11"
+        ],
+        "prop10": [
+                "prop11",
+                "prop12",
+                "prop13"
+        ],
+        "prop12": [
+                "prop13",
+                "prop14",
+                "prop15"
+        ],
+        "prop14": [
+                "prop15",
+                "prop16",
+                "prop17"
+        ],
+        "prop16": [
+                "prop17",
+                "prop18",
+                "prop19"
+        ],
+        "prop18": [
+                "prop19",
+                "prop20",
+                "prop21"
+        ],
+        "prop20": [
+                "prop21",
+                "prop22",
+                "prop23"
+        ],
+        "prop22": [
+                "prop23",
+                "prop24",
+                "prop25"
+        ],
+        "prop24": [
+                "prop25",
+                "prop26",
+                "prop27"
+        ],
+        "prop26": [
+                "prop27",
+                "prop28",
+                "prop29"
+        ],
+        "prop28": [
+                "prop29",
+                "prop30",
+                "prop31"
+        ],
+        "prop30": [
+                "prop31",
+                "prop32",
+                "prop33"
+        ],
+        "prop32": [
+                "prop33",
+                "prop34",
+                "prop35"
+        ],
+        "prop34": [
+                "prop35",
+                "prop36",
+                "prop37"
+        ],
+        "prop36": [
+                "prop37",
+                "prop38",
+                "prop39"
+        ],
+        "prop38": [
+                "prop39",
+                "prop40",
+                "prop41"
+        ],
+        "prop40": [
+                "prop41",
+                "prop42",
+                "prop43"
+        ],
+        "prop42": [
+                "prop43",
+                "prop44",
+                "prop45"
+        ],
+        "prop44": [
+                "prop45",
+                "prop46",
+                "prop47"
+        ],
+        "prop46": [
+                "prop47",
+                "prop48",
+                "prop49"
+        ],
+        "prop48": [
+                "prop49",
+                "prop0",
+                "prop1"
+        ]
+}

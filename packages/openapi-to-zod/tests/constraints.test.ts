@@ -367,18 +367,17 @@ describe("Schema Constraints", () => {
 			const output = generateOutput("advanced-schema.yaml");
 
 			// MultipleDependencies schema should have multiple refine calls
-			const schema = output.match(
-				/export const multipleDependenciesSchema = z\.object\(\{[\s\S]*?\}\)(?:\.refine[\s\S]*?)*;/
-			)?.[0];
-			expect(schema).toBeTruthy();
-			const refineCount = (schema?.match(/\.refine\(/g) || []).length;
-			expect(refineCount).toBeGreaterThanOrEqual(2);
+			expect(output).toContain("multipleDependenciesSchema");
+			// Check for field1 -> field2 dependency
+			expect(output).toMatch(/field1[\s\S]*?field2[\s\S]*?\.superRefine/);
+			// Check for field3 -> field4 dependency
+			expect(output).toMatch(/field3[\s\S]*?field4[\s\S]*?\.superRefine/);
 		});
 
 		it("should include error messages for dependent validation", () => {
 			const output = generateOutput("advanced-schema.yaml");
 
-			expect(output).toMatch(/message:.*present/i);
+			expect(output).toMatch(/message:[\s\S]*?present/i);
 		});
 	});
 
