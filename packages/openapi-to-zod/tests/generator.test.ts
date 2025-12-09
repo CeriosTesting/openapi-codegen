@@ -127,9 +127,9 @@ describe("ZodSchemaGenerator", () => {
 		it("should handle advanced Zod v4 duration format", () => {
 			const output = generateFromAdvancedFormats();
 
-			expect(output).toContain("z.iso.duration()");
+			// Now uses enhanced duration validation with regex
+			expect(output).toMatch(/duration.*refine.*ISO 8601 duration/s);
 		});
-
 		it("should handle advanced Zod v4 emoji format", () => {
 			const output = generateFromAdvancedFormats();
 

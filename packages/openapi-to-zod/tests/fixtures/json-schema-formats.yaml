@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: JSON Schema Format Test
+  version: 1.0.0
+components:
+  schemas:
+    JsonPointerExample:
+      type: object
+      properties:
+        pointer:
+          type: string
+          format: json-pointer
+          description: JSON Pointer (RFC 6901)
+        data:
+          type: object
+          additionalProperties: true
+
+    RelativeJsonPointerExample:
+      type: object
+      properties:
+        relativePointer:
+          type: string
+          format: relative-json-pointer
+          description: Relative JSON Pointer
+
+    DurationExample:
+      type: object
+      properties:
+        period:
+          type: string
+          format: duration
+          description: ISO 8601 duration format
+
+    AllFormatsExample:
+      type: object
+      properties:
+        jsonPointer:
+          type: string
+          format: json-pointer
+        relativeJsonPointer:
+          type: string
+          format: relative-json-pointer
+        duration:
+          type: string
+          format: duration

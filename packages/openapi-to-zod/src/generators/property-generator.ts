@@ -288,26 +288,26 @@ export class PropertyGenerator {
 
 		const evaluatedPropsSet = `new Set(${JSON.stringify([...evaluatedProps])})`;
 
-		// For unions (oneOf/anyOf), we need to add .passthrough() to EACH branch
-		// For allOf with merge(), add passthrough to the final result
-		let schemaWithPassthrough = baseSchema;
+		// For unions (oneOf/anyOf), we need to add .catchall(z.unknown()) to EACH branch
+		// For allOf with merge(), add catchall to the final result
+		let schemaWithCatchall = baseSchema;
 		if (baseSchema.includes(".union([") || baseSchema.includes(".discriminatedUnion(")) {
-			// For unions, we need to make each branch passthrough
+			// For unions, we need to make each branch allow additional properties
 			// This is complex, so we'll apply refinement and let the refinement check the raw input
 			// The union will have already validated structure, refinement checks extra props
-			schemaWithPassthrough = baseSchema;
+			schemaWithCatchall = baseSchema;
 		} else if (baseSchema.includes(".merge(")) {
-			// Wrap in passthrough - apply to final result
-			schemaWithPassthrough = `${baseSchema}.passthrough()`;
+			// Wrap in catchall - apply to final result
+			schemaWithCatchall = `${baseSchema}.catchall(z.unknown())`;
 		}
 
 		if (schema.unevaluatedProperties === false) {
 			// No unevaluated properties allowed
-			return `${schemaWithPassthrough}.refine((obj) => Object.keys(obj).every(key => ${evaluatedPropsSet}.has(key)), { message: "No unevaluated properties allowed" })`;
+			return `${schemaWithCatchall}.refine((obj) => Object.keys(obj).every(key => ${evaluatedPropsSet}.has(key)), { message: "No unevaluated properties allowed" })`;
 		} else if (typeof schema.unevaluatedProperties === "object") {
 			// Unevaluated properties must match schema
 			const unevalSchema = this.generatePropertySchema(schema.unevaluatedProperties);
-			return `${schemaWithPassthrough}.refine((obj) => Object.keys(obj).filter(key => !${evaluatedPropsSet}.has(key)).every(key => ${unevalSchema}.safeParse(obj[key]).success), { message: "Unevaluated properties must match the schema" })`;
+			return `${schemaWithCatchall}.refine((obj) => Object.keys(obj).filter(key => !${evaluatedPropsSet}.has(key)).every(key => ${unevalSchema}.safeParse(obj[key]).success), { message: "Unevaluated properties must match the schema" })`;
 		}
 
 		return baseSchema;

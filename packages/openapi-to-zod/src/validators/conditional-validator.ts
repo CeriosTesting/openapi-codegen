@@ -140,7 +140,8 @@ export function generateConditionalValidation(schema: OpenAPISchema): string {
 }
 
 /**
- * Generate if/then/else conditional validation
+ * Generate if/then/else conditional validation with detailed error messages
+ * Uses superRefine to provide context about which branch failed
  */
 export function generateIfThenElse(schema: OpenAPISchema): string {
 	if (!schema.if || (!schema.then && !schema.else)) {
@@ -153,35 +154,64 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 		// Both then and else
 		const thenValidation = generateConditionalValidation(schema.then);
 		const elseValidation = generateConditionalValidation(schema.else);
-		return `.refine((obj) => {
-			if (${ifCondition}) {
-				return ${thenValidation};
+		return `.superRefine((obj, ctx) => {
+			const ifConditionMet = ${ifCondition};
+			if (ifConditionMet) {
+				const thenValid = ${thenValidation};
+				if (!thenValid) {
+					ctx.addIssue({
+						code: "custom",
+						message: "If condition was met, but then validation failed",
+						path: []
+					});
+				}
 			} else {
-				return ${elseValidation};
+				const elseValid = ${elseValidation};
+				if (!elseValid) {
+					ctx.addIssue({
+						code: "custom",
+						message: "If condition was not met, but else validation failed",
+						path: []
+					});
+				}
 			}
-		}, { message: "Conditional validation failed" })`;
+		})`;
 	}
 
 	if (schema.then) {
 		// Only then
 		const thenValidation = generateConditionalValidation(schema.then);
-		return `.refine((obj) => {
-			if (${ifCondition}) {
-				return ${thenValidation};
+		return `.superRefine((obj, ctx) => {
+			const ifConditionMet = ${ifCondition};
+			if (ifConditionMet) {
+				const thenValid = ${thenValidation};
+				if (!thenValid) {
+					ctx.addIssue({
+						code: "custom",
+						message: "If condition was met, but then validation failed",
+						path: []
+					});
+				}
 			}
-			return true;
-		}, { message: "Conditional validation failed" })`;
+		})`;
 	}
 
 	// Only else
 	if (!schema.else) return "";
 	const elseValidation = generateConditionalValidation(schema.else);
-	return `.refine((obj) => {
-		if (!(${ifCondition})) {
-			return ${elseValidation};
+	return `.superRefine((obj, ctx) => {
+		const ifConditionMet = ${ifCondition};
+		if (!ifConditionMet) {
+			const elseValid = ${elseValidation};
+			if (!elseValid) {
+				ctx.addIssue({
+					code: "custom",
+					message: "If condition was not met, but else validation failed",
+					path: []
+				});
+			}
 		}
-		return true;
-	}, { message: "Conditional validation failed" })`;
+	})`;
 }
 
 /**

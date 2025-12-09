@@ -18,7 +18,8 @@ const FORMAT_MAP: Record<string, string> = {
 	date: "z.iso.date()",
 	"date-time": "z.iso.datetime()",
 	time: "z.iso.time()",
-	duration: "z.iso.duration()",
+	duration:
+		'z.string().refine((val) => /^P(?:(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?)?|\\d+W)$/.test(val) && !/^PT?$/.test(val), { message: "Must be a valid ISO 8601 duration" })',
 	ipv4: "z.ipv4()",
 	ipv6: "z.ipv6()",
 	emoji: "z.emoji()",
@@ -31,6 +32,10 @@ const FORMAT_MAP: Record<string, string> = {
 	cidr: "z.cidrv4()", // Default to v4
 	cidrv4: "z.cidrv4()",
 	cidrv6: "z.cidrv6()",
+	"json-pointer":
+		'z.string().refine((val) => val === "" || /^(\\/([^~/]|~0|~1)+)+$/.test(val), { message: "Must be a valid JSON Pointer (RFC 6901)" })',
+	"relative-json-pointer":
+		'z.string().refine((val) => /^(0|[1-9]\\d*)(#|(\\/([^~/]|~0|~1)+)*)$/.test(val), { message: "Must be a valid relative JSON Pointer" })',
 };
 
 /**

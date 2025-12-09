@@ -277,11 +277,11 @@ describe("Schema Composition", () => {
 			return generator.generateString();
 		}
 
-		it("should generate refine validation for if/then conditionals", () => {
+		it("should generate superRefine validation for if/then conditionals", () => {
 			const output = generateOutput();
 
-			// Should have refine with conditional logic
-			expect(output).toContain(".refine(");
+			// Should have superRefine with conditional logic
+			expect(output).toContain(".superRefine(");
 			expect(output).toMatch(/discountProductSchema|discountPercentage/i);
 		});
 
@@ -289,7 +289,7 @@ describe("Schema Composition", () => {
 			const output = generateOutput();
 
 			// ConditionalBilling should have if/then/else logic
-			expect(output).toMatch(/conditionalBillingSchema[\s\S]*?\.refine/);
+			expect(output).toMatch(/conditionalBillingSchema[\s\S]*?\.superRefine/);
 		});
 
 		it("should validate then branch when condition is met", () => {
@@ -310,7 +310,7 @@ describe("Schema Composition", () => {
 			const output = generateOutput();
 
 			// Should handle property type checks, const checks, and range checks
-			expect(output).toMatch(/\.refine\(\(obj\)/);
+			expect(output).toMatch(/\.superRefine\(\(obj, ctx\)/);
 		});
 	});
 });

@@ -103,7 +103,7 @@ export function generateObjectSchema(
 	} else if (schema.patternProperties) {
 		// If pattern properties are defined but additionalProperties is not, allow properties through
 		// so they can be validated by pattern property refinements
-		objectDef += ".passthrough()";
+		objectDef += ".catchall(z.unknown())";
 	}
 
 	// Handle minProperties and maxProperties
@@ -131,23 +131,39 @@ export function generateObjectSchema(
 	const definedProps = new Set(Object.keys(schema.properties || {}));
 	const undefinedRequired = (schema.required || []).filter(prop => !definedProps.has(prop));
 	if (undefinedRequired.length > 0) {
-		// Need passthrough to allow required fields that aren't in properties
-		if (!objectDef.includes(".passthrough()") && !objectDef.includes(".catchall(")) {
-			objectDef += ".passthrough()";
+		// Need catchall to allow required fields that aren't in properties
+		if (!objectDef.includes(".catchall(")) {
+			objectDef += ".catchall(z.unknown())";
 		}
 		const requiredChecks = undefinedRequired.map(prop => `${generatePropertyAccess(prop)} !== undefined`).join(" && ");
 		const propList = undefinedRequired.join(", ");
 		objectDef += `.refine((obj) => ${requiredChecks}, { message: "Missing required fields: ${propList}" })`;
 	}
 
-	// Handle pattern properties
+	// Handle pattern properties with detailed error messages
 	if (schema.patternProperties) {
 		const definedProps = Object.keys(schema.properties || {});
 		const definedPropsSet = `new Set(${JSON.stringify(definedProps)})`;
 		for (const [pattern, patternSchema] of Object.entries(schema.patternProperties)) {
 			const patternZodSchema = context.generatePropertySchema(patternSchema, currentSchema);
 			const escapedPattern = pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-			objectDef += `.refine((obj) => Object.keys(obj).filter(key => !${definedPropsSet}.has(key)).every(key => !/${escapedPattern}/.test(key) || ${patternZodSchema}.safeParse(obj[key]).success), { message: "Properties matching pattern '${pattern}' must satisfy the schema" })`;
+			objectDef += `.superRefine((obj, ctx) => {
+				const definedPropsSet = ${definedPropsSet};
+				const pattern = /${escapedPattern}/;
+				const schema = ${patternZodSchema};
+				for (const key of Object.keys(obj)) {
+					if (!definedPropsSet.has(key) && pattern.test(key)) {
+						const validation = schema.safeParse(obj[key]);
+						if (!validation.success) {
+							ctx.addIssue({
+								code: "custom",
+								message: \`Property '\${key}' matches pattern '${pattern}' but fails validation: \${validation.error.issues.map(e => e.message).join(', ')}\`,
+								path: [key]
+							});
+						}
+					}
+				}
+			})`;
 		}
 	}
 

@@ -31,7 +31,7 @@ export function generateUnion(
 		// Use discriminated union for better type inference
 		let schemaStrings = resolvedSchemas.map(s => context.generatePropertySchema(s));
 		if (options?.passthrough) {
-			schemaStrings = schemaStrings.map(s => (s.includes(".passthrough()") ? s : `${s}.passthrough()`));
+			schemaStrings = schemaStrings.map(s => (s.includes(".catchall(") ? s : `${s}.catchall(z.unknown())`));
 		}
 		const union = `z.discriminatedUnion("${discriminator}", [${schemaStrings.join(", ")}])`;
 		return wrapNullable(union, isNullable);
@@ -39,7 +39,7 @@ export function generateUnion(
 
 	let schemaStrings = schemas.map(s => context.generatePropertySchema(s));
 	if (options?.passthrough) {
-		schemaStrings = schemaStrings.map(s => (s.includes(".passthrough()") ? s : `${s}.passthrough()`));
+		schemaStrings = schemaStrings.map(s => (s.includes(".catchall(") ? s : `${s}.catchall(z.unknown())`));
 	}
 	const union = `z.union([${schemaStrings.join(", ")}])`;
 	return wrapNullable(union, isNullable);

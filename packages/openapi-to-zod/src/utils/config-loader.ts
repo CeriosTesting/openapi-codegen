@@ -9,60 +9,53 @@ import type { ConfigFile, GeneratorOptions, SpecConfig } from "../types";
 const TypeModeSchema = z.enum(["inferred", "native"]);
 const NativeEnumTypeSchema = z.enum(["union", "enum"]);
 
-const RequestResponseOptionsSchema = z
-	.object({
-		mode: z.enum(["strict", "normal", "loose"]).optional(),
-		enumType: z.enum(["zod", "typescript"]).optional(),
-		useDescribe: z.boolean().optional(),
-		includeDescriptions: z.boolean().optional(),
-		typeMode: TypeModeSchema.optional(),
-		nativeEnumType: NativeEnumTypeSchema.optional(),
-	})
-	.strict();
+const RequestResponseOptionsSchema = z.strictObject({
+	mode: z.enum(["strict", "normal", "loose"]).optional(),
+	enumType: z.enum(["zod", "typescript"]).optional(),
+	useDescribe: z.boolean().optional(),
+	includeDescriptions: z.boolean().optional(),
+	typeMode: TypeModeSchema.optional(),
+	nativeEnumType: NativeEnumTypeSchema.optional(),
+});
 
-const GeneratorOptionsSchema = z
-	.object({
-		mode: z.enum(["strict", "normal", "loose"]).optional(),
-		input: z.string(),
-		output: z.string(),
-		includeDescriptions: z.boolean().optional(),
-		enumType: z.enum(["zod", "typescript"]).optional(),
-		useDescribe: z.boolean().optional(),
-		schemaType: z.enum(["all", "request", "response"]).optional(),
-		prefix: z.string().optional(),
-		suffix: z.string().optional(),
-		showStats: z.boolean().optional(),
-		typeMode: TypeModeSchema.optional(),
-		nativeEnumType: NativeEnumTypeSchema.optional(),
-		request: RequestResponseOptionsSchema.optional(),
-		response: RequestResponseOptionsSchema.optional(),
-		name: z.string().optional(),
-	})
-	.strict();
+const GeneratorOptionsSchema = z.strictObject({
+	mode: z.enum(["strict", "normal", "loose"]).optional(),
+	input: z.string(),
+	output: z.string(),
+	includeDescriptions: z.boolean().optional(),
+	enumType: z.enum(["zod", "typescript"]).optional(),
+	useDescribe: z.boolean().optional(),
+	schemaType: z.enum(["all", "request", "response"]).optional(),
+	prefix: z.string().optional(),
+	suffix: z.string().optional(),
+	showStats: z.boolean().optional(),
+	typeMode: TypeModeSchema.optional(),
+	nativeEnumType: NativeEnumTypeSchema.optional(),
+	request: RequestResponseOptionsSchema.optional(),
+	response: RequestResponseOptionsSchema.optional(),
+	name: z.string().optional(),
+});
 
-const ConfigFileSchema = z
-	.object({
-		defaults: z
-			.object({
-				mode: z.enum(["strict", "normal", "loose"]).optional(),
-				includeDescriptions: z.boolean().optional(),
-				enumType: z.enum(["zod", "typescript"]).optional(),
-				useDescribe: z.boolean().optional(),
-				schemaType: z.enum(["all", "request", "response"]).optional(),
-				prefix: z.string().optional(),
-				suffix: z.string().optional(),
-				showStats: z.boolean().optional(),
-				typeMode: TypeModeSchema.optional(),
-				nativeEnumType: NativeEnumTypeSchema.optional(),
-				request: RequestResponseOptionsSchema.optional(),
-				response: RequestResponseOptionsSchema.optional(),
-			})
-			.strict()
-			.optional(),
-		specs: z.array(GeneratorOptionsSchema).min(1, "At least one spec is required"),
-		executionMode: z.enum(["parallel", "sequential"]).optional(),
-	})
-	.strict();
+const ConfigFileSchema = z.strictObject({
+	defaults: z
+		.strictObject({
+			mode: z.enum(["strict", "normal", "loose"]).optional(),
+			includeDescriptions: z.boolean().optional(),
+			enumType: z.enum(["zod", "typescript"]).optional(),
+			useDescribe: z.boolean().optional(),
+			schemaType: z.enum(["all", "request", "response"]).optional(),
+			prefix: z.string().optional(),
+			suffix: z.string().optional(),
+			showStats: z.boolean().optional(),
+			typeMode: TypeModeSchema.optional(),
+			nativeEnumType: NativeEnumTypeSchema.optional(),
+			request: RequestResponseOptionsSchema.optional(),
+			response: RequestResponseOptionsSchema.optional(),
+		})
+		.optional(),
+	specs: z.array(GeneratorOptionsSchema).min(1, "At least one spec is required"),
+	executionMode: z.enum(["parallel", "sequential"]).optional(),
+});
 
 /**
  * TypeScript loader using tsx for executing .ts config files
