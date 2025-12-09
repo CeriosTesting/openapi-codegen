@@ -91,3 +91,17 @@ export class CliOptionsError extends PlaywrightGeneratorError {
 		this.name = "CliOptionsError";
 	}
 }
+
+/**
+ * Thrown when configuration is invalid or missing required values
+ */
+export class ConfigurationError extends PlaywrightGeneratorError {
+	constructor(
+		message: string,
+		public readonly context?: Record<string, unknown>,
+		cause?: Error
+	) {
+		super(message, cause);
+		this.name = "ConfigurationError";
+	}
+}

@@ -3,46 +3,11 @@ import { dirname, relative } from "node:path";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { ZodSchemaGenerator } from "@cerios/openapi-to-zod";
 import { parse } from "yaml";
-import { ClientGenerationError, FileOperationError, SpecValidationError } from "./errors";
+import { ClientGenerationError, ConfigurationError, FileOperationError, SpecValidationError } from "./errors";
 import { generateClientClass } from "./generators/client-generator";
 import { generateServiceClass } from "./generators/service-generator";
 import type { PlaywrightGeneratorOptions } from "./types";
-
-/**
- * Simple LRU cache implementation for performance optimization
- */
-class LRUCache<K, V> {
-	private cache = new Map<K, V>();
-	private maxSize: number;
-
-	constructor(maxSize: number) {
-		this.maxSize = maxSize;
-	}
-
-	get(key: K): V | undefined {
-		if (!this.cache.has(key)) return undefined;
-		// Move to end (most recently used)
-		const value = this.cache.get(key);
-		if (value === undefined) return undefined;
-		this.cache.delete(key);
-		this.cache.set(key, value);
-		return value;
-	}
-
-	set(key: K, value: V): void {
-		if (this.cache.has(key)) {
-			this.cache.delete(key);
-		}
-		this.cache.set(key, value);
-		// Evict oldest if over limit
-		if (this.cache.size > this.maxSize) {
-			const firstKey = this.cache.keys().next().value;
-			if (firstKey !== undefined) {
-				this.cache.delete(firstKey);
-			}
-		}
-	}
-}
+import { LRUCache } from "./utils/lru-cache";
 
 /**
  * Main generator class for Playwright API clients
@@ -126,7 +91,13 @@ export class PlaywrightGenerator {
 				console.log(`✓ Successfully generated ${this.options.output}`);
 			} else if (hasClientSplit && !hasServiceSplit) {
 				// Strategy 2: Schemas (+ service if applicable) in main, client separate
-				if (!outputClient) throw new Error("outputClient is required");
+				if (!outputClient) {
+					throw new ConfigurationError("outputClient is required when using client split output mode", {
+						hasClientSplit,
+						hasServiceSplit,
+						generationMode: this.options.generationMode,
+					});
+				}
 				const mainOutput = includeService
 					? this.combineIntoSingleFile(schemasString, "", serviceString)
 					: schemasString;
@@ -138,8 +109,19 @@ export class PlaywrightGenerator {
 				console.log(`✓ Successfully generated ${outputClient}`);
 			} else {
 				// Strategy 3: All files separate (schemas, client, service)
-				if (!outputClient) throw new Error("outputClient is required");
-				if (!outputService) throw new Error("outputService is required");
+				if (!outputClient) {
+					throw new ConfigurationError("outputClient is required when using split output mode", {
+						hasClientSplit,
+						hasServiceSplit,
+						generationMode: this.options.generationMode,
+					});
+				}
+				if (!outputService) {
+					throw new ConfigurationError(
+						"outputService is required when using split output mode for client-service generation",
+						{ hasClientSplit, hasServiceSplit, generationMode: this.options.generationMode }
+					);
+				}
 				const clientOutput = this.generateClientFile(outputClient, this.options.output);
 				const serviceOutput = this.generateServiceFile(outputService, this.options.output, outputClient);
 

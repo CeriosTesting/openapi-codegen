@@ -1,46 +1,6 @@
 import type { OpenAPISchema } from "../types";
+import { LRUCache } from "../utils/lru-cache";
 import { addDescription, escapePattern } from "../utils/string-utils";
-
-/**
- * Simple LRU cache implementation for pattern caching
- * Prevents memory leaks from unbounded cache growth
- */
-class LRUCache<K, V> {
-	private cache = new Map<K, V>();
-	private maxSize: number;
-
-	constructor(maxSize: number) {
-		this.maxSize = maxSize;
-	}
-
-	get(key: K): V | undefined {
-		if (!this.cache.has(key)) return undefined;
-		// Move to end (most recently used)
-		const value = this.cache.get(key);
-		if (value === undefined) return undefined;
-		this.cache.delete(key);
-		this.cache.set(key, value);
-		return value;
-	}
-
-	set(key: K, value: V): void {
-		if (this.cache.has(key)) {
-			this.cache.delete(key);
-		}
-		this.cache.set(key, value);
-		// Evict oldest if over limit
-		if (this.cache.size > this.maxSize) {
-			const firstKey = this.cache.keys().next().value;
-			if (firstKey !== undefined) {
-				this.cache.delete(firstKey);
-			}
-		}
-	}
-
-	size(): number {
-		return this.cache.size;
-	}
-}
 
 // Performance optimization: Cache compiled regex patterns with size limit
 const PATTERN_CACHE = new LRUCache<string, string>(1000);

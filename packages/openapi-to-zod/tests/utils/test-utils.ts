@@ -1,29 +1,48 @@
 import { existsSync, unlinkSync } from "node:fs";
 import path from "node:path";
+import { ZodSchemaGenerator } from "../../src/generator";
+import type { GeneratorOptions } from "../../src/types";
 
-export abstract class TestUtils {
-	static getConfigPath(configFileName: string): string {
-		return path.join(path.join(__dirname, "..", "fixtures", "config-files"), configFileName);
-	}
+/**
+ * Utility functions for testing the OpenAPI to Zod generator
+ */
+export const TestUtils = {
+	getConfigPath(configFileName: string): string {
+		return path.join(__dirname, "..", "fixtures", "config-files", configFileName);
+	},
 
-	static getOutputPath(outputFileName: string): string {
-		return path.join(path.join(__dirname, "..", "output"), outputFileName);
-	}
+	getOutputPath(outputFileName: string): string {
+		return path.join(__dirname, "..", "output", outputFileName);
+	},
 
-	static getFixturePath(fixtureName: string): string {
-		return path.join(path.join(__dirname, "..", "fixtures"), fixtureName);
-	}
+	getFixturePath(fixtureName: string): string {
+		return path.join(__dirname, "..", "fixtures", fixtureName);
+	},
 
-	static getDistPath(distFileName: string): string {
-		return path.join(path.join(__dirname, "..", "..", "dist"), distFileName);
-	}
+	getDistPath(distFileName: string): string {
+		return path.join(__dirname, "..", "..", "dist", distFileName);
+	},
 
-	static cleanupTestOutput(outputFileName: string): () => void {
+	cleanupTestOutput(outputFileName: string): () => void {
 		return () => {
 			const outputFilePath = this.getOutputPath(outputFileName);
 			if (existsSync(outputFilePath)) {
 				unlinkSync(outputFilePath);
 			}
 		};
-	}
-}
+	},
+
+	/**
+	 * Generate Zod schemas from a fixture file
+	 * @param fixtureName - Name of the fixture file in the fixtures directory
+	 * @param options - Partial generator options to merge with defaults
+	 * @returns Generated Zod schema string
+	 */
+	generateFromFixture(fixtureName: string, options?: Partial<GeneratorOptions>): string {
+		const generator = new ZodSchemaGenerator({
+			input: this.getFixturePath(fixtureName),
+			...options,
+		});
+		return generator.generateString();
+	},
+} as const;

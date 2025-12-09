@@ -1,3 +1,4 @@
+import { ConfigurationError } from "./errors";
 import { ZodSchemaGenerator } from "./generator";
 import type { ExecutionMode, SpecConfig } from "./types";
 
@@ -131,7 +132,7 @@ export async function executeBatch(
 	executionMode: ExecutionMode = "parallel"
 ): Promise<BatchExecutionSummary> {
 	if (specs.length === 0) {
-		throw new Error("No specs provided for batch execution");
+		throw new ConfigurationError("No specs provided for batch execution", { specsCount: 0, executionMode });
 	}
 
 	let results: SpecResult[] = [];

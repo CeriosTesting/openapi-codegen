@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { parse } from "yaml";
+import { ConfigurationError, FileOperationError, SchemaGenerationError, SpecValidationError } from "./errors";
 import { generateEnum } from "./generators/enum-generator";
 import { generateJSDoc } from "./generators/jsdoc-generator";
 import { PropertyGenerator } from "./generators/property-generator";
@@ -26,7 +27,7 @@ export class ZodSchemaGenerator {
 	constructor(options: GeneratorOptions) {
 		// Validate input path early
 		if (!options.input) {
-			throw new Error("Input path is required");
+			throw new ConfigurationError("Input path is required", { providedOptions: options });
 		}
 
 		this.options = {
@@ -50,10 +51,10 @@ export class ZodSchemaGenerator {
 		try {
 			const fs = require("node:fs");
 			if (!fs.existsSync(this.options.input)) {
-				throw new Error(`Input file not found: ${this.options.input}`);
+				throw new FileOperationError(`Input file not found: ${this.options.input}`, this.options.input);
 			}
 		} catch (error) {
-			if (error instanceof Error && error.message.includes("not found")) {
+			if (error instanceof FileOperationError) {
 				throw error;
 			}
 			// If fs.existsSync fails for another reason, continue and let readFileSync throw
@@ -74,7 +75,7 @@ export class ZodSchemaGenerator {
 					"  - The file contains valid YAML syntax",
 					"  - The file is a valid OpenAPI 3.x specification",
 				].join("\n");
-				throw new Error(errorMessage);
+				throw new SpecValidationError(errorMessage, { filePath: this.options.input, originalError: error.message });
 			}
 			throw error;
 		}
@@ -115,7 +116,7 @@ export class ZodSchemaGenerator {
 	 */
 	generateString(): string {
 		if (!this.spec.components?.schemas) {
-			throw new Error("No schemas found in OpenAPI spec");
+			throw new SpecValidationError("No schemas found in OpenAPI spec", { filePath: this.options.input });
 		}
 
 		// First pass: generate enums
@@ -212,9 +213,10 @@ export class ZodSchemaGenerator {
 	 */
 	generate(): void {
 		if (!this.options.output) {
-			throw new Error(
+			throw new ConfigurationError(
 				"Output path is required when calling generate(). " +
-					"Either provide an 'output' option or use generateString() to get the result as a string."
+					"Either provide an 'output' option or use generateString() to get the result as a string.",
+				{ hasOutput: false }
 			);
 		}
 		const output = this.generateString();
@@ -501,8 +503,9 @@ export class ZodSchemaGenerator {
 	 */
 	private validateSpec(): void {
 		if (!this.spec.components?.schemas) {
-			throw new Error(
-				`No schemas found in OpenAPI spec at ${this.options.input}. Expected to find schemas at components.schemas`
+			throw new SpecValidationError(
+				`No schemas found in OpenAPI spec at ${this.options.input}. Expected to find schemas at components.schemas`,
+				{ filePath: this.options.input }
 			);
 		}
 
@@ -513,7 +516,9 @@ export class ZodSchemaGenerator {
 				this.validateSchemaRefs(name, schema, allSchemas);
 			} catch (error) {
 				if (error instanceof Error) {
-					throw new Error(`Invalid schema '${name}': ${error.message}`);
+					throw new SchemaGenerationError(`Invalid schema '${name}': ${error.message}`, name, {
+						originalError: error.message,
+					});
 				}
 				throw error;
 			}
@@ -527,9 +532,10 @@ export class ZodSchemaGenerator {
 		if (schema.$ref) {
 			const refName = resolveRef(schema.$ref);
 			if (!allSchemas.includes(refName)) {
-				throw new Error(
+				throw new SpecValidationError(
 					`Invalid reference${path ? ` at '${path}'` : ""}: ` +
-						`'${schema.$ref}' points to non-existent schema '${refName}'`
+						`'${schema.$ref}' points to non-existent schema '${refName}'`,
+					{ schemaName, path, ref: schema.$ref, refName }
 				);
 			}
 		}

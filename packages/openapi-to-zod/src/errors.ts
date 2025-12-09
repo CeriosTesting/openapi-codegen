@@ -92,3 +92,13 @@ export class CliOptionsError extends GeneratorError {
 		this.name = "CliOptionsError";
 	}
 }
+
+/**
+ * Error thrown when configuration is invalid or missing required values
+ */
+export class ConfigurationError extends GeneratorError {
+	constructor(message: string, context?: Record<string, unknown>) {
+		super(message, "CONFIGURATION_ERROR", context);
+		this.name = "ConfigurationError";
+	}
+}
