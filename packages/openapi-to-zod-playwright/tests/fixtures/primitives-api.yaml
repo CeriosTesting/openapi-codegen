@@ -1,0 +1,66 @@
+openapi: 3.0.0
+info:
+  title: Primitives API
+  version: 1.0.0
+paths:
+  /count:
+    get:
+      summary: Get count
+      responses:
+        '200':
+          description: A number
+          content:
+            application/json:
+              schema:
+                type: number
+  /message:
+    get:
+      summary: Get message
+      responses:
+        '200':
+          description: A string
+          content:
+            application/json:
+              schema:
+                type: string
+  /active:
+    get:
+      summary: Get active status
+      responses:
+        '200':
+          description: A boolean
+          content:
+            application/json:
+              schema:
+                type: boolean
+  /tags:
+    get:
+      summary: Get tags
+      responses:
+        '200':
+          description: Array of strings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /scores:
+    get:
+      summary: Get scores
+      responses:
+        '200':
+          description: Array of numbers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+components:
+  schemas:
+    Dummy:
+      type: object
+      properties:
+        id:
+          type: string

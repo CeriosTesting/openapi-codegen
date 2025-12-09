@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, relative } from "node:path";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { ZodSchemaGenerator } from "@cerios/openapi-to-zod";
 import { parse } from "yaml";
@@ -62,6 +63,15 @@ export class PlaywrightGenerator {
 			throw new FileOperationError(`Input file not found: ${options.input}`, options.input);
 		}
 
+		// Validate outputService only allowed with client-service mode
+		const generationMode = options.generationMode || "client-service";
+		if (options.outputService && generationMode !== "client-service") {
+			throw new FileOperationError(
+				"outputService is only allowed when generationMode is 'client-service'",
+				options.outputService
+			);
+		}
+
 		this.options = {
 			mode: options.mode || "normal",
 			typeMode: options.typeMode || "inferred",
@@ -73,12 +83,14 @@ export class PlaywrightGenerator {
 			prefix: options.prefix || "",
 			suffix: options.suffix || "",
 			...options,
+			generationMode,
 			schemaType: "all", // Always enforce all schemas
 		};
 	}
 
 	/**
-	 * Generate the complete output file
+	 * Generate the complete output file(s)
+	 * Handles splitting into multiple files based on outputClient and outputService options
 	 */
 	generate(): void {
 		if (!this.options.output) {
@@ -92,10 +104,52 @@ export class PlaywrightGenerator {
 		console.log(`Generating Playwright client for ${this.options.input}...`);
 
 		try {
-			const output = this.generateString();
-			writeFileSync(this.options.output, output, "utf-8");
+			const { outputClient, outputService, generationMode } = this.options;
+			const hasClientSplit = !!outputClient;
+			const hasServiceSplit = !!outputService;
 
-			console.log(`✓ Successfully generated ${this.options.output}`);
+			// Ensure spec is parsed
+			if (!this.spec) {
+				this.spec = this.parseSpec();
+			}
+
+			// Generate base components
+			const schemasString = this.generateSchemasString();
+			const includeService = generationMode === "client-service";
+			const clientString = this.generateClientString();
+			const serviceString = includeService ? this.generateServiceString() : "";
+
+			if (!hasClientSplit && !hasServiceSplit) {
+				// Strategy 1: Everything in one file (default)
+				const output = this.combineIntoSingleFile(schemasString, clientString, serviceString);
+				writeFileSync(this.options.output, output, "utf-8");
+				console.log(`✓ Successfully generated ${this.options.output}`);
+			} else if (hasClientSplit && !hasServiceSplit) {
+				// Strategy 2: Schemas (+ service if applicable) in main, client separate
+				if (!outputClient) throw new Error("outputClient is required");
+				const mainOutput = includeService
+					? this.combineIntoSingleFile(schemasString, "", serviceString)
+					: schemasString;
+				const clientOutput = this.generateClientFile(outputClient, this.options.output);
+
+				writeFileSync(this.options.output, mainOutput, "utf-8");
+				writeFileSync(outputClient, clientOutput, "utf-8");
+				console.log(`✓ Successfully generated ${this.options.output}`);
+				console.log(`✓ Successfully generated ${outputClient}`);
+			} else {
+				// Strategy 3: All files separate (schemas, client, service)
+				if (!outputClient) throw new Error("outputClient is required");
+				if (!outputService) throw new Error("outputService is required");
+				const clientOutput = this.generateClientFile(outputClient, this.options.output);
+				const serviceOutput = this.generateServiceFile(outputService, this.options.output, outputClient);
+
+				writeFileSync(this.options.output, schemasString, "utf-8");
+				writeFileSync(outputClient, clientOutput, "utf-8");
+				writeFileSync(outputService, serviceOutput, "utf-8");
+				console.log(`✓ Successfully generated ${this.options.output}`);
+				console.log(`✓ Successfully generated ${outputClient}`);
+				console.log(`✓ Successfully generated ${outputService}`);
+			}
 		} catch (error) {
 			throw new ClientGenerationError(
 				`Failed to generate Playwright client: ${error instanceof Error ? error.message : String(error)}`,
@@ -117,32 +171,10 @@ export class PlaywrightGenerator {
 
 			const schemasString = this.generateSchemasString();
 			const clientString = this.generateClientString();
-			const serviceString = this.generateServiceString();
+			const includeService = this.options.generationMode === "client-service";
+			const serviceString = includeService ? this.generateServiceString() : "";
 
-			// Add Playwright imports at the top
-			const playwrightImports = `import type { APIRequestContext, APIResponse } from "@playwright/test";\nimport { expect } from "@playwright/test";\n\n`;
-
-			// Find where to insert imports (after existing imports)
-			let output = schemasString;
-			const importRegex = /^import\s+.*?;$/gm;
-			const matches = [...output.matchAll(importRegex)];
-
-			if (matches.length > 0) {
-				const lastImport = matches[matches.length - 1];
-				if (lastImport.index !== undefined) {
-					const insertPos = lastImport.index + lastImport[0].length + 1;
-					output = output.slice(0, insertPos) + playwrightImports + output.slice(insertPos);
-				}
-			} else {
-				// No imports found, add at the beginning
-				output = playwrightImports + output;
-			}
-
-			// Append classes at the end
-			output += `\n${clientString}`;
-			output += `\n${serviceString}`;
-
-			return output;
+			return this.combineIntoSingleFile(schemasString, clientString, serviceString);
 		} finally {
 			// Memory optimization: Clear spec after generation for large specs
 			if (this.spec && JSON.stringify(this.spec).length > 100000) {
@@ -175,7 +207,8 @@ export class PlaywrightGenerator {
 			this.spec = this.parseSpec();
 		}
 
-		return generateClientClass(this.spec);
+		const strict = this.options.generationMode === "client-strict";
+		return generateClientClass(this.spec, strict);
 	}
 
 	/**
@@ -189,7 +222,7 @@ export class PlaywrightGenerator {
 		}
 
 		const schemaImports = new Set<string>();
-		return generateServiceClass(this.spec, schemaImports);
+		return generateServiceClass(this.spec, schemaImports, this.options.validateServiceRequest ?? false);
 	}
 
 	/**
@@ -263,5 +296,118 @@ export class PlaywrightGenerator {
 
 			throw new FileOperationError(errorMessage, this.options.input, error instanceof Error ? error : undefined);
 		}
+	}
+
+	/**
+	 * Helper method to combine schemas, client, and service into single file
+	 */
+	private combineIntoSingleFile(schemasString: string, clientString: string, serviceString: string): string {
+		const playwrightImports = `import type { APIRequestContext, APIResponse } from "@playwright/test";\nimport { expect } from "@playwright/test";\n\n`;
+
+		// Insert Playwright imports after existing imports
+		let output = this.insertPlaywrightImports(schemasString, playwrightImports);
+
+		// Append classes at the end
+		output += `\n${clientString}`;
+		if (serviceString) {
+			output += `\n${serviceString}`;
+		}
+
+		return output;
+	}
+
+	/**
+	 * Helper method to insert Playwright imports after existing imports
+	 */
+	private insertPlaywrightImports(content: string, playwrightImports: string): string {
+		const importRegex = /^import\s+.*?;$/gm;
+		const matches = [...content.matchAll(importRegex)];
+
+		if (matches.length > 0) {
+			const lastImport = matches[matches.length - 1];
+			if (lastImport.index !== undefined) {
+				const insertPos = lastImport.index + lastImport[0].length + 1;
+				return content.slice(0, insertPos) + playwrightImports + content.slice(insertPos);
+			}
+		}
+
+		// No imports found, add at the beginning
+		return playwrightImports + content;
+	}
+
+	/**
+	 * Generate client file with proper imports
+	 */
+	private generateClientFile(clientPath: string, mainPath: string): string {
+		const clientString = this.generateClientString();
+		const relativeImport = this.generateRelativeImport(clientPath, mainPath);
+
+		// Extract schema/type names from schemas to import
+		const schemaImports = this.extractSchemaNames();
+		const importStatement =
+			schemaImports.length > 0 ? `import type { ${schemaImports.join(", ")} } from "${relativeImport}";\n` : "";
+
+		return `import type { APIRequestContext, APIResponse } from "@playwright/test";\n${importStatement}\n${clientString}`;
+	}
+
+	/**
+	 * Generate service file with proper imports
+	 */
+	private generateServiceFile(servicePath: string, mainPath: string, clientPath: string): string {
+		const serviceString = this.generateServiceString();
+		const relativeImportMain = this.generateRelativeImport(servicePath, mainPath);
+		const relativeImportClient = this.generateRelativeImport(servicePath, clientPath);
+
+		// Extract schema/type names from schemas to import
+		const schemaImports = this.extractSchemaNames();
+		const schemaImportStatement =
+			schemaImports.length > 0 ? `import type { ${schemaImports.join(", ")} } from "${relativeImportMain}";\n` : "";
+
+		return `import { z } from "zod";\nimport { expect } from "@playwright/test";\nimport { ApiClient } from "${relativeImportClient}";\n${schemaImportStatement}\n${serviceString}`;
+	}
+
+	/**
+	 * Generate relative import path from one file to another
+	 */
+	private generateRelativeImport(from: string, to: string): string {
+		const fromDir = dirname(from);
+		let relativePath = relative(fromDir, to);
+
+		// Remove .ts extension if present
+		relativePath = relativePath.replace(/\.ts$/, "");
+
+		// Ensure relative path starts with ./ or ../
+		if (!relativePath.startsWith(".")) {
+			relativePath = `./${relativePath}`;
+		}
+
+		// Normalize path separators for TypeScript imports (always use /)
+		return relativePath.replace(/\\/g, "/");
+	}
+
+	/**
+	 * Extract schema and type names from generated schemas
+	 */
+	private extractSchemaNames(): string[] {
+		const schemasString = this.generateSchemasString();
+		const names = new Set<string>();
+
+		// Match export const X = z.object...
+		const schemaRegex = /export const (\w+)\s*=/g;
+		let match = schemaRegex.exec(schemasString);
+		while (match !== null) {
+			names.add(match[1]);
+			match = schemaRegex.exec(schemasString);
+		}
+
+		// Match export type X = ...
+		const typeRegex = /export type (\w+)\s*=/g;
+		match = typeRegex.exec(schemasString);
+		while (match !== null) {
+			names.add(match[1]);
+			match = typeRegex.exec(schemasString);
+		}
+
+		return Array.from(names);
 	}
 }

@@ -25,6 +25,9 @@ describe("PlaywrightGenerator", () => {
 		expect(output).toContain('import type { APIRequestContext, APIResponse } from "@playwright/test"');
 		expect(output).toContain('import { expect } from "@playwright/test"');
 
+		// Check for Zod import (in schemas section)
+		expect(output).toContain('import { z } from "zod"');
+
 		// Check for ApiClient class
 		expect(output).toContain("export class ApiClient");
 		expect(output).toContain("constructor(private readonly request: APIRequestContext)");
@@ -60,16 +63,6 @@ describe("PlaywrightGenerator", () => {
 		expect(output).toContain("async deleteUsersByUserId(userId: string");
 	});
 
-	it("should generate error methods for endpoints with error responses", () => {
-		const output = generateOutput();
-
-		// POST /users has 400 error - should have error method with Partial data
-		expect(output).toContain("async postUsersError(options?: { data?: Partial<CreateUserRequest> })");
-
-		// GET /users/{userId} has 404 error - should have error method
-		expect(output).toContain("async getUsersByUserIdError(userId: string)");
-	});
-
 	it("should use expect for status validation", () => {
 		const output = generateOutput();
 
@@ -79,12 +72,12 @@ describe("PlaywrightGenerator", () => {
 		expect(output).toContain("expect(response.status()).toBe(204)");
 	});
 
-	it("should return null for 204 responses", () => {
+	it("should return void for 204 responses", () => {
 		const output = generateOutput();
 
-		// DELETE returns 204 with null
-		expect(output).toContain("async deleteUsersByUserId(userId: string): Promise<null>");
-		expect(output).toContain("return null;");
+		// DELETE returns 204 with void
+		expect(output).toContain("async deleteUsersByUserId(userId: string): Promise<void>");
+		expect(output).toContain("return;");
 	});
 
 	it("should make client data options partial", () => {

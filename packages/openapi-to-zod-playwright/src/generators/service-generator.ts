@@ -7,6 +7,8 @@ interface ResponseInfo {
 	schemaName?: string;
 	description?: string;
 	hasBody: boolean;
+	contentType: string;
+	inlineSchema?: any; // For inline schemas (arrays, objects without $ref)
 }
 
 interface EndpointInfo {
@@ -17,14 +19,83 @@ interface EndpointInfo {
 	parameters?: any[];
 	requestBody?: any;
 	responses: ResponseInfo[];
-	hasErrorResponses: boolean;
+}
+
+/**
+ * Strips charset and other parameters from content-type string
+ */
+function stripContentTypeParams(contentType: string): string {
+	return contentType.split(";")[0].trim();
+}
+
+/**
+ * Extracts a PascalCase suffix from content-type
+ * Handles wildcards, standard types, vendor types with/without +suffix
+ */
+function extractContentTypeSuffix(contentType: string): string {
+	// Handle wildcards
+	if (contentType === "*/*") return "Any";
+	if (contentType === "text/*") return "Text";
+	if (contentType === "image/*") return "Image";
+	if (contentType === "application/*") return "Application";
+
+	// Handle standard types
+	const standardTypes: Record<string, string> = {
+		"application/json": "Json",
+		"application/xml": "Xml",
+		"text/xml": "Xml",
+		"text/html": "Html",
+		"text/plain": "Text",
+		"application/pdf": "Pdf",
+	};
+
+	if (standardTypes[contentType]) {
+		return standardTypes[contentType];
+	}
+
+	// Handle image/* subtypes - all become "Image"
+	if (contentType.startsWith("image/")) {
+		return "Image";
+	}
+
+	// Handle vendor types with +suffix (e.g., application/vnd.api+json)
+	if (contentType.includes("+")) {
+		const suffix = contentType.split("+")[1];
+		return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+	}
+
+	// Handle vendor types without +suffix (e.g., application/vnd.company-name.api)
+	// Convert full path to PascalCase, replacing hyphens and periods
+	const parts = contentType.split("/");
+	const subtype = parts[parts.length - 1];
+	return subtype
+		.split(/[-.]/)
+		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
+		.join("");
+}
+
+/**
+ * Handles duplicate suffixes by appending numbers
+ */
+function deduplicateSuffixes(suffixes: string[]): string[] {
+	const counts = new Map<string, number>();
+	return suffixes.map(suffix => {
+		const count = counts.get(suffix) || 0;
+		counts.set(suffix, count + 1);
+		return count === 0 ? suffix : `${suffix}${count + 1}`;
+	});
 }
 
 /**
  * Generates the ApiService class code
  * The service layer enforces validation and has separate methods per status code
+ * @param validateServiceRequest - Whether to validate request body data with Zod schemas
  */
-export function generateServiceClass(spec: OpenAPISpec, schemaImports: Set<string>): string {
+export function generateServiceClass(
+	spec: OpenAPISpec,
+	schemaImports: Set<string>,
+	validateServiceRequest = false
+): string {
 	const endpoints = extractEndpoints(spec);
 
 	if (endpoints.length === 0) {
@@ -32,10 +103,7 @@ export function generateServiceClass(spec: OpenAPISpec, schemaImports: Set<strin
 	}
 
 	const methods = endpoints
-		.flatMap(endpoint => [
-			...generateSuccessMethods(endpoint, schemaImports),
-			...(endpoint.hasErrorResponses ? [generateErrorMethod(endpoint)] : []),
-		])
+		.flatMap(endpoint => generateSuccessMethods(endpoint, schemaImports, validateServiceRequest))
 		.join("\n\n");
 
 	return `
@@ -75,7 +143,6 @@ function extractEndpoints(spec: OpenAPISpec): EndpointInfo[] {
 			const pathParams = extractPathParams(path);
 
 			const responses: ResponseInfo[] = [];
-			let hasErrorResponses = false;
 
 			if (operation.responses) {
 				for (const [statusCode, responseObj] of Object.entries(operation.responses)) {
@@ -83,39 +150,57 @@ function extractEndpoints(spec: OpenAPISpec): EndpointInfo[] {
 
 					const status = Number.parseInt(statusCode, 10);
 					const isSuccess = status >= 200 && status < 300;
-					const isError = status >= 400;
 
-					if (isError) {
-						hasErrorResponses = true;
-					}
+					if (!isSuccess) continue;
 
-					// Check if response has a body
+					// Extract content types and create a ResponseInfo for each
 					const content = (responseObj as any).content;
-					let hasBody = false;
-					let schemaRef: string | undefined;
-					let schemaName: string | undefined;
 
 					if (content && typeof content === "object") {
-						const jsonContent = content["application/json"];
-						if (jsonContent?.schema) {
-							hasBody = true;
-							schemaRef = jsonContent.schema.$ref;
-							if (schemaRef) {
-								// Extract schema name from $ref
-								const parts = schemaRef.split("/");
-								schemaName = parts[parts.length - 1];
-							}
-						}
-					}
+						// Iterate all content-type keys
+						for (const [rawContentType, contentObj] of Object.entries(content)) {
+							if (typeof contentObj !== "object" || !contentObj) continue;
 
-					// Only add success responses to the list
-					if (isSuccess) {
+							// Strip charset and parameters from content-type
+							const contentType = stripContentTypeParams(rawContentType);
+
+							let schemaRef: string | undefined;
+							let schemaName: string | undefined;
+							let inlineSchema: any;
+							const hasBody = statusCode !== "204";
+
+							if ((contentObj as any).schema) {
+								const schema = (contentObj as any).schema;
+								schemaRef = schema.$ref;
+								if (schemaRef) {
+									// Extract schema name from $ref
+									const parts = schemaRef.split("/");
+									schemaName = parts[parts.length - 1];
+								} else {
+									// No $ref - it's an inline schema
+									inlineSchema = schema;
+								}
+							}
+
+							responses.push({
+								statusCode,
+								schema: schemaRef,
+								schemaName,
+								description: (responseObj as any).description,
+								hasBody,
+								contentType,
+								inlineSchema,
+							});
+						}
+					} else {
+						// No content defined - assume no body
 						responses.push({
 							statusCode,
-							schema: schemaRef,
-							schemaName,
+							schema: undefined,
+							schemaName: undefined,
 							description: (responseObj as any).description,
-							hasBody: hasBody && statusCode !== "204",
+							hasBody: false,
+							contentType: "application/json", // Default fallback
 						});
 					}
 				}
@@ -129,7 +214,6 @@ function extractEndpoints(spec: OpenAPISpec): EndpointInfo[] {
 				parameters: operation.parameters,
 				requestBody: operation.requestBody,
 				responses,
-				hasErrorResponses,
 			});
 		}
 	}
@@ -139,23 +223,107 @@ function extractEndpoints(spec: OpenAPISpec): EndpointInfo[] {
 
 /**
  * Generates success methods for an endpoint
- * One method per status code if multiple, otherwise no suffix
+ * Adds status suffix if multiple status codes, content-type suffix if multiple content-types per status
  */
-function generateSuccessMethods(endpoint: EndpointInfo, schemaImports: Set<string>): string[] {
+function generateSuccessMethods(
+	endpoint: EndpointInfo,
+	schemaImports: Set<string>,
+	validateServiceRequest: boolean
+): string[] {
 	const { responses } = endpoint;
 
 	if (responses.length === 0) {
 		// No responses defined - create a basic method
-		return [generateServiceMethod(endpoint, undefined, schemaImports, false)];
+		return [generateServiceMethod(endpoint, undefined, schemaImports, "", "", validateServiceRequest)];
 	}
 
-	if (responses.length === 1) {
-		// Single response - no status suffix
-		return [generateServiceMethod(endpoint, responses[0], schemaImports, false)];
+	// Group responses by status code
+	const statusGroups = new Map<string, ResponseInfo[]>();
+	for (const response of responses) {
+		const group = statusGroups.get(response.statusCode) || [];
+		group.push(response);
+		statusGroups.set(response.statusCode, group);
 	}
 
-	// Multiple responses - add status suffix to each
-	return responses.map(response => generateServiceMethod(endpoint, response, schemaImports, true));
+	const hasMultipleStatuses = statusGroups.size > 1;
+	const methods: string[] = [];
+
+	for (const [statusCode, responseGroup] of statusGroups) {
+		const statusSuffix = hasMultipleStatuses ? statusCode : "";
+		const hasMultipleContentTypes = responseGroup.length > 1;
+
+		if (!hasMultipleContentTypes) {
+			// Single content-type for this status - no content-type suffix
+			methods.push(
+				generateServiceMethod(endpoint, responseGroup[0], schemaImports, statusSuffix, "", validateServiceRequest)
+			);
+		} else {
+			// Multiple content-types - add suffixes with deduplication
+			const suffixes = responseGroup.map(r => extractContentTypeSuffix(r.contentType));
+			const deduplicated = deduplicateSuffixes(suffixes);
+
+			for (let i = 0; i < responseGroup.length; i++) {
+				methods.push(
+					generateServiceMethod(
+						endpoint,
+						responseGroup[i],
+						schemaImports,
+						statusSuffix,
+						deduplicated[i],
+						validateServiceRequest
+					)
+				);
+			}
+		}
+	}
+
+	return methods;
+}
+
+/**
+ * Generate Zod schema code for inline schemas (arrays, primitives)
+ * Returns the schema code and type name
+ */
+function generateInlineSchemaCode(inlineSchema: any): { schemaCode: string; typeName: string } | null {
+	if (!inlineSchema) return null;
+
+	// Handle primitives
+	if (inlineSchema.type === "string") {
+		return { schemaCode: "z.string()", typeName: "string" };
+	}
+	if (inlineSchema.type === "number" || inlineSchema.type === "integer") {
+		return { schemaCode: "z.number()", typeName: "number" };
+	}
+	if (inlineSchema.type === "boolean") {
+		return { schemaCode: "z.boolean()", typeName: "boolean" };
+	}
+
+	// Handle arrays of refs
+	if (inlineSchema.type === "array" && inlineSchema.items?.$ref) {
+		const refParts = inlineSchema.items.$ref.split("/");
+		const itemSchemaName = refParts[refParts.length - 1];
+		const itemTypeName = itemSchemaName.endsWith("Schema") ? itemSchemaName.slice(0, -6) : itemSchemaName;
+		return {
+			schemaCode: `z.array(${itemSchemaName.charAt(0).toLowerCase() + itemSchemaName.slice(1)}Schema)`,
+			typeName: `${itemTypeName}[]`,
+		};
+	}
+
+	// Handle arrays of primitives
+	if (inlineSchema.type === "array" && inlineSchema.items?.type) {
+		const itemType = inlineSchema.items.type;
+		if (itemType === "string") {
+			return { schemaCode: "z.array(z.string())", typeName: "string[]" };
+		}
+		if (itemType === "number" || itemType === "integer") {
+			return { schemaCode: "z.array(z.number())", typeName: "number[]" };
+		}
+		if (itemType === "boolean") {
+			return { schemaCode: "z.array(z.boolean())", typeName: "boolean[]" };
+		}
+	}
+
+	return null; // Plain objects and other complex types not supported - return Promise<any>
 }
 
 /**
@@ -165,12 +333,14 @@ function generateServiceMethod(
 	endpoint: EndpointInfo,
 	response: ResponseInfo | undefined,
 	schemaImports: Set<string>,
-	includeStatusSuffix: boolean
+	statusSuffix: string,
+	contentTypeSuffix: string,
+	validateServiceRequest: boolean
 ): string {
 	const { path, method, methodName, pathParams, requestBody } = endpoint;
 
 	// Determine method name
-	const finalMethodName = includeStatusSuffix && response ? `${methodName}${response.statusCode}` : methodName;
+	const finalMethodName = `${methodName}${statusSuffix}${contentTypeSuffix}`;
 
 	// Build parameter list
 	const params: string[] = [];
@@ -232,8 +402,17 @@ function generateServiceMethod(
 		returnType = `Promise<${typeName}>`;
 		schemaImports.add(response.schemaName);
 		schemaImports.add(typeName);
-	} else if (response?.statusCode === "204") {
-		returnType = "Promise<null>";
+	} else if (response?.hasBody && response.inlineSchema) {
+		// Has inline schema - can generate validation
+		const inlineInfo = generateInlineSchemaCode(response.inlineSchema);
+		if (inlineInfo) {
+			returnType = `Promise<${inlineInfo.typeName}>`;
+		} else {
+			returnType = "Promise<any>";
+		}
+	} else if (response?.hasBody && !response.schemaName) {
+		// Has body but no schema reference (inline schema) - return as any
+		returnType = "Promise<any>";
 	}
 
 	// Generate method body
@@ -249,7 +428,7 @@ function generateServiceMethod(
 	const validationCode: string[] = [];
 
 	// Add request validation if needed
-	if (hasRequestBody && requestBody.content["application/json"].schema?.$ref) {
+	if (validateServiceRequest && hasRequestBody && requestBody.content["application/json"].schema?.$ref) {
 		const schemaName = requestBody.content["application/json"].schema.$ref.split("/").pop();
 		const schemaVar = `${schemaName.charAt(0).toLowerCase() + schemaName.slice(1)}Schema`;
 		validationCode.push(`\t\tif (options?.data) {`);
@@ -270,11 +449,39 @@ function generateServiceMethod(
 	// Add response validation
 	if (response?.hasBody && response.schemaName) {
 		const schemaVar = `${response.schemaName.charAt(0).toLowerCase() + response.schemaName.slice(1)}Schema`;
+		const isJson = response.contentType === "application/json";
+		const parseMethod = isJson ? "response.json()" : "response.text()";
+
 		validationCode.push(`\t\t// Parse and validate response body`);
-		validationCode.push(`\t\tconst body = await response.json();`);
+		validationCode.push(`\t\tconst body = await ${parseMethod};`);
 		validationCode.push(`\t\treturn ${schemaVar}.parse(body);`);
-	} else if (response?.statusCode === "204") {
-		validationCode.push(`\t\treturn null;`);
+	} else if (response?.hasBody && response.inlineSchema) {
+		// Has inline schema - generate validation
+		const inlineInfo = generateInlineSchemaCode(response.inlineSchema);
+		if (inlineInfo) {
+			const isJson = response.contentType === "application/json";
+			const parseMethod = isJson ? "response.json()" : "response.text()";
+
+			validationCode.push(`\t\t// Parse and validate response body (inline schema)`);
+			validationCode.push(`\t\tconst body = await ${parseMethod};`);
+			validationCode.push(`\t\treturn ${inlineInfo.schemaCode}.parse(body);`);
+		} else {
+			// Inline schema type not supported yet
+			const isJson = response.contentType === "application/json";
+			const parseMethod = isJson ? "response.json()" : "response.text()";
+
+			validationCode.push(`\t\t// Parse response body (inline schema type not yet supported for validation)`);
+			validationCode.push(`\t\tconst body = await ${parseMethod};`);
+			validationCode.push(`\t\treturn body;`);
+		}
+	} else if (response?.hasBody && !response.schemaName) {
+		// Has body but no schema reference (inline schema) - return unvalidated
+		const isJson = response.contentType === "application/json";
+		const parseMethod = isJson ? "response.json()" : "response.text()";
+
+		validationCode.push(`\t\t// Parse response body (no schema validation available for inline schemas)`);
+		validationCode.push(`\t\tconst body = await ${parseMethod};`);
+		validationCode.push(`\t\treturn body;`);
 	} else {
 		validationCode.push(`\t\treturn;`);
 	}
@@ -285,69 +492,5 @@ function generateServiceMethod(
 	 */
 	async ${finalMethodName}(${paramList}): ${returnType} {
 ${validationCode.join("\n")}
-	}`;
-}
-
-/**
- * Generates an error method for testing error responses
- */
-function generateErrorMethod(endpoint: EndpointInfo): string {
-	const { path, method, methodName, pathParams, requestBody } = endpoint;
-
-	// Build parameter list
-	const params: string[] = [];
-
-	// Add path parameters
-	for (const param of pathParams) {
-		const sanitized = sanitizeParamName(param);
-		params.push(`${sanitized}: string`);
-	}
-
-	// Add options if needed - all Partial with type outlines
-	const hasRequestBody = requestBody?.content?.["application/json"];
-	const hasQueryParams = endpoint.parameters?.some((p: any) => p.in === "query");
-	const hasHeaderParams = endpoint.parameters?.some((p: any) => p.in === "header");
-	const needsOptions = hasRequestBody || hasQueryParams || hasHeaderParams;
-
-	if (needsOptions) {
-		const optionsProps: string[] = [];
-
-		if (hasQueryParams) {
-			optionsProps.push("query?: Record<string, any>");
-		}
-
-		if (hasHeaderParams) {
-			optionsProps.push("headers?: Record<string, string>");
-		}
-
-		if (hasRequestBody) {
-			const schema = requestBody.content["application/json"].schema;
-			if (schema?.$ref) {
-				const schemaName = schema.$ref.split("/").pop();
-				optionsProps.push(`data?: Partial<${schemaName}>`);
-			} else {
-				optionsProps.push("data?: Partial<any>");
-			}
-		}
-
-		params.push(`options?: { ${optionsProps.join("; ")} }`);
-	}
-
-	const paramList = params.join(", ");
-
-	// Generate method body
-	const clientMethod = methodName;
-	const clientArgs = pathParams.map(p => sanitizeParamName(p)).join(", ");
-	const clientCall =
-		pathParams.length > 0
-			? `this.client.${clientMethod}(${clientArgs}${needsOptions ? ", options" : ""})`
-			: `this.client.${clientMethod}(${needsOptions ? "options" : ""})`;
-
-	return `\t/**
-	 * ${method} ${path} - Error response (4xx/5xx)
-	 * For testing error scenarios - no status validation
-	 */
-	async ${methodName}Error(${paramList}): Promise<APIResponse> {
-		return await ${clientCall};
 	}`;
 }

@@ -13,22 +13,25 @@ interface EndpointInfo {
 /**
  * Generates the ApiClient class code
  * The client is a thin passthrough layer with no validation
- * All request properties are optional (Partial) to allow testing bad requests
+ * @param spec - OpenAPI specification
+ * @param strict - If true, request properties follow schema strictness. If false, all properties are Partial
  */
-export function generateClientClass(spec: OpenAPISpec): string {
+export function generateClientClass(spec: OpenAPISpec, strict = false): string {
 	const endpoints = extractEndpoints(spec);
 
 	if (endpoints.length === 0) {
 		return "";
 	}
 
-	const methods = endpoints.map(endpoint => generateClientMethod(endpoint)).join("\n\n");
+	const methods = endpoints.map(endpoint => generateClientMethod(endpoint, strict)).join("\n\n");
+
+	const description = strict
+		? "Thin passthrough client for API requests\n * No validation - request properties follow schema strictness"
+		: "Thin passthrough client for API requests\n * No validation - allows testing invalid requests\n * All request properties are optional via Partial";
 
 	return `
 /**
- * Thin passthrough client for API requests
- * No validation - allows testing invalid requests
- * All request properties are optional via Partial
+ * ${description}
  */
 export class ApiClient {
 	constructor(private readonly request: APIRequestContext) {}
@@ -77,7 +80,7 @@ function extractEndpoints(spec: OpenAPISpec): EndpointInfo[] {
 /**
  * Generates a single client method
  */
-function generateClientMethod(endpoint: EndpointInfo): string {
+function generateClientMethod(endpoint: EndpointInfo, strict: boolean): string {
 	const { path, method, methodName, pathParams } = endpoint;
 
 	// Build parameter list
@@ -108,9 +111,12 @@ function generateClientMethod(endpoint: EndpointInfo): string {
 		const schema = requestBody.content["application/json"].schema;
 		if (schema?.$ref) {
 			const schemaName = schema.$ref.split("/").pop();
-			optionsParts.push(`data?: Partial<${schemaName}>`);
+			// Apply Partial wrapper only when not in strict mode
+			const dataType = strict ? schemaName : `Partial<${schemaName}>`;
+			optionsParts.push(`data?: ${dataType}`);
 		} else {
-			optionsParts.push("data?: Partial<any>");
+			const dataType = strict ? "any" : "Partial<any>";
+			optionsParts.push(`data?: ${dataType}`);
 		}
 	}
 

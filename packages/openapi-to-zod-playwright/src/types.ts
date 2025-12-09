@@ -50,6 +50,14 @@ export namespace SchemaName {
 }
 
 /**
+ * Generation mode for Playwright client
+ */
+export type GenerationMode =
+	| "client-strict" // Only client with strict typing (follows schema)
+	| "client-partial" // Only client with everything optional/partial
+	| "client-service"; // Client + Service (default)
+
+/**
  * Generator options for Playwright client generation
  * Enforces that both request and response schemas are generated
  */
@@ -60,11 +68,38 @@ export interface PlaywrightGeneratorOptions extends Omit<GeneratorOptions, "sche
 	input: string;
 
 	/**
-	 * Output file path for generated code
+	 * Output file path for generated code (schemas + types always included)
 	 * Optional when using string generation methods (generateString, etc.)
 	 * Required when calling generate() to write to a file
 	 */
 	output?: string;
+
+	/**
+	 * Optional output file path for client class
+	 * If provided, client will be written to this file instead of main output
+	 * Requires imports from main output file
+	 */
+	outputClient?: string;
+
+	/**
+	 * Optional output file path for service class
+	 * If provided, service will be written to this file instead of main output
+	 * Requires imports from main output and client files
+	 * Only applicable when generationMode is "client-service"
+	 */
+	outputService?: string;
+
+	/**
+	 * Generation mode determining what gets generated
+	 * @default "client-service"
+	 */
+	generationMode?: GenerationMode;
+
+	/**
+	 * Whether to validate request body data with Zod schemas in service methods
+	 * @default false
+	 */
+	validateServiceRequest?: boolean;
 
 	/**
 	 * Schema type is always "all" for Playwright generator
