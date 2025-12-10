@@ -31,10 +31,6 @@ Transform OpenAPI YAML specifications into Zod v4 compliant schemas with full Ty
 
 ```bash
 npm install @cerios/openapi-to-zod
-# or
-pnpm add @cerios/openapi-to-zod
-# or
-yarn add @cerios/openapi-to-zod
 ```
 
 ## CLI Usage

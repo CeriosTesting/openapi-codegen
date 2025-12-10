@@ -15,10 +15,10 @@ Generate type-safe Playwright API clients from OpenAPI specifications with Zod v
 ## Installation
 
 ```bash
-npm install @cerios/openapi-to-zod-playwright @playwright/test @cerios/openapi-to-zod zod
-# or
-pnpm add @cerios/openapi-to-zod-playwright @playwright/test @cerios/openapi-to-zod zod
+npm install @cerios/openapi-to-zod-playwright @playwright/test zod
 ```
+
+> **Note:** `@cerios/openapi-to-zod` is installed automatically as a dependency.
 
 ## Quick Start
 

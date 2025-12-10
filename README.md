@@ -30,7 +30,7 @@ npm install @cerios/openapi-to-zod
 Playwright client generator - Generate type-safe Playwright API clients with automatic request/response validation.
 
 ```bash
-npm install @cerios/openapi-to-zod-playwright @playwright/test @cerios/openapi-to-zod zod
+npm install @cerios/openapi-to-zod-playwright @playwright/test zod
 ```
 
 **Features:**
@@ -45,42 +45,20 @@ npm install @cerios/openapi-to-zod-playwright @playwright/test @cerios/openapi-t
 
 ---
 
-## Quick Start
-
-### Core Package
-
-```bash
-# Install
-pnpm add @cerios/openapi-to-zod
-
-# Generate schemas
-npx openapi-to-zod -i openapi.yaml -o schemas.ts
-```
-
-### Playwright Package
-
-```bash
-# Install
-pnpm add @cerios/openapi-to-zod-playwright @playwright/test @cerios/openapi-to-zod zod
-
-# Generate Playwright client
-npx openapi-to-zod-playwright -i openapi.yaml -o api-client.ts
-```
-
 ## Development
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Build all packages
-pnpm build
+npm run build
 
 # Run tests
-pnpm test
+npm run test
 
 # Lint & format
-pnpm check
+npm run check
 ```
 
 ## Monorepo Structure
@@ -102,19 +80,19 @@ This monorepo uses [Changesets](https://github.com/changesets/changesets) for ve
 ### Create a changeset
 
 ```bash
-pnpm changeset
+npm run changeset
 ```
 
 ### Version packages
 
 ```bash
-pnpm changeset version
+npm run changeset version
 ```
 
 ### Publish to npm
 
 ```bash
-pnpm release
+npm run release
 ```
 
 Packages are independently versioned and can be released separately.
@@ -122,7 +100,7 @@ Packages are independently versioned and can be released separately.
 ## Requirements
 
 - Node.js >= 16
-- pnpm >= 9
+- npm >= 7
 
 ## License
 

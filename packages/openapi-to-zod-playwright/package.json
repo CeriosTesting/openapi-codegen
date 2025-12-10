@@ -54,7 +54,7 @@
 		"test": "vitest"
 	},
 	"dependencies": {
-		"@cerios/openapi-to-zod": "workspace:*",
+		"@cerios/openapi-to-zod": "*",
 		"commander": "^12.1.0",
 		"yaml": "^2.6.1"
 	},

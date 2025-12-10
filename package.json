@@ -1,15 +1,16 @@
 {
 	"private": true,
+	"workspaces": ["packages/*"],
 	"scripts": {
-		"build": "pnpm -r build",
-		"test": "pnpm -r test",
+		"build": "npm run build --workspaces --if-present",
+		"test": "npm run test --workspaces --if-present",
 		"check": "biome check --write",
 		"lint": "biome lint",
-		"compile": "pnpm -r compile",
-		"dev": "pnpm -r --parallel dev",
+		"compile": "npm run compile --workspaces --if-present",
+		"dev": "npm run dev --workspaces --if-present",
 		"changeset": "changeset",
 		"version-packages": "changeset version",
-		"release": "pnpm build && changeset publish"
+		"release": "npm run build && changeset publish"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.3",
@@ -20,6 +21,5 @@
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.2",
 		"vitest": "^2.1.8"
-	},
-	"packageManager": "pnpm@9.14.4"
+	}
 }

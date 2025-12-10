@@ -17,28 +17,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Build packages
-        run: pnpm run build
+        run: npm run build
 
       - name: Check for changes
         id: check
         run: |
-          pnpm changeset status --since=origin/main || echo "has-changesets=false" >> $GITHUB_OUTPUT
-          if pnpm changeset status --since=origin/main; then
+          npm run changeset status --since=origin/main || echo "has-changesets=false" >> $GITHUB_OUTPUT
+          if npm run changeset status --since=origin/main; then
             echo "has-changesets=true" >> $GITHUB_OUTPUT
           else
             echo "has-changesets=false" >> $GITHUB_OUTPUT
@@ -48,7 +43,7 @@ jobs:
         if: steps.check.outputs.has-changesets == 'true'
         uses: changesets/action@v1
         with:
-          publish: pnpm release
+          publish: npm run release
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
