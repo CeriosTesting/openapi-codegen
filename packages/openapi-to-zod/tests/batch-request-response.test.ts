@@ -16,22 +16,22 @@ describe("Batch Execution with Request/Response Options", () => {
 					includeDescriptions: true,
 				},
 				response: {
-					typeMode: "inferred",
 					mode: "strict",
 				},
 			},
 			{
-				name: "All Native",
+				name: "Native Requests",
 				input: TestUtils.getFixturePath("simple.yaml"),
 				output: TestUtils.getOutputPath("batch-native-requests.ts"),
-				typeMode: "native",
+				request: {
+					typeMode: "native",
+				},
 				nativeEnumType: "enum",
 			},
 			{
-				name: "All Inferred",
+				name: "All Inferred (Default)",
 				input: TestUtils.getFixturePath("composition.yaml"),
 				output: TestUtils.getOutputPath("batch-inferred-responses.ts"),
-				typeMode: "inferred",
 				mode: "normal",
 			},
 		];
@@ -48,11 +48,11 @@ describe("Batch Execution with Request/Response Options", () => {
 		expect(mixedOutput).toContain("export const userSchema"); // Zod schema
 		expect(mixedOutput).toContain('import { z } from "zod"'); // Zod import
 
-		// Verify second spec has only native types
+		// Verify second spec has native request types but Zod response schemas
 		const nativeOutput = readFileSync(specs[1].output, "utf-8");
 		expect(nativeOutput).toContain("export type");
-		expect(nativeOutput).toContain("export enum"); // TypeScript enum
-		expect(nativeOutput).not.toContain('import { z } from "zod"'); // No Zod
+		expect(nativeOutput).toContain("export const"); // Response schemas are always Zod
+		expect(nativeOutput).toContain('import { z } from "zod"'); // Always imports Zod for responses
 
 		// Verify third spec has Zod schemas
 		const inferredOutput = readFileSync(specs[2].output, "utf-8");
@@ -65,7 +65,6 @@ describe("Batch Execution with Request/Response Options", () => {
 		// Simulate config file defaults
 		const defaults = {
 			includeDescriptions: true,
-			typeMode: "inferred" as const,
 		};
 
 		const specs: (SpecConfig & { output: string })[] = [
@@ -76,11 +75,13 @@ describe("Batch Execution with Request/Response Options", () => {
 				...defaults,
 			},
 			{
-				name: "Overrides typeMode",
+				name: "Overrides with native requests",
 				input: TestUtils.getFixturePath("composition.yaml"),
 				output: TestUtils.getOutputPath("batch-native-requests.ts"),
 				...defaults,
-				typeMode: "native", // Override
+				request: {
+					typeMode: "native", // Override to use native for requests
+				},
 			},
 		];
 
@@ -89,13 +90,13 @@ describe("Batch Execution with Request/Response Options", () => {
 		expect(summary.total).toBe(2);
 		expect(summary.successful).toBe(2);
 
-		// First uses inferred (default)
+		// First uses default inferred mode
 		const defaultOutput = readFileSync(specs[0].output, "utf-8");
 		expect(defaultOutput).toContain('import { z } from "zod"');
 
-		// Second uses native (override)
+		// Second uses native for requests, but responses are always Zod
 		const overrideOutput = readFileSync(specs[1].output, "utf-8");
-		expect(overrideOutput).not.toContain('import { z } from "zod"');
+		expect(overrideOutput).toContain('import { z } from "zod"'); // Still imports Zod for responses
 	});
 
 	it("should handle complex nested options in batch mode", async () => {
@@ -112,7 +113,6 @@ describe("Batch Execution with Request/Response Options", () => {
 					includeDescriptions: true,
 				},
 				response: {
-					typeMode: "inferred",
 					mode: "loose", // Override for responses
 					useDescribe: true,
 				},

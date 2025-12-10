@@ -71,13 +71,15 @@ describe("Schema Usage Analysis", () => {
 			return readFileSync(testOutput, "utf-8");
 		}
 
-		it("should use root typeMode for unreferenced schemas", () => {
+		it("should always use inferred mode for unreferenced schemas", () => {
 			const output = generateOutput({
-				typeMode: "native",
+				request: {
+					typeMode: "native",
+				},
 			});
 
-			// Schemas not referenced in paths should use root typeMode
-			expect(output).not.toContain('import { z } from "zod"');
+			// Unreferenced schemas default to inferred mode (always generate Zod schemas)
+			expect(output).toContain('import { z } from "zod"');
 		});
 	});
 
@@ -94,7 +96,6 @@ describe("Schema Usage Analysis", () => {
 
 		it("should detect request schemas via writeOnly properties when paths missing", () => {
 			const output = generateOutput({
-				typeMode: "inferred",
 				request: {
 					typeMode: "native",
 				},
@@ -106,7 +107,9 @@ describe("Schema Usage Analysis", () => {
 
 		it("should handle schemas with both readOnly and writeOnly properties", () => {
 			const output = generateOutput({
-				typeMode: "native",
+				request: {
+					typeMode: "native",
+				},
 				schemaType: "request",
 			});
 
@@ -128,17 +131,13 @@ describe("Schema Usage Analysis", () => {
 
 		it("should mark circular reference chains as both context (use inferred)", () => {
 			const output = generateOutput({
-				typeMode: "native",
 				request: {
-					typeMode: "native",
-				},
-				response: {
 					typeMode: "native",
 				},
 			});
 
 			// Circular schemas should be forced to inferred mode for safety
-			// This means Zod should be imported even though both contexts want native
+			// Responses are always inferred, so Zod should always be imported
 			expect(output).toContain('import { z } from "zod"');
 			expect(output).toContain("z.lazy(");
 		});

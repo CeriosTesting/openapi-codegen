@@ -68,7 +68,7 @@ export interface RequestResponseOptions {
 	includeDescriptions?: boolean;
 
 	/**
-	 * Type generation mode
+	 * Type generation mode (only for requests)
 	 * - 'inferred': Generate Zod schemas with z.infer types (default)
 	 * - 'native': Generate native TypeScript types
 	 */
@@ -146,14 +146,6 @@ export interface GeneratorOptions {
 	 * @default true
 	 */
 	showStats?: boolean;
-
-	/**
-	 * Type generation mode
-	 * - 'inferred': Generate Zod schemas with z.infer types (default)
-	 * - 'native': Generate native TypeScript types
-	 * @default 'inferred'
-	 */
-	typeMode?: TypeMode;
 
 	/**
 	 * Native enum generation type (when typeMode is 'native')

@@ -41,7 +41,6 @@ export class ZodSchemaGenerator {
 			prefix: options.prefix,
 			suffix: options.suffix,
 			showStats: options.showStats ?? true,
-			typeMode: options.typeMode || "inferred",
 			nativeEnumType: options.nativeEnumType || "union",
 			request: options.request,
 			response: options.response,
@@ -226,6 +225,7 @@ export class ZodSchemaGenerator {
 	/**
 	 * Resolve options for a specific context (request or response)
 	 * Nested options silently override root-level options
+	 * Response schemas always use 'inferred' mode (Zod schemas)
 	 */
 	private resolveOptionsForContext(context: "request" | "response"): ResolvedOptions {
 		const contextOptions = context === "request" ? this.options.request : this.options.response;
@@ -235,7 +235,9 @@ export class ZodSchemaGenerator {
 			enumType: contextOptions?.enumType ?? this.options.enumType ?? "zod",
 			useDescribe: contextOptions?.useDescribe ?? this.options.useDescribe ?? false,
 			includeDescriptions: contextOptions?.includeDescriptions ?? this.options.includeDescriptions ?? true,
-			typeMode: contextOptions?.typeMode ?? this.options.typeMode ?? "inferred",
+			// Response schemas always use 'inferred' mode (Zod schemas are required)
+			// Request schemas can optionally use 'native' mode
+			typeMode: context === "response" ? "inferred" : (contextOptions?.typeMode ?? "inferred"),
 			nativeEnumType: contextOptions?.nativeEnumType ?? this.options.nativeEnumType ?? "union",
 		};
 	}
@@ -474,6 +476,7 @@ export class ZodSchemaGenerator {
 
 	/**
 	 * Determine the typeMode for each schema based on its usage context
+	 * Response schemas always use 'inferred' mode
 	 */
 	private determineSchemaTypeModes(): void {
 		for (const [name] of Object.entries(this.spec.components?.schemas || {})) {
@@ -482,13 +485,14 @@ export class ZodSchemaGenerator {
 			if (context === "request") {
 				this.schemaTypeModeMap.set(name, this.requestOptions.typeMode);
 			} else if (context === "response") {
-				this.schemaTypeModeMap.set(name, this.responseOptions.typeMode);
+				// Response schemas always use 'inferred' mode (Zod schemas are required)
+				this.schemaTypeModeMap.set(name, "inferred");
 			} else if (context === "both") {
 				// Safety: always use inferred for schemas used in both contexts
 				this.schemaTypeModeMap.set(name, "inferred");
 			} else {
-				// Unreferenced schemas use root typeMode
-				this.schemaTypeModeMap.set(name, this.options.typeMode || "inferred");
+				// Unreferenced schemas default to inferred
+				this.schemaTypeModeMap.set(name, "inferred");
 			}
 
 			// Track if we need Zod import

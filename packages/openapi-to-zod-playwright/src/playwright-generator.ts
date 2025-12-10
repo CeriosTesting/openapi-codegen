@@ -36,7 +36,6 @@ export class PlaywrightGenerator {
 
 		this.options = {
 			mode: options.mode || "normal",
-			typeMode: options.typeMode || "inferred",
 			enumType: options.enumType || "zod",
 			nativeEnumType: options.nativeEnumType || "union",
 			includeDescriptions: options.includeDescriptions ?? true,

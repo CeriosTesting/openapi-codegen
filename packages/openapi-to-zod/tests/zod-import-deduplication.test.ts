@@ -13,15 +13,15 @@ describe("Zod Import Deduplication", () => {
 	}
 
 	it("should only have one Zod import statement", () => {
-		const content = generateOutput("type-mode.yaml", { typeMode: "inferred" });
+		const content = generateOutput("type-mode.yaml");
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
 		expect(zodImports).toBeDefined();
 		expect(zodImports).toHaveLength(1);
 	});
 
-	it("should have Zod import when generating enums in inferred mode", () => {
-		const content = generateOutput("type-mode.yaml", { typeMode: "inferred" });
+	it("should have Zod import when generating enums (default inferred mode)", () => {
+		const content = generateOutput("type-mode.yaml");
 
 		// Should have Zod import
 		expect(content).toContain('import { z } from "zod"');
@@ -31,38 +31,37 @@ describe("Zod Import Deduplication", () => {
 		expect(content).toContain('z.enum(["active", "inactive", "suspended"])');
 	});
 
-	it("should not have Zod import when all schemas are native", () => {
-		const content = generateOutput("type-mode.yaml", { typeMode: "native" });
+	it("should always have Zod import for response schemas", () => {
+		const content = generateOutput("type-mode.yaml", {
+			request: { typeMode: "native" },
+		});
 
-		// Should NOT have Zod import
-		expect(content).not.toContain('import { z } from "zod"');
+		// Should always have Zod import for response schemas
+		expect(content).toContain('import { z } from "zod"');
 
-		// Should have native enum types
-		expect(content).toContain('export type UserStatus = "active" | "inactive" | "suspended"');
+		// Should have response schemas
+		expect(content).toContain("export const userSchema");
 	});
 
-	it("should have Zod import when mixing native and inferred modes", () => {
+	it("should have Zod import when mixing native requests and inferred responses", () => {
 		const content = generateOutput("type-mode.yaml", {
 			request: {
 				typeMode: "native",
 			},
-			response: {
-				typeMode: "inferred",
-			},
 		});
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
-		// Should have exactly one Zod import (for response schemas)
+		// Should have exactly one Zod import (for response schemas - always inferred)
 		expect(zodImports).toBeDefined();
 		expect(zodImports).toHaveLength(1);
 
-		// Should have both native types and Zod schemas
+		// Should have both native types (requests) and Zod schemas (responses)
 		expect(content).toContain("export type CreateUserRequest");
 		expect(content).toContain("export const userSchema");
 	});
 
 	it("should have single Zod import even with multiple enum schemas", () => {
-		const content = generateOutput("composition.yaml", { typeMode: "inferred" });
+		const content = generateOutput("composition.yaml");
 		const zodImports = content.match(/import\s+{\s*z\s*}\s+from\s+["']zod["']/g);
 
 		// Should have exactly one Zod import regardless of number of schemas

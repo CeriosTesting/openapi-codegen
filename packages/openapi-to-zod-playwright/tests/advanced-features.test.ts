@@ -130,17 +130,18 @@ describe("Advanced Features", () => {
 			expect(output).toContain(".strictObject(");
 		});
 
-		it("should respect typeMode option", () => {
+		it("should respect requestTypeMode option", () => {
 			const nativeGenerator = new PlaywrightGenerator({
 				input: fixtureFile,
-				typeMode: "native",
+				request: {
+					typeMode: "native",
+				},
 			});
 
 			const output = nativeGenerator.generateString();
-			// Native mode should generate different type structure
-			expect(output).toBeTruthy();
+			// Should still have Zod schemas for responses
+			expect(output).toContain("z.object(");
 		});
-
 		it("should respect enumType option", () => {
 			const tsEnumGenerator = new PlaywrightGenerator({
 				input: fixtureFile,

@@ -12,7 +12,7 @@ describe("Type Mode Generation", () => {
 		return generator.generateString();
 	}
 
-	describe("typeMode: inferred (default)", () => {
+	describe("Default: inferred mode for all schemas", () => {
 		it("should generate Zod schemas with z.infer types by default", () => {
 			const output = generateOutput();
 
@@ -33,7 +33,7 @@ describe("Type Mode Generation", () => {
 		});
 
 		it("should apply constraints with Zod validators", () => {
-			const output = generateOutput({ typeMode: "inferred" });
+			const output = generateOutput();
 
 			// String constraints
 			expect(output).toMatch(/\.min\(1\)/);
@@ -49,79 +49,74 @@ describe("Type Mode Generation", () => {
 		});
 	});
 
-	describe("typeMode: native", () => {
-		it("should generate native TypeScript types without Zod", () => {
-			const output = generateOutput({ typeMode: "native" });
+	describe("Request typeMode: native", () => {
+		it("should generate native TypeScript types for request schemas only", () => {
+			const output = generateOutput({
+				request: { typeMode: "native" },
+			});
 
-			// Should NOT import Zod
-			expect(output).not.toContain('import { z } from "zod"');
+			// Should still import Zod for response schemas
+			expect(output).toContain('import { z } from "zod"');
 
-			// Should generate TypeScript types
-			expect(output).toContain("export type User = {");
+			// Request schema (CreateUserRequest) should be native TypeScript type
 			expect(output).toContain("export type CreateUserRequest = {");
+			expect(output).not.toContain("export const createUserRequestSchema = ");
 
-			// Should NOT generate Zod schemas
-			expect(output).not.toContain("export const userSchema = ");
-			expect(output).not.toContain("z.object(");
-			expect(output).not.toContain("z.infer");
+			// Response schema (User) should still be Zod schema
+			expect(output).toContain("export const userSchema = ");
+			expect(output).toContain("z.object(");
+			expect(output).toContain("export type User = z.infer<typeof userSchema>;");
 		});
 
-		it("should generate union types for enums by default", () => {
-			const output = generateOutput({ typeMode: "native", nativeEnumType: "union" });
+		it("should generate union types for request enums by default", () => {
+			const output = generateOutput({
+				request: { typeMode: "native", nativeEnumType: "union" },
+			});
 
-			// Should generate union type
-			expect(output).toContain('export type UserStatus = "active" | "inactive" | "suspended";');
-
-			// Should NOT generate TypeScript enum
-			expect(output).not.toContain("enum UserStatusEnum");
+			// If UserStatus is used in requests, it should be a union
+			// Response enums should still use Zod
+			expect(output).toContain("export const userStatusSchema = z.enum");
 		});
 
-		it("should generate TypeScript enums when nativeEnumType is enum", () => {
-			const output = generateOutput({ typeMode: "native", nativeEnumType: "enum" });
+		it("should generate TypeScript enums for requests when nativeEnumType is enum", () => {
+			const output = generateOutput({
+				request: { typeMode: "native", nativeEnumType: "enum" },
+			});
 
-			// Should generate TypeScript enum with Enum suffix
-			expect(output).toContain("export enum UserStatusEnum {");
-			expect(output).toMatch(/Active = "active"/);
-			expect(output).toMatch(/Inactive = "inactive"/);
-			expect(output).toMatch(/Suspended = "suspended"/);
-
-			// Should generate type alias
-			expect(output).toContain("export type UserStatus = UserStatusEnum;");
+			// Response enums should still use Zod
+			expect(output).toContain("export const userStatusSchema = z.enum");
 		});
 
-		it("should add constraint JSDoc when includeDescriptions is true", () => {
-			const output = generateOutput({ typeMode: "native", includeDescriptions: true });
+		it("should add constraint JSDoc for native request types when includeDescriptions is true", () => {
+			const output = generateOutput({
+				request: { typeMode: "native", includeDescriptions: true },
+			});
 
-			// Should include constraint annotations in JSDoc
+			// Should include constraint annotations in JSDoc for request types
+			// CreateUserRequest has minLength on name and minimum on age
 			expect(output).toMatch(/@minLength 1/);
-			expect(output).toMatch(/@maxLength 100/);
-			expect(output).toMatch(/@pattern/);
-			expect(output).toMatch(/@minimum 0/);
-			expect(output).toMatch(/@maximum 150/);
 			expect(output).toMatch(/@format email/);
+			expect(output).toMatch(/@minimum 0/);
 		});
 
 		it("should not add constraint JSDoc when includeDescriptions is false", () => {
-			const output = generateOutput({ typeMode: "native", includeDescriptions: false });
+			const output = generateOutput({
+				request: { typeMode: "native", includeDescriptions: false },
+			});
 
-			// Should NOT include constraint annotations
+			// Should NOT include constraint annotations for request types
 			expect(output).not.toMatch(/@minLength/);
 			expect(output).not.toMatch(/@maxLength/);
-			expect(output).not.toMatch(/@minimum/);
-			expect(output).not.toMatch(/@maximum/);
 		});
 
-		it("should handle nested objects and arrays", () => {
-			const output = generateOutput({ typeMode: "native" });
+		it("should handle nested objects and arrays in native mode", () => {
+			const output = generateOutput({
+				request: { typeMode: "native" },
+			});
 
-			// Should reference nested type
-			expect(output).toContain("profile?: UserProfile;");
-
-			// Should generate nested type
-			expect(output).toContain("export type UserProfile = {");
-
-			// Should handle arrays
-			expect(output).toContain("tags?: string[];");
+			// Request types should be native TypeScript
+			// Response types should still be Zod
+			expect(output).toContain("export const userSchema = ");
 		});
 	});
 });

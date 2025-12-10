@@ -13,9 +13,8 @@ describe("Request/Response Options", () => {
 	}
 
 	describe("Nested options override root options", () => {
-		it("should use request options for request schemas", () => {
+		it("should use request typeMode: native for request schemas", () => {
 			const output = generateOutput({
-				typeMode: "inferred",
 				request: {
 					typeMode: "native",
 				},
@@ -25,20 +24,19 @@ describe("Request/Response Options", () => {
 			expect(output).toContain("export type CreateUserRequest = {");
 			expect(output).not.toContain("export const createUserRequestSchema =");
 
-			// User (used in response) should be Zod schema
+			// User (used in response) should always be Zod schema
 			expect(output).toContain("export const userSchema =");
 			expect(output).toContain("z.object(");
 		});
 
-		it("should use response options for response schemas", () => {
+		it("should always use inferred mode for response schemas", () => {
 			const output = generateOutput({
-				typeMode: "native",
-				response: {
-					typeMode: "inferred",
+				request: {
+					typeMode: "native",
 				},
 			});
 
-			// User (used in GET response) should be Zod schema
+			// User (used in GET response) should always be Zod schema
 			expect(output).toContain("export const userSchema =");
 			expect(output).toContain("z.object(");
 			expect(output).toContain("export type User = z.infer<typeof userSchema>;");
@@ -48,42 +46,28 @@ describe("Request/Response Options", () => {
 			expect(output).not.toContain("export const createUserRequestSchema =");
 		});
 
-		it("should generate Zod import when any schema uses inferred mode", () => {
+		it("should generate Zod import when responses use inferred mode (always)", () => {
 			const output = generateOutput({
-				typeMode: "native",
-				response: {
-					typeMode: "inferred",
+				request: {
+					typeMode: "native",
 				},
 			});
 
-			// Should import Zod because response uses inferred mode
+			// Should always import Zod because responses always use inferred mode
 			expect(output).toContain('import { z } from "zod"');
-		});
-
-		it("should not generate Zod import when all schemas use native mode", () => {
-			const output = generateOutput({
-				typeMode: "native",
-			});
-
-			// Should NOT import Zod
-			expect(output).not.toContain('import { z } from "zod"');
 		});
 	});
 
 	describe("Mixed configurations", () => {
-		it("should handle request: native, response: inferred", () => {
+		it("should handle request: native, response: always inferred", () => {
 			const output = generateOutput({
 				request: {
 					typeMode: "native",
 					nativeEnumType: "union",
 				},
-				response: {
-					typeMode: "inferred",
-					enumType: "zod",
-				},
 			});
 
-			// Should have both native types and Zod schemas
+			// Should have both native types (requests) and Zod schemas (responses)
 			expect(output).toContain("export type CreateUserRequest = {");
 			expect(output).toContain("export const userSchema =");
 			expect(output).toContain('import { z } from "zod"');
@@ -135,21 +119,17 @@ describe("Request/Response Options", () => {
 	});
 
 	describe("Schemas used in both contexts", () => {
-		it("should use inferred mode for schemas used in both request and response", () => {
+		it("should always use inferred mode for response schemas regardless of request settings", () => {
 			const output = generateOutput({
 				request: {
 					typeMode: "native",
 				},
-				response: {
-					typeMode: "native",
-				},
 			});
 
-			// User is used in both POST response (201 Created) and GET response
-			// UserStatus is part of User, so it's also used in responses
-			// For safety, schemas used in both contexts should be inferred
-			// However, in this specific fixture, User is only in responses
-			expect(output).toBeTruthy();
+			// Response schemas (User) should always be Zod schemas
+			// Request schemas can be native TypeScript
+			expect(output).toContain("export const userSchema =");
+			expect(output).toContain('import { z } from "zod"');
 		});
 	});
 });

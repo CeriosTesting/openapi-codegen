@@ -20,7 +20,7 @@ const CliOptionsSchema = z.object({
 	generateService: z.boolean().default(true),
 	validateServiceRequest: z.boolean().default(false),
 	mode: z.enum(["strict", "normal", "loose"]).default("normal"),
-	typeMode: z.enum(["inferred", "native"]).default("inferred"),
+	requestTypeMode: z.enum(["inferred", "native"]).optional(),
 	enumType: z.enum(["zod", "typescript"]).default("zod"),
 	nativeEnumType: z.enum(["union", "enum"]).default("union"),
 	descriptions: z.boolean().default(true),
@@ -45,11 +45,15 @@ function validateCliOptions(options: unknown): PlaywrightGeneratorOptions {
 			generateService: validated.generateService,
 			validateServiceRequest: validated.validateServiceRequest,
 			mode: validated.mode,
-			typeMode: validated.typeMode,
 			enumType: validated.enumType,
 			nativeEnumType: validated.nativeEnumType,
 			includeDescriptions: validated.descriptions,
 			useDescribe: validated.useDescribe,
+			...(validated.requestTypeMode && {
+				request: {
+					typeMode: validated.requestTypeMode,
+				},
+			}),
 			showStats: validated.stats,
 			prefix: validated.prefix,
 			suffix: validated.suffix,
@@ -84,9 +88,9 @@ program
 	.option("--no-generate-service", "Disable service class generation (only generate client)")
 	.option("--validate-service-request", "Enable Zod validation for service method request bodies")
 	.option("-m, --mode <mode>", "Validation mode: strict, normal, or loose", "normal")
-	.option("--type-mode <mode>", "Type mode: inferred or native", "inferred")
+	.option("--request-type-mode <mode>", "Request type mode: inferred or native (responses always inferred)")
 	.option("--enum-type <type>", "Enum type: zod or typescript", "zod")
-	.option("--native-enum-type <type>", "Native enum type: union or enum (when type-mode=native)", "union")
+	.option("--native-enum-type <type>", "Native enum type: union or enum", "union")
 	.option("--no-descriptions", "Exclude JSDoc descriptions from generated code")
 	.option("--use-describe", "Add .describe() calls for runtime descriptions")
 	.option("--no-stats", "Hide generation statistics")

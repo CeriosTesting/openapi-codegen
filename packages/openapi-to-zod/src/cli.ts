@@ -23,7 +23,6 @@ const CliOptionsSchema = z.object({
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
 	stats: z.boolean().optional(),
-	typeMode: z.enum(["inferred", "native"]).optional(),
 	nativeEnumType: z.enum(["union", "enum"]).optional(),
 	requestMode: z.enum(["strict", "normal", "loose"]).optional(),
 	requestTypeMode: z.enum(["inferred", "native"]).optional(),
@@ -32,7 +31,6 @@ const CliOptionsSchema = z.object({
 	requestUseDescribe: z.boolean().optional(),
 	requestDescriptions: z.boolean().optional(),
 	responseMode: z.enum(["strict", "normal", "loose"]).optional(),
-	responseTypeMode: z.enum(["inferred", "native"]).optional(),
 	responseEnumType: z.enum(["zod", "typescript"]).optional(),
 	responseNativeEnumType: z.enum(["union", "enum"]).optional(),
 	responseUseDescribe: z.boolean().optional(),
@@ -72,7 +70,6 @@ program
 	.option("-p, --prefix <prefix>", "Add prefix to all generated schema names")
 	.option("--suffix <suffix>", "Add suffix before 'Schema' in generated names")
 	.option("--no-stats", "Exclude generation statistics from output file")
-	.option("--type-mode <mode>", "Type generation: inferred (Zod + z.infer) or native (TypeScript types)", "inferred")
 	.option("--native-enum-type <type>", "Native enum type: union or enum", "union")
 	.option("--request-mode <mode>", "Request validation mode: strict, normal, or loose")
 	.option("--request-type-mode <mode>", "Request type generation: inferred or native")
@@ -82,7 +79,6 @@ program
 	.option("--request-descriptions", "Include descriptions for request schemas")
 	.option("--no-request-descriptions", "Exclude descriptions for request schemas")
 	.option("--response-mode <mode>", "Response validation mode: strict, normal, or loose")
-	.option("--response-type-mode <mode>", "Response type generation: inferred or native")
 	.option("--response-enum-type <type>", "Response enum type: zod or typescript")
 	.option("--response-native-enum-type <type>", "Response native enum type: union or enum")
 	.option("--response-use-describe", "Add .describe() calls for response schemas")
@@ -93,14 +89,11 @@ program
 		"after",
 		`
 Examples:
-  # Generate Zod schemas with inferred types (default)
+  # Generate Zod schemas (default - always generates response schemas)
   $ openapi-to-zod -i openapi.yaml -o schemas.ts
 
-  # Generate native TypeScript types
-  $ openapi-to-zod -i openapi.yaml -o types.ts --type-mode native
-
-  # Mixed mode: native types for requests, Zod schemas for responses
-  $ openapi-to-zod -i openapi.yaml -o types.ts --request-type-mode native --response-type-mode inferred
+  # Generate native TypeScript types for requests, Zod schemas for responses
+  $ openapi-to-zod -i openapi.yaml -o types.ts --request-type-mode native
 
   # Generate with config file
   $ openapi-to-zod -c openapi-to-zod.config.ts
@@ -156,7 +149,6 @@ async function executeSingleSpecMode(options: z.infer<typeof CliOptionsSchema>):
 		prefix: options.prefix,
 		suffix: options.suffix,
 		showStats: options.stats ?? true,
-		typeMode: options.typeMode,
 		nativeEnumType: options.nativeEnumType,
 	};
 
@@ -182,7 +174,6 @@ async function executeSingleSpecMode(options: z.infer<typeof CliOptionsSchema>):
 	// Build response options if any response-specific flags are set
 	if (
 		options.responseMode ||
-		options.responseTypeMode ||
 		options.responseEnumType ||
 		options.responseNativeEnumType ||
 		options.responseUseDescribe ||
@@ -190,7 +181,6 @@ async function executeSingleSpecMode(options: z.infer<typeof CliOptionsSchema>):
 	) {
 		generatorOptions.response = {
 			mode: options.responseMode,
-			typeMode: options.responseTypeMode,
 			enumType: options.responseEnumType,
 			nativeEnumType: options.responseNativeEnumType,
 			useDescribe: options.responseUseDescribe || undefined,
@@ -223,7 +213,6 @@ async function executeBatchMode(options: z.infer<typeof CliOptionsSchema>): Prom
 	if (options.prefix) cliOverrides.prefix = options.prefix;
 	if (options.suffix) cliOverrides.suffix = options.suffix;
 	if (options.stats !== undefined) cliOverrides.showStats = options.stats;
-	if (options.typeMode) cliOverrides.typeMode = options.typeMode;
 	if (options.nativeEnumType) cliOverrides.nativeEnumType = options.nativeEnumType;
 
 	// Build request/response overrides from CLI
@@ -247,7 +236,6 @@ async function executeBatchMode(options: z.infer<typeof CliOptionsSchema>): Prom
 
 	if (
 		options.responseMode ||
-		options.responseTypeMode ||
 		options.responseEnumType ||
 		options.responseNativeEnumType ||
 		options.responseUseDescribe ||
@@ -255,7 +243,6 @@ async function executeBatchMode(options: z.infer<typeof CliOptionsSchema>): Prom
 	) {
 		cliOverrides.response = {
 			mode: options.responseMode,
-			typeMode: options.responseTypeMode,
 			enumType: options.responseEnumType,
 			nativeEnumType: options.responseNativeEnumType,
 			useDescribe: options.responseUseDescribe,

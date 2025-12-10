@@ -130,7 +130,7 @@ Options:
   -i, --input <path>          Input OpenAPI specification file (required)
   -o, --output <path>         Output file path (required)
   -m, --mode <mode>           Validation mode: strict, normal, loose (default: "normal")
-  --type-mode <mode>          Type mode: inferred, native (default: "inferred")
+  --request-type-mode <mode>  Request type mode: inferred or native (responses always inferred)
   --enum-type <type>          Enum type: zod, typescript (default: "zod")
   --no-descriptions           Exclude JSDoc descriptions
   --use-describe              Add .describe() for runtime descriptions
