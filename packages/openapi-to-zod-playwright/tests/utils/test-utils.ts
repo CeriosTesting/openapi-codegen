@@ -18,6 +18,10 @@ export const TestUtils = {
 		return path.join(fixturesDir, fixtureName);
 	},
 
+	getConfigPath(configFileName: string): string {
+		return path.join(fixturesDir, "config-files", configFileName);
+	},
+
 	cleanupTestOutput(outputFileName: string): () => void {
 		return () => {
 			const outputFilePath = this.getOutputPath(outputFileName);

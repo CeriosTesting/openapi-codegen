@@ -136,7 +136,31 @@ export interface PlaywrightConfigFile {
 }
 
 /**
- * Helper function to define a config file with type safety
+ * Helper function for type-safe config file creation
+ * Provides IDE autocomplete and type checking for Playwright config files
+ * Note: schemaType is always "all" for Playwright generator (both request/response schemas required)
+ *
+ * @example
+ * ```typescript
+ * import { defineConfig } from '@cerios/openapi-to-zod-playwright';
+ *
+ * export default defineConfig({
+ *   defaults: {
+ *     mode: 'strict',
+ *     includeDescriptions: true,
+ *     generateService: true
+ *   },
+ *   specs: [
+ *     { input: 'api-v1.yaml', output: 'tests/api-v1.ts' },
+ *     {
+ *       input: 'api-v2.yaml',
+ *       output: 'tests/api-v2.ts',
+ *       outputClient: 'tests/api-v2-client.ts',
+ *       outputService: 'tests/api-v2-service.ts'
+ *     }
+ *   ]
+ * });
+ * ```
  */
 export function defineConfig(config: PlaywrightConfigFile): PlaywrightConfigFile {
 	return config;
