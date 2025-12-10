@@ -7,14 +7,16 @@ import { z } from "zod";
 import { CliOptionsError } from "./errors";
 import { PlaywrightGenerator } from "./playwright-generator";
 import { type PlaywrightGeneratorOptions } from "./types";
+import { loadConfig, mergeCliWithConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 
 /**
  * Zod schema for CLI options validation
  * Ensures all options are valid before passing to generator
+ * Note: input and output are now optional to support config file mode
  */
 const CliOptionsSchema = z.object({
-	input: z.string().min(1, "Input path cannot be empty"),
-	output: z.string().min(1, "Output path cannot be empty"),
+	input: z.string().min(1, "Input path cannot be empty").optional(),
+	output: z.string().min(1, "Output path cannot be empty").optional(),
 	outputClient: z.string().optional(),
 	outputService: z.string().optional(),
 	generateService: z.boolean().default(true),
@@ -28,20 +30,17 @@ const CliOptionsSchema = z.object({
 	stats: z.boolean().default(true),
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
+	config: z.string().optional(),
 });
 
 /**
  * Validate CLI options using Zod schema
  * @throws CliOptionsError if validation fails
  */
-function validateCliOptions(options: unknown): PlaywrightGeneratorOptions {
+function validateCliOptions(options: unknown): Partial<PlaywrightGeneratorOptions> & { config?: string } {
 	try {
 		const validated = CliOptionsSchema.parse(options);
-		return {
-			input: validated.input,
-			output: validated.output,
-			outputClient: validated.outputClient,
-			outputService: validated.outputService,
+		const result: Partial<PlaywrightGeneratorOptions> & { config?: string } = {
 			generateService: validated.generateService,
 			validateServiceRequest: validated.validateServiceRequest,
 			mode: validated.mode,
@@ -49,15 +48,23 @@ function validateCliOptions(options: unknown): PlaywrightGeneratorOptions {
 			nativeEnumType: validated.nativeEnumType,
 			includeDescriptions: validated.descriptions,
 			useDescribe: validated.useDescribe,
-			...(validated.requestTypeMode && {
-				request: {
-					typeMode: validated.requestTypeMode,
-				},
-			}),
 			showStats: validated.stats,
-			prefix: validated.prefix,
-			suffix: validated.suffix,
+			config: validated.config,
 		};
+
+		if (validated.input) result.input = validated.input;
+		if (validated.output) result.output = validated.output;
+		if (validated.outputClient) result.outputClient = validated.outputClient;
+		if (validated.outputService) result.outputService = validated.outputService;
+		if (validated.prefix) result.prefix = validated.prefix;
+		if (validated.suffix) result.suffix = validated.suffix;
+		if (validated.requestTypeMode) {
+			result.request = {
+				typeMode: validated.requestTypeMode,
+			};
+		}
+
+		return result;
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			const formattedErrors = error.issues.map(err => `  - ${err.path.join(".")}: ${err.message}`).join("\n");
@@ -81,8 +88,9 @@ program
 	.version(packageJson.version);
 
 program
-	.requiredOption("-i, --input <path>", "Input OpenAPI specification file (YAML or JSON)")
-	.requiredOption("-o, --output <path>", "Output file path for generated code")
+	.option("-c, --config <path>", "Path to configuration file (openapi-to-zod-playwright.config.{ts,json})")
+	.option("-i, --input <path>", "Input OpenAPI specification file (YAML or JSON)")
+	.option("-o, --output <path>", "Output file path for generated code")
 	.option("--output-client <path>", "Optional output file path for client class (separate file)")
 	.option("--output-service <path>", "Optional output file path for service class (separate file)")
 	.option("--no-generate-service", "Disable service class generation (only generate client)")
@@ -96,13 +104,39 @@ program
 	.option("--no-stats", "Hide generation statistics")
 	.option("-p, --prefix <prefix>", "Prefix for schema names")
 	.option("--suffix <suffix>", "Suffix for schema names")
-	.action(options => {
+	.action(async options => {
 		try {
 			// Validate CLI options with Zod
-			const generatorOptions = validateCliOptions(options);
+			const cliOptions = validateCliOptions(options);
 
-			const generator = new PlaywrightGenerator(generatorOptions);
-			generator.generate();
+			// If config file is specified or found, use config-based generation
+			if (cliOptions.config || (!cliOptions.input && !cliOptions.output)) {
+				const config = await loadConfig(cliOptions.config);
+				const specs = mergeConfigWithDefaults(config);
+
+				// Merge CLI options with each spec from config
+				for (const spec of specs) {
+					const mergedOptions = mergeCliWithConfig(spec, cliOptions);
+					const generator = new PlaywrightGenerator(mergedOptions);
+					generator.generate();
+				}
+			} else {
+				// Direct CLI mode - input and output are required
+				if (!cliOptions.input || !cliOptions.output) {
+					throw new CliOptionsError(
+						"Either use a config file (-c/--config) or provide both -i/--input and -o/--output options."
+					);
+				}
+
+				const generatorOptions: PlaywrightGeneratorOptions = {
+					input: cliOptions.input,
+					output: cliOptions.output,
+					...cliOptions,
+				};
+
+				const generator = new PlaywrightGenerator(generatorOptions);
+				generator.generate();
+			}
 		} catch (error) {
 			console.error("Error:", error instanceof Error ? error.message : String(error));
 			process.exit(1);
