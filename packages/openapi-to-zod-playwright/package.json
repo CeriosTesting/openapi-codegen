@@ -56,6 +56,8 @@
 	"dependencies": {
 		"@cerios/openapi-to-zod": "*",
 		"commander": "^12.1.0",
+		"cosmiconfig": "^9.0.0",
+		"esbuild": "^0.27.1",
 		"yaml": "^2.6.1"
 	},
 	"peerDependencies": {
@@ -69,7 +71,7 @@
 		"@types/node": "^22.10.1",
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.2",
-		"vitest": "^2.1.8",
+		"vitest": "^4.0.15",
 		"zod": "^4.0.0"
 	}
 }

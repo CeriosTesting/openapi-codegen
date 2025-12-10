@@ -8,6 +8,7 @@ export default defineConfig([
 		sourcemap: true,
 		clean: true,
 		shims: true,
+		external: ["esbuild"],
 	},
 	{
 		entry: ["src/cli.ts"],
@@ -15,5 +16,6 @@ export default defineConfig([
 		dts: false,
 		sourcemap: true,
 		shims: true,
+		external: ["esbuild"],
 	},
 ]);
