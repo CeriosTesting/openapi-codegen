@@ -1,5 +1,11 @@
 # @cerios/openapi-to-zod-playwright
 
+## 0.1.2
+
+### Patch Changes
+
+- working config file
+
 ## 0.1.1
 
 ### Patch Changes
