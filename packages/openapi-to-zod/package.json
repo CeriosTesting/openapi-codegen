@@ -1,6 +1,6 @@
 {
 	"name": "@cerios/openapi-to-zod",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"author": "Ronald Veth - Cerios",
 	"description": "Generate Zod schemas from OpenAPI specifications. A TypeScript code generator that converts OpenAPI/Swagger YAML definitions into type-safe Zod validation schemas.",
 	"license": "MIT",
@@ -51,6 +51,8 @@
 	},
 	"dependencies": {
 		"commander": "^12.1.0",
+		"cosmiconfig": "^9.0.0",
+		"esbuild": "^0.27.1",
 		"yaml": "^2.6.1"
 	},
 	"devDependencies": {
@@ -58,7 +60,6 @@
 		"@biomejs/biome": "2.3.6",
 		"@changesets/cli": "^2.29.7",
 		"@types/node": "^24.10.1",
-		"cosmiconfig": "^9.0.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.2.6",
 		"npm-check-updates": "^19.1.2",
