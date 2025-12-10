@@ -16,3 +16,4 @@ export type {
 	SchemaName,
 } from "./types";
 export { defineConfig } from "./types";
+export { loadConfig, mergeCliWithConfig, mergeConfigWithDefaults } from "./utils/config-loader";

@@ -1,0 +1,12 @@
+{
+	"defaults": {
+		"mode": "strict",
+		"schemaType": "request"
+	},
+	"specs": [
+		{
+			"input": "tests/fixtures/simple.yaml",
+			"output": "tests/output/schema-type.ts"
+		}
+	]
+}
