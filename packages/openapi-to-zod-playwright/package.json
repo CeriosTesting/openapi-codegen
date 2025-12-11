@@ -51,7 +51,7 @@
 		"build": "tsup",
 		"compile": "tsc --noEmit",
 		"dev": "tsup --watch",
-		"test": "vitest"
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@cerios/openapi-to-zod": "*",
