@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, normalize } from "node:path";
 import { parse } from "yaml";
 import { ConfigurationError, FileOperationError, SchemaGenerationError, SpecValidationError } from "./errors";
 import { generateEnum } from "./generators/enum-generator";
@@ -216,7 +216,8 @@ export class ZodSchemaGenerator {
 	 * Ensure directory exists for a file path
 	 */
 	private ensureDirectoryExists(filePath: string): void {
-		const dir = dirname(filePath);
+		const normalizedPath = normalize(filePath);
+		const dir = dirname(normalizedPath);
 		if (!existsSync(dir)) {
 			mkdirSync(dir, { recursive: true });
 		}
@@ -234,8 +235,9 @@ export class ZodSchemaGenerator {
 			);
 		}
 		const output = this.generateString();
-		this.ensureDirectoryExists(this.options.output);
-		writeFileSync(this.options.output, output);
+		const normalizedOutput = normalize(this.options.output);
+		this.ensureDirectoryExists(normalizedOutput);
+		writeFileSync(normalizedOutput, output);
 	}
 
 	/**
@@ -246,6 +248,12 @@ export class ZodSchemaGenerator {
 	private resolveOptionsForContext(context: "request" | "response"): ResolvedOptions {
 		const contextOptions = context === "request" ? this.options.request : this.options.response;
 
+		// For nativeEnumType, only access it from request options since ResponseOptions doesn't have it
+		const nativeEnumType =
+			context === "request"
+				? (this.options.request?.nativeEnumType ?? this.options.nativeEnumType ?? "union")
+				: (this.options.nativeEnumType ?? "union");
+
 		return {
 			mode: contextOptions?.mode ?? this.options.mode ?? "normal",
 			enumType: contextOptions?.enumType ?? this.options.enumType ?? "zod",
@@ -253,8 +261,8 @@ export class ZodSchemaGenerator {
 			includeDescriptions: contextOptions?.includeDescriptions ?? this.options.includeDescriptions ?? true,
 			// Response schemas always use 'inferred' mode (Zod schemas are required)
 			// Request schemas can optionally use 'native' mode
-			typeMode: context === "response" ? "inferred" : (contextOptions?.typeMode ?? "inferred"),
-			nativeEnumType: contextOptions?.nativeEnumType ?? this.options.nativeEnumType ?? "union",
+			typeMode: context === "response" ? "inferred" : (this.options.request?.typeMode ?? "inferred"),
+			nativeEnumType,
 		};
 	}
 
