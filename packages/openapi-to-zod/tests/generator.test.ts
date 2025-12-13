@@ -448,4 +448,44 @@ describe("ZodSchemaGenerator", () => {
 			}
 		});
 	});
+
+	describe("JSON Format Support", () => {
+		it("should parse JSON files identically to YAML files", () => {
+			const yamlGenerator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("simple.yaml"),
+				showStats: false,
+			});
+			const jsonGenerator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("simple.json"),
+				showStats: false,
+			});
+
+			const yamlOutput = yamlGenerator.generateString();
+			const jsonOutput = jsonGenerator.generateString();
+
+			// Both outputs should be identical
+			expect(jsonOutput).toBe(yamlOutput);
+		});
+
+		it("should handle complex JSON specs with nested objects", () => {
+			const generator = new ZodSchemaGenerator({
+				input: TestUtils.getFixturePath("type-mode.json"),
+			});
+
+			const output = generator.generateString();
+
+			expect(output).toContain("export const userSchema");
+			expect(output).toContain("export const createUserRequestSchema");
+			expect(output).toContain("export const userStatusSchema");
+			expect(output).toContain("export const userProfileSchema");
+		});
+
+		it("should throw error for invalid JSON files", () => {
+			expect(() => {
+				new ZodSchemaGenerator({
+					input: TestUtils.getFixturePath("invalid-json.txt"),
+				});
+			}).toThrow(/Failed to parse OpenAPI specification/);
+		});
+	});
 });

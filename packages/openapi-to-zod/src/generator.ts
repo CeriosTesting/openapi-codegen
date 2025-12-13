@@ -61,19 +61,44 @@ export class ZodSchemaGenerator {
 		}
 
 		try {
-			const yamlContent = readFileSync(this.options.input, "utf-8");
-			this.spec = parse(yamlContent);
+			const content = readFileSync(this.options.input, "utf-8");
+
+			// Try parsing as YAML first (works for both YAML and JSON)
+			try {
+				this.spec = parse(content);
+			} catch (yamlError) {
+				// If YAML parsing fails, try JSON
+				try {
+					this.spec = JSON.parse(content);
+				} catch {
+					if (yamlError instanceof Error) {
+						const errorMessage = [
+							`Failed to parse OpenAPI specification from: ${this.options.input}`,
+							"",
+							`Error: ${yamlError.message}`,
+							"",
+							"Please ensure:",
+							"  - The file exists and is readable",
+							"  - The file contains valid YAML or JSON syntax",
+							"  - The file is a valid OpenAPI 3.x specification",
+						].join("\n");
+						throw new SpecValidationError(errorMessage, {
+							filePath: this.options.input,
+							originalError: yamlError.message,
+						});
+					}
+					throw yamlError;
+				}
+			}
 		} catch (error) {
+			if (error instanceof SpecValidationError) {
+				throw error;
+			}
 			if (error instanceof Error) {
 				const errorMessage = [
-					`Failed to parse OpenAPI specification from: ${this.options.input}`,
+					`Failed to read OpenAPI specification from: ${this.options.input}`,
 					"",
 					`Error: ${error.message}`,
-					"",
-					"Please ensure:",
-					"  - The file exists and is readable",
-					"  - The file contains valid YAML syntax",
-					"  - The file is a valid OpenAPI 3.x specification",
 				].join("\n");
 				throw new SpecValidationError(errorMessage, { filePath: this.options.input, originalError: error.message });
 			}

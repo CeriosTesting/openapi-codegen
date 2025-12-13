@@ -216,4 +216,39 @@ describe("PlaywrightGenerator", () => {
 			expect(() => generator.generateSchemasString()).toThrow(/Failed to parse OpenAPI specification/);
 		});
 	});
+
+	describe("JSON Format Support", () => {
+		it("should parse JSON files identically to YAML files", () => {
+			const yamlGenerator = new PlaywrightGenerator({
+				input: TestUtils.getFixturePath("simple-api.yaml"),
+				showStats: false,
+			});
+			const jsonGenerator = new PlaywrightGenerator({
+				input: TestUtils.getFixturePath("simple-api.json"),
+				showStats: false,
+			});
+
+			const yamlSchemas = yamlGenerator.generateSchemasString();
+			const jsonSchemas = jsonGenerator.generateSchemasString();
+
+			const yamlClient = yamlGenerator.generateClientString();
+			const jsonClient = jsonGenerator.generateClientString();
+
+			const yamlService = yamlGenerator.generateServiceString();
+			const jsonService = jsonGenerator.generateServiceString();
+
+			// All outputs should be identical
+			expect(jsonSchemas).toBe(yamlSchemas);
+			expect(jsonClient).toBe(yamlClient);
+			expect(jsonService).toBe(yamlService);
+		});
+
+		it("should throw error for invalid JSON files", () => {
+			const generator = new PlaywrightGenerator({
+				input: TestUtils.getFixturePath("invalid-json.txt"),
+			});
+
+			expect(() => generator.generateSchemasString()).toThrow(/Failed to parse OpenAPI specification/);
+		});
+	});
 });
