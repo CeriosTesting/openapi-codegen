@@ -184,10 +184,10 @@ describe("BasePath Option", () => {
 
 			const output = generator.generateClientString();
 
-			// JSDoc should show complete path
-			expect(output).toMatch(/\/\*\*\s+\*\s+GET \/api\/v1\/users/);
-			expect(output).toMatch(/\/\*\*\s+\*\s+POST \/api\/v1\/users/);
-			expect(output).toMatch(/\/\*\*\s+\*\s+GET \/api\/v1\/users\/\{userId\}/);
+			// JSDoc should show complete path (may be after summary/description)
+			expect(output).toContain("GET /api/v1/users");
+			expect(output).toContain("POST /api/v1/users");
+			expect(output).toContain("GET /api/v1/users/{userId}");
 		});
 		it("should show original path in JSDoc when no basePath", () => {
 			const generator = new OpenApiPlaywrightGenerator({
@@ -196,9 +196,9 @@ describe("BasePath Option", () => {
 
 			const output = generator.generateClientString();
 
-			// JSDoc should show original paths
-			expect(output).toMatch(/\/\*\*\s+\*\s+GET \/users/);
-			expect(output).toMatch(/\/\*\*\s+\*\s+POST \/users/);
+			// JSDoc should show original paths (may be after summary/description)
+			expect(output).toContain("GET /users");
+			expect(output).toContain("POST /users");
 		});
 	});
 

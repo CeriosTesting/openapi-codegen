@@ -5,6 +5,35 @@ import { TestUtils } from "./utils/test-utils";
 describe("Statistics Generation", () => {
 	const fixtureFile = TestUtils.getFixturePath("simple-api.yaml");
 
+	describe("Schema Statistics", () => {
+		it("should include statistics in schema file when showStats is true", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: fixtureFile,
+				showStats: true,
+			});
+
+			const schemasOutput = generator.generateSchemasString();
+
+			// Base package uses "Generation Statistics:"
+			expect(schemasOutput).toContain("// Generation Statistics:");
+			expect(schemasOutput).toContain("//   Total schemas:");
+			expect(schemasOutput).toContain("//   Generated at:");
+		});
+
+		it("should not include statistics in schema file when showStats is false", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: fixtureFile,
+				showStats: false,
+			});
+
+			const schemasOutput = generator.generateSchemasString();
+
+			expect(schemasOutput).not.toContain("// Generation Statistics:");
+			expect(schemasOutput).not.toContain("//   Total schemas:");
+			expect(schemasOutput).not.toContain("//   Generated at:");
+		});
+	});
+
 	describe("Client Statistics", () => {
 		it("should include statistics in client file when showStats is true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
@@ -58,8 +87,8 @@ describe("Statistics Generation", () => {
 
 			const clientFileOutput = (generator as any).generateClientFile();
 
-			// Should contain DELETE, GET, POST (alphabetically sorted)
-			expect(clientFileOutput).toMatch(/HTTP methods:\s*DELETE,\s*GET,\s*POST/);
+			// Should contain DELETE, GET, POST with counts (alphabetically sorted)
+			expect(clientFileOutput).toMatch(/HTTP methods:\s*DELETE:\s*\d+,\s*GET:\s*\d+,\s*POST:\s*\d+/);
 		});
 
 		it("should count unique path parameters", () => {
