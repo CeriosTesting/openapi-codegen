@@ -1,5 +1,11 @@
 # @cerios/openapi-to-zod
 
+## 0.5.1
+
+### Patch Changes
+
+- fixed Corrects typo in changelog entries where the type was incorrectly referenced as "OpenApiPlaywrightOpenApiGeneratorOptions" instead of the actual "OpenApiPlaywrightGeneratorOptions".
+
 ## 0.5.0
 
 ### Minor Changes
