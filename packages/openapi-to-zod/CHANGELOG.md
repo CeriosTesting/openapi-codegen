@@ -1,5 +1,11 @@
 # @cerios/openapi-to-zod
 
+## 0.5.3
+
+### Patch Changes
+
+- openapi-to-zod is now a peer dependency to openapi-to-zod-playwright
+
 ## 0.5.2
 
 ### Patch Changes
