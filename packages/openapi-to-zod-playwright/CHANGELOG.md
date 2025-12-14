@@ -1,5 +1,20 @@
 # @cerios/openapi-to-zod-playwright
 
+## 0.5.0
+
+### Minor Changes
+
+- Introduces fine-grained control over which API operations get generated through configurable filters based on tags, paths, methods, operationIds, and deprecated status. Supports glob patterns for flexible matching with include/exclude logic where excludes override includes.
+
+  Adds typed header parameter schema generation for operations, creating compile-time type safety without runtime validation. Headers follow HTTP semantics as optional strings.
+
+  Enhances useOperationId option to control method naming strategy, allowing either operationId-based or auto-generated names from HTTP method and path.
+
+### Patch Changes
+
+- Updated dependencies
+  - @cerios/openapi-to-zod@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
