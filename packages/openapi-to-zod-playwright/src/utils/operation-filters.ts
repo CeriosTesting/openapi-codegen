@@ -1,4 +1,4 @@
-import type { OperationFilters } from "../types";
+import type { PlaywrightOperationFilters } from "../types";
 
 // Re-export base operation filtering utilities from public API
 export {
@@ -59,7 +59,7 @@ export function createPlaywrightFilterStatistics(): PlaywrightFilterStatistics {
  */
 export function shouldIncludeStatusCode(
 	statusCode: string,
-	filters?: Pick<OperationFilters, "includeStatusCodes" | "excludeStatusCodes">
+	filters?: Pick<PlaywrightOperationFilters, "includeStatusCodes" | "excludeStatusCodes">
 ): boolean {
 	// If no filters specified, include all status codes
 	if (!filters) {
@@ -120,7 +120,10 @@ export function shouldIncludeStatusCode(
  * @param stats - Playwright filter statistics object
  * @param filters - The filter configuration to validate
  */
-export function validatePlaywrightFilters(stats: PlaywrightFilterStatistics, filters?: OperationFilters): void {
+export function validatePlaywrightFilters(
+	stats: PlaywrightFilterStatistics,
+	filters?: PlaywrightOperationFilters
+): void {
 	if (!filters || stats.totalOperations === 0) {
 		return;
 	}
