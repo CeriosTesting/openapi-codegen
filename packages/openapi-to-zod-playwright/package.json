@@ -54,7 +54,6 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@cerios/openapi-to-zod": "*",
 		"commander": "^12.1.0",
 		"cosmiconfig": "^9.0.0",
 		"esbuild": "^0.27.1",
@@ -62,6 +61,7 @@
 		"yaml": "^2.6.1"
 	},
 	"peerDependencies": {
+		"@cerios/openapi-to-zod": "^0.5.0",
 		"@playwright/test": "^1.48.0",
 		"zod": "^4.0.0"
 	},

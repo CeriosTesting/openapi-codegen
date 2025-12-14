@@ -1,8 +1,9 @@
-// Re-export commonly needed types from @cerios/openapi-to-zod
+// Re-export commonly used types from @cerios/openapi-to-zod for convenience
 export type {
 	CommonSchemaOptions,
 	ExecutionMode,
 	NativeEnumType,
+	OpenAPISchema,
 	OpenAPISpec,
 	OpenApiGeneratorOptions,
 	OperationFilters,

@@ -13,6 +13,7 @@ export type {
 	ConfigFile,
 	ExecutionMode,
 	NativeEnumType,
+	OpenAPISchema,
 	OpenAPISpec,
 	OpenApiGeneratorOptions,
 	OperationFilters,
