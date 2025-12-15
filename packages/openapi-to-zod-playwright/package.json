@@ -1,6 +1,6 @@
 {
 	"name": "@cerios/openapi-to-zod-playwright",
-	"version": "1.0.0",
+	"version": "0.6.1",
 	"author": "Ronald Veth - Cerios",
 	"description": "Generate type-safe Playwright API clients from OpenAPI specifications with Zod validation",
 	"license": "MIT",

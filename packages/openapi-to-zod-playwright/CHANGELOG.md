@@ -1,6 +1,14 @@
 # @cerios/openapi-to-zod-playwright
 
-## 1.0.0
+## 0.6.1
+
+### Patch Changes
+
+- Improves the logic for detecting and importing client type aliases used in generated service files. Previously only checked for ApiRequestContextOptions and MultipartFormValue, but now scans for all relevant type aliases including QueryParams, HttpHeaders, UrlEncodedFormData, MultipartFormData, and RequestBody.
+
+  Ensures generated service files properly import all necessary type definitions from the client, preventing compilation errors when services use various parameter types, form data, or request body configurations.
+
+## 0.6.0
 
 ### Minor Changes
 
