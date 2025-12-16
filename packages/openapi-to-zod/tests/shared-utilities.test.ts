@@ -15,7 +15,7 @@ import {
  * @shared Tests for shared utility exports
  * These utilities are exported from the core package for use by other packages like openapi-to-zod-playwright
  *
- * @since 0.7.0
+ * @since 1.0.0
  */
 describe("Shared Utilities", () => {
 	describe("LRUCache", () => {

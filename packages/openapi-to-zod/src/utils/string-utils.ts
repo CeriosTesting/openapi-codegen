@@ -20,7 +20,7 @@ export function escapePattern(str: string): string {
 
 /**
  * @shared Escape JSDoc comment content to prevent injection
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  */
 export function escapeJSDoc(str: string): string {

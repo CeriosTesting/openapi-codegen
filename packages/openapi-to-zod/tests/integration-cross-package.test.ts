@@ -11,7 +11,7 @@ import { executeBatch, formatConfigValidationError, type Generator, LRUCache, to
  *
  * This simulates the production environment where playwright imports core as a peer dependency.
  *
- * @since 0.7.0
+ * @since 1.0.0
  */
 describe("Cross-Package Integration: Core → Playwright", () => {
 	describe("LRUCache import and usage", () => {

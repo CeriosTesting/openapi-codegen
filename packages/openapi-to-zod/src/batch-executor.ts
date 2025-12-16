@@ -3,7 +3,7 @@ import type { ExecutionMode } from "./types";
 
 /**
  * @shared Generator interface for batch execution
- * @since 0.7.0
+ * @since 1.0.0
  * Interface that both OpenApiGenerator and OpenApiPlaywrightGenerator must implement
  */
 export interface Generator {
@@ -149,7 +149,7 @@ function printSummary<T>(summary: BatchExecutionSummary<T>): void {
 
 /**
  * @shared Execute batch processing of multiple specs with custom generator
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  *
  * @param specs - Array of spec configurations to process

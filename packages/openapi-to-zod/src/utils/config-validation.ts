@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * @shared Format Zod validation errors into user-friendly error messages
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  *
  * @param error - The Zod validation error

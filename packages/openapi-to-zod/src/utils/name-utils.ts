@@ -30,7 +30,7 @@ export function toCamelCase(str: string, options?: NamingOptions): string {
 
 /**
  * @shared Convert enum value to PascalCase and sanitize for TypeScript enum keys
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  */
 export function toPascalCase(str: string | number): string {

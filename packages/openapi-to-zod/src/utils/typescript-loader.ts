@@ -2,7 +2,7 @@ import type { Loader } from "cosmiconfig";
 
 /**
  * @shared Create a TypeScript loader for cosmiconfig using esbuild
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  *
  * Creates a loader that transpiles TypeScript config files to JavaScript

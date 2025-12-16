@@ -1,6 +1,6 @@
 /**
  * @shared Simple LRU Cache implementation for performance optimization
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  * Prevents memory leaks from unbounded cache growth
  */

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * @shared Zod schema for request/response options validation
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  */
 export const RequestResponseOptionsSchema = z.strictObject({
@@ -13,7 +13,7 @@ export const RequestResponseOptionsSchema = z.strictObject({
 
 /**
  * @shared Base Zod schema for operation filters (without status codes)
- * @since 0.7.0
+ * @since 1.0.0
  * Utility used by core and playwright packages
  */
 export const OperationFiltersSchema = z.strictObject({
