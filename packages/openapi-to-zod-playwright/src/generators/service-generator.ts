@@ -1,11 +1,10 @@
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
-import { toCamelCase, toPascalCase } from "@cerios/openapi-to-zod/internal";
+import { stripPathPrefix, toCamelCase, toPascalCase } from "@cerios/openapi-to-zod/internal";
 import type { PlaywrightOperationFilters } from "../types";
 import { shouldIgnoreHeader } from "../utils/header-filters";
 import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
 import { generateOperationJSDoc } from "../utils/operation-jsdoc";
-import { stripPathPrefix } from "../utils/path-utils";
 
 interface ResponseInfo {
 	statusCode: string;

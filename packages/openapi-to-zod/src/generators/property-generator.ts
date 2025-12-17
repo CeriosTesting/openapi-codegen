@@ -2,6 +2,7 @@ import type { OpenAPISchema, OpenAPISpec } from "../types";
 import { LRUCache } from "../utils/lru-cache";
 import type { NamingOptions } from "../utils/name-utils";
 import { resolveRef, toCamelCase } from "../utils/name-utils";
+import { stripPrefix } from "../utils/pattern-utils";
 import { addDescription, getPrimaryType, hasMultipleTypes, isNullable, wrapNullable } from "../utils/string-utils";
 import { generateArrayValidation } from "../validators/array-validator";
 import { generateAllOf, generateUnion } from "../validators/composition-validator";
@@ -18,6 +19,7 @@ export interface PropertyGeneratorContext {
 	includeDescriptions: boolean;
 	useDescribe: boolean;
 	namingOptions: NamingOptions;
+	stripSchemaPrefix?: string | RegExp;
 }
 
 /**
@@ -353,9 +355,9 @@ export class PropertyGenerator {
 				this.context.schemaDependencies.get(currentSchema)?.add(refName);
 			}
 			// Use the resolved name for the schema reference
-			const schemaName = `${toCamelCase(resolvedRefName, this.context.namingOptions)}Schema`;
-
-			// Check for direct self-reference or circular dependency through alias
+			// Apply stripSchemaPrefix to get consistent schema names
+			const strippedRefName = stripPrefix(resolvedRefName, this.context.stripSchemaPrefix);
+			const schemaName = `${toCamelCase(strippedRefName, this.context.namingOptions)}Schema`; // Check for direct self-reference or circular dependency through alias
 			if (currentSchema && (refName === currentSchema || this.isCircularThroughAlias(currentSchema, refName))) {
 				// Use lazy evaluation for circular references with explicit type annotation
 				const lazySchema = `z.lazy((): z.ZodTypeAny => ${schemaName})`;

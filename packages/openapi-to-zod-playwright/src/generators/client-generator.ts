@@ -1,9 +1,9 @@
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
+import { stripPathPrefix } from "@cerios/openapi-to-zod/internal";
 import type { PlaywrightOperationFilters } from "../types";
 import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
 import { generateOperationJSDoc } from "../utils/operation-jsdoc";
-import { stripPathPrefix } from "../utils/path-utils";
 
 /**
  * Normalizes a base path by ensuring it has a leading slash and no trailing slash

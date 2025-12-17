@@ -34,6 +34,8 @@ export {
 	shouldIncludeOperation,
 	validateFilters,
 } from "./utils/operation-filters";
+// Pattern matching utilities
+export { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
 export { escapeJSDoc } from "./utils/string-utils";
 
 // TypeScript loading utilities

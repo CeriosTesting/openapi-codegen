@@ -255,18 +255,6 @@ async function initConfigFile(): Promise<void> {
 			initial: "",
 		},
 		{
-			type: "text",
-			name: "stripPathPrefix",
-			message: "Strip path prefix (e.g., '/api/v1' or '^/api/v\\d+', leave empty to skip):",
-			initial: "",
-		},
-		{
-			type: "text",
-			name: "basePath",
-			message: "Base path to prepend to API calls (e.g., '/api/v1', leave empty to skip):",
-			initial: "",
-		},
-		{
 			type: "select",
 			name: "format",
 			message: "Config file format:",
@@ -290,7 +278,7 @@ async function initConfigFile(): Promise<void> {
 		return;
 	}
 
-	const { output, outputClient, outputService, format, includeDefaults, stripPathPrefix, basePath } = response;
+	const { output, outputClient, outputService, format, includeDefaults } = response;
 	const input = inputPath;
 
 	// Generate config content
@@ -307,12 +295,6 @@ async function initConfigFile(): Promise<void> {
 		}
 		if (outputService) {
 			specConfig.push(`      outputService: '${outputService}',`);
-		}
-		if (stripPathPrefix) {
-			specConfig.push(`      stripPathPrefix: '${stripPathPrefix}',`);
-		}
-		if (basePath) {
-			specConfig.push(`      basePath: '${basePath}',`);
 		}
 
 		if (includeDefaults) {
@@ -356,12 +338,6 @@ ${specConfig.join("\n")}
 		}
 		if (outputService) {
 			specObj.outputService = outputService;
-		}
-		if (stripPathPrefix) {
-			specObj.stripPathPrefix = stripPathPrefix;
-		}
-		if (basePath) {
-			specObj.basePath = basePath;
 		}
 
 		const jsonConfig: any = {

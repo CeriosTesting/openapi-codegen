@@ -187,6 +187,7 @@ Examples:
 | `schemaType` | `"all"` \| `"request"` \| `"response"` | Schema filtering |
 | `prefix` | `string` | Prefix for schema names |
 | `suffix` | `string` | Suffix for schema names |
+| `stripSchemaPrefix` | `string \| RegExp` | Strip prefix from schema names before generating (e.g., `"Company.Models."` or `/^[A-Z]+\./`) |
 | `showStats` | `boolean` | Include generation statistics |
 | `request` | `object` | Request-specific options (mode, includeDescriptions, useDescribe) |
 | `response` | `object` | Response-specific options (mode, includeDescriptions, useDescribe) |
@@ -597,6 +598,183 @@ This is useful when:
 - Working with multiple API specs in the same project
 - Following specific naming conventions (DTO, Model, Entity)
 - Avoiding naming conflicts with existing code
+
+### Schema Prefix Stripping
+
+The `stripSchemaPrefix` option removes common prefixes from schema names in your OpenAPI spec before generating Zod schemas. This is particularly useful when your OpenAPI spec uses namespaced schema names (like .NET-generated specs with "Company.Models.User").
+
+**OpenAPI Spec with Namespaced Schemas:**
+```yaml
+components:
+  schemas:
+    Company.Models.User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Company.Models.UserRole'
+    Company.Models.UserRole:
+      type: string
+      enum: [admin, user, guest]
+    Company.Models.Post:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        author:
+          $ref: '#/components/schemas/Company.Models.User'
+```
+
+**Without `stripSchemaPrefix`:**
+```typescript
+export const companyModelsUserRoleSchema = z.enum(["admin", "user", "guest"]);
+
+export const companyModelsUserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: companyModelsUserRoleSchema  // Long reference name
+});
+
+export const companyModelsPostSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  author: companyModelsUserSchema  // Long reference name
+});
+
+export type CompanyModelsUserRole = z.infer<typeof companyModelsUserRoleSchema>;
+export type CompanyModelsUser = z.infer<typeof companyModelsUserSchema>;
+export type CompanyModelsPost = z.infer<typeof companyModelsPostSchema>;
+```
+
+**With `stripSchemaPrefix: "Company.Models."`:**
+```typescript
+export const userRoleSchema = z.enum(["admin", "user", "guest"]);
+
+export const userSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: userRoleSchema  // Clean reference
+});
+
+export const postSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  author: userSchema  // Clean reference
+});
+
+export type UserRole = z.infer<typeof userRoleSchema>;
+export type User = z.infer<typeof userSchema>;
+export type Post = z.infer<typeof postSchema>;
+```
+
+#### Usage
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'schemas.ts',
+    stripSchemaPrefix: 'Company.Models.'  // Strip this exact prefix
+  }]
+});
+```
+
+#### Regex Patterns
+
+Use regex patterns to strip dynamic prefixes:
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'schemas.ts',
+    // Strip any namespace prefix ending with a dot
+    stripSchemaPrefix: '^[A-Z][a-z]+\\.'
+  }]
+});
+```
+
+**Regex Auto-Detection:**
+
+Regex patterns are auto-detected if they contain: `^`, `$`, `\\d`, `\\w`, `\\s`, `.*`, `.+`, `[]`, `()`
+
+```typescript
+// These are all treated as regex patterns:
+stripSchemaPrefix: '^Company\\.'       // Starts with ^
+stripSchemaPrefix: '[A-Z]+\\.'         // Contains []
+stripSchemaPrefix: '.*\\.Models\\.'    // Contains .*
+
+// This is a literal string:
+stripSchemaPrefix: 'Company.Models.'   // No regex markers
+```
+
+For TypeScript configs, you can also use `RegExp` objects:
+
+```typescript
+stripSchemaPrefix: /^[A-Z][a-z]+\./
+```
+
+#### Common Patterns
+
+**Pattern 1: .NET Namespaces**
+```typescript
+{
+  stripSchemaPrefix: 'Company.Models.'
+}
+// Company.Models.User → User
+// Company.Models.Post → Post
+```
+
+**Pattern 2: Multiple Namespaces**
+```typescript
+{
+  stripSchemaPrefix: '^[A-Za-z]+\\.Models\\.'
+}
+// MyApp.Models.User → User
+// OtherApp.Models.User → User
+```
+
+**Pattern 3: Version Prefixes**
+```typescript
+{
+  stripSchemaPrefix: '^v\\d+\\.'
+}
+// v1.User → User
+// v2.Product → Product
+```
+
+#### Interaction with prefix/suffix Options
+
+`stripSchemaPrefix` is applied **before** `prefix` and `suffix` options:
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'schemas.ts',
+    stripSchemaPrefix: 'Company.Models.',  // Applied first
+    prefix: 'api',                          // Applied second
+    suffix: 'dto'                           // Applied third
+  }]
+});
+```
+
+**Result:**
+- `Company.Models.User` → `User` → `apiUserDtoSchema`
+- `Company.Models.Post` → `Post` → `apiPostDtoSchema`
+
+#### Benefits
+
+1. **Cleaner Schema Names**: Generates `userSchema` instead of `companyModelsUserSchema`
+2. **Better Type Names**: Creates `User` type instead of `CompanyModelsUser`
+3. **Shorter References**: Simpler schema references in composed types
+4. **Better Code Completion**: Easier to find schemas in IDE autocomplete
+5. **Flexible Pattern Matching**: Use regex for dynamic prefixes
 
 ## Generation Statistics
 
