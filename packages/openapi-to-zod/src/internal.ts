@@ -25,7 +25,7 @@ export { formatConfigValidationError } from "./utils/config-validation";
 export { LRUCache } from "./utils/lru-cache";
 
 // String and naming utilities
-export { toPascalCase } from "./utils/name-utils";
+export { toCamelCase, toPascalCase } from "./utils/name-utils";
 // Operation filtering utilities
 export {
 	createFilterStatistics,
@@ -34,6 +34,8 @@ export {
 	shouldIncludeOperation,
 	validateFilters,
 } from "./utils/operation-filters";
+// Pattern matching utilities
+export { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
 export { escapeJSDoc } from "./utils/string-utils";
 
 // TypeScript loading utilities

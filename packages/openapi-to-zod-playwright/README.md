@@ -35,10 +35,10 @@ For complete Zod schema generation features, see the [@cerios/openapi-to-zod REA
 ## Installation
 
 ```bash
-npm install @cerios/openapi-to-zod-playwright @playwright/test zod
+npm install @cerios/openapi-to-zod-playwright @cerios/openapi-to-zod @playwright/test zod
 ```
 
-> **Note:** `@cerios/openapi-to-zod` is installed automatically as a dependency.
+> **Note:** `@cerios/openapi-to-zod` is required as a peer dependency for shared utilities and the core functionality.
 
 ## Quick Start
 
@@ -196,6 +196,141 @@ Examples:
 - **Multiple responses**: Status code suffix per method (e.g., `postUsers200()`, `postUsers201()`)
 - **Error methods**: `Error` suffix for testing failures (e.g., `getUsersByUserIdError()`)
 
+## Path Prefix Stripping
+
+The `stripPathPrefix` option removes common prefixes from API paths before generating method names and documentation. This creates cleaner, more readable method names while keeping the actual HTTP requests intact when combined with `basePath`.
+
+### Basic Usage
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'client.ts',
+    stripPathPrefix: '/api/v1.0',  // Strip this prefix from all paths
+    basePath: '/api/v1.0'          // Add it back for HTTP requests
+  }]
+});
+```
+
+### How It Works
+
+**OpenAPI Spec:**
+```yaml
+paths:
+  /api/v1.0/users:
+    get:
+      summary: Get all users
+  /api/v1.0/posts:
+    get:
+      summary: Get all posts
+```
+
+**Without `stripPathPrefix`:**
+```typescript
+// Method names generated from full path
+getApiV10Users()    // GET /api/v1.0/users
+getApiV10Posts()    // GET /api/v1.0/posts
+```
+
+**With `stripPathPrefix: '/api/v1.0'`:**
+```typescript
+// Method names generated from stripped path (cleaner)
+getUsers()    // GET /users (shown in JSDoc)
+getPosts()    // GET /posts (shown in JSDoc)
+
+// Actual HTTP requests use basePath
+// GET {baseURL}/api/v1.0/users
+// GET {baseURL}/api/v1.0/posts
+```
+
+### Regex Patterns
+
+Use regex patterns to strip dynamic prefixes (e.g., version numbers):
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'client.ts',
+    // Strip any versioned API prefix
+    stripPathPrefix: '^/api/v\\d+\\.\\d+'
+  }]
+});
+```
+
+**Matches:**
+- `/api/v1.0/users` → `/users`
+- `/api/v2.5/posts` → `/posts`
+- `/api/v10.3/products` → `/products`
+
+**Regex Auto-Detection:**
+
+Regex patterns are auto-detected if they contain: `^`, `$`, `\d`, `\w`, `\s`, `.*`, `.+`, `[]`, `()`
+
+```typescript
+// These are all treated as regex patterns:
+stripPathPrefix: '^/api/v\\d+'      // Starts with ^
+stripPathPrefix: '/api/v[0-9]+'     // Contains []
+stripPathPrefix: '/api/.*/v\\d+'   // Contains .*
+
+// This is a literal string:
+stripPathPrefix: '/api/v1'          // No regex markers
+```
+
+For TypeScript configs, you can also use `RegExp` objects:
+
+```typescript
+stripPathPrefix: /^\/api\/v\d+\.\d+/
+```
+
+### Normalization
+
+`stripPathPrefix` handles various input formats:
+
+```typescript
+// All of these work the same:
+stripPathPrefix: '/api/v1'      // Preferred
+stripPathPrefix: 'api/v1'       // Normalized to /api/v1
+stripPathPrefix: '/api/v1/'     // Trailing slash removed
+```
+
+### Common Patterns
+
+**Pattern 1: Clean Version Prefixes**
+```typescript
+{
+  stripPathPrefix: '/api/v1.0',
+  basePath: '/api/v1.0'
+}
+// Paths: /api/v1.0/users → getUsers() → GET /api/v1.0/users
+```
+
+**Pattern 2: Multiple API Versions**
+```typescript
+{
+  stripPathPrefix: '^/api/v\\d+',
+  basePath: '/api/v2'  // Or determined at runtime
+}
+// All versions stripped, base path can vary
+```
+
+**Pattern 3: Organization Prefix**
+```typescript
+{
+  stripPathPrefix: '/myorg/api',
+  basePath: '/myorg/api'
+}
+// Paths: /myorg/api/users → getUsers() → GET /myorg/api/users
+```
+
+### Benefits
+
+1. **Cleaner Method Names**: Generates `getUsers()` from path `/users` instead of `getApiV10Users()` from `/api/v1.0/users`
+2. **Better JSDoc**: Shows `/users` instead of `/api/v1.0/users` in documentation
+3. **Flexible Routing**: Strip prefix for naming, add back with `basePath` for requests
+4. **Version Independence**: Use regex to handle multiple API versions
+
 ## CLI Usage
 
 ### Initialize a New Config File
@@ -259,6 +394,7 @@ export default defineConfig({
       output: 'src/generated/api-v2.ts',
       outputClient: 'src/generated/api-v2-client.ts',
       outputService: 'src/generated/api-v2-service.ts',
+      stripPathPrefix: '/api/v2', // Strip prefix from paths for cleaner method names
       basePath: '/api/v2', // Prepend base path to all endpoints
       mode: 'normal',
       prefix: 'v2',
@@ -310,6 +446,7 @@ export default defineConfig({
 | `outputClient` | `string` | Optional path for client class file | `undefined` |
 | `outputService` | `string` | Optional path for service class file (requires `outputClient`) | `undefined` |
 | `validateServiceRequest` | `boolean` | Enable Zod validation for request bodies in service methods | `false` |
+| `stripPathPrefix` | `string \| RegExp` | Strip prefix from paths before generating method names (literal string or regex pattern) | `undefined` |
 | `ignoreHeaders` | `string[]` | Header patterns to ignore (supports glob patterns like `"X-*"`, `"*"`) | `undefined` |
 | `basePath` | `string` | Base path to prepend to all endpoints (e.g., `"/api/v1"`) | `undefined` |
 | `useOperationId` | `boolean` | Use operationId from spec for method names | `true` |

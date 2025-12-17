@@ -15,6 +15,7 @@ import {
 	shouldIncludeOperation,
 	validateFilters,
 } from "./utils/operation-filters";
+import { stripPrefix } from "./utils/pattern-utils";
 import { configurePatternCache } from "./validators/string-validator";
 
 type SchemaContext = "request" | "response" | "both";
@@ -47,6 +48,7 @@ export class OpenApiGenerator {
 			schemaType: options.schemaType || "all",
 			prefix: options.prefix,
 			suffix: options.suffix,
+			stripSchemaPrefix: options.stripSchemaPrefix,
 			showStats: options.showStats ?? true,
 			request: options.request,
 			response: options.response,
@@ -141,6 +143,7 @@ export class OpenApiGenerator {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
 			},
+			stripSchemaPrefix: this.options.stripSchemaPrefix,
 		});
 	}
 
@@ -196,11 +199,14 @@ export class OpenApiGenerator {
 				output.push(schemaCode);
 
 				// Add type immediately after schema (if not already included)
-				if (!schemaCode.includes(`export type ${name}`)) {
-					const schemaName = `${toCamelCase(name, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
-					output.push(`export type ${name} = z.infer<typeof ${schemaName}>;`);
+				// Convert schema name to valid TypeScript type name (handles dotted names)
+				// Apply stripSchemaPrefix before type name generation
+				const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+				const typeName = toPascalCase(strippedName);
+				if (!schemaCode.includes(`export type ${typeName}`)) {
+					const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
+					output.push(`export type ${typeName} = z.infer<typeof ${schemaName}>;`);
 				}
-
 				output.push("");
 			} else if (typeCode) {
 				// Type only (shouldn't happen in Zod-only mode, but kept for safety)
@@ -208,7 +214,6 @@ export class OpenApiGenerator {
 				output.push("");
 			}
 		}
-
 		return output.join("\n");
 	}
 
@@ -594,8 +599,11 @@ export class OpenApiGenerator {
 		if (schema.enum) {
 			const jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
 
+			// Apply stripSchemaPrefix before generating enum
+			const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+
 			// Generate Zod enum
-			const { schemaCode, typeCode } = generateEnum(name, schema.enum, {
+			const { schemaCode, typeCode } = generateEnum(strippedName, schema.enum, {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
 			});
@@ -606,7 +614,9 @@ export class OpenApiGenerator {
 		}
 
 		// Generate Zod schema
-		const schemaName = `${toCamelCase(name, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
+		// Apply stripSchemaPrefix to get cleaner schema names
+		const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+		const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
 		const jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
 
 		// For allOf with single $ref, track dependency manually since we simplify it
@@ -627,6 +637,7 @@ export class OpenApiGenerator {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
 			},
+			stripSchemaPrefix: this.options.stripSchemaPrefix,
 		});
 
 		// Check if this is just a simple $ref (alias)
@@ -921,7 +932,9 @@ export class OpenApiGenerator {
 		// Handle references
 		if (schema.$ref) {
 			const refName = resolveRef(schema.$ref);
-			const schemaName = toCamelCase(refName, { prefix: this.options.prefix, suffix: this.options.suffix });
+			// Apply stripSchemaPrefix to referenced schema names
+			const strippedRefName = stripPrefix(refName, this.options.stripSchemaPrefix);
+			const schemaName = toCamelCase(strippedRefName, { prefix: this.options.prefix, suffix: this.options.suffix });
 			return `${schemaName}Schema`;
 		}
 

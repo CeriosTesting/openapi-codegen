@@ -74,7 +74,36 @@ describe("CLI - Playwright", () => {
 			});
 			expect.fail("Should have thrown an error");
 		} catch (error: any) {
-			expect(error.message).toContain("No config file found");
+			const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
+			expect(stderr).toContain("No config file found");
+			expect(stderr).toContain("init");
+		}
+	});
+
+	it("should show helpful error with init tip for invalid config", () => {
+		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
+
+		// Create an invalid config (missing required 'specs' field)
+		const invalidConfig = {
+			defaults: {
+				mode: "strict",
+			},
+			// Missing specs array
+		};
+
+		writeFileSync(configPath, JSON.stringify(invalidConfig, null, 2), "utf-8");
+
+		try {
+			execSync(`node ${CLI_PATH} --config ${configPath}`, {
+				encoding: "utf-8",
+				cwd: TEST_DIR,
+			});
+			expect.fail("Should have thrown an error");
+		} catch (error: any) {
+			const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
+			expect(stderr).toContain("Invalid configuration file");
+			expect(stderr).toContain("Validation errors:");
+			expect(stderr).toContain("- specs: Invalid input: expected array, received undefined");
 		}
 	});
 });

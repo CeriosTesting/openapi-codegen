@@ -6,7 +6,7 @@ import prompts from "prompts";
 import { executeBatch, getBatchExitCode } from "./batch-executor";
 import { CliOptionsError } from "./errors";
 import { OpenApiGenerator } from "./openapi-generator";
-import type { ConfigFile, ExecutionMode } from "./types";
+import type { ExecutionMode } from "./types";
 import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 
 const program = new Command();
@@ -113,14 +113,7 @@ function findSpecFiles(): { files: Array<{ path: string; size: string }>; totalC
  */
 async function executeConfigMode(options: { config?: string }): Promise<void> {
 	// Load config file
-	let config: ConfigFile;
-	try {
-		config = await loadConfig(options.config);
-	} catch {
-		throw new CliOptionsError("No config file found. Run 'openapi-to-zod init' to create one.", {
-			configPath: options.config,
-		});
-	}
+	const config = await loadConfig(options.config);
 
 	// Merge defaults with specs
 	const specs = mergeConfigWithDefaults(config);

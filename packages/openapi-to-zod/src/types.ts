@@ -89,6 +89,38 @@ export interface OpenApiGeneratorOptions {
 	suffix?: string;
 
 	/**
+	 * Strip a common prefix from all schema names before processing
+	 * Useful when OpenAPI spec has redundant schema prefixes that you want to ignore
+	 *
+	 * Supports both literal strings and regex patterns:
+	 * - Literal string: "Company.Models." (must match exactly)
+	 * - Regex pattern: "^[A-Z][a-z]+\\." (auto-detected or use RegExp for TypeScript configs)
+	 *
+	 * Regex auto-detection checks for: ^, $, \\d, \\w, \\s, .*, .+, [], ()
+	 *
+	 * This affects:
+	 * - Schema name generation (shorter, cleaner names)
+	 * - Type name generation
+	 * - References to schemas
+	 *
+	 * Applied before prefix/suffix options.
+	 *
+	 * @example
+	 * // Spec has: "Company.Models.User", "Company.Models.Post"
+	 * // stripSchemaPrefix: "Company.Models."
+	 * // Results in: "User", "Post"
+	 * // Schema names: userSchema, postSchema
+	 *
+	 * @example
+	 * // Strip any namespace prefix
+	 * // stripSchemaPrefix: "^[A-Za-z]+\\."
+	 * // Matches: "Namespace.User", "App.User", etc.
+	 *
+	 * @default undefined (no stripping)
+	 */
+	stripSchemaPrefix?: string | RegExp;
+
+	/**
 	 * Whether to include generation statistics in output file
 	 * @default true
 	 */

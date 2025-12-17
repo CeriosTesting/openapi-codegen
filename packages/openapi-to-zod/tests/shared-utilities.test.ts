@@ -1,6 +1,5 @@
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	createTypeScriptLoader,
 	escapeJSDoc,
@@ -99,10 +98,9 @@ describe("Shared Utilities", () => {
 		it("should convert delimited strings to PascalCase with proper capitalization", () => {
 			// Function splits on delimiters and capitalizes each word
 			expect(toPascalCase("user-api")).toBe("UserApi");
-			expect(toPascalCase("XML_Parser")).toBe("XmlParser");
+			expect(toPascalCase("XML_Parser")).toBe("XMLParser");
 			expect(toPascalCase("simple_text")).toBe("SimpleText");
 		});
-
 		it("should handle strings starting with numbers", () => {
 			expect(toPascalCase("2fa-code")).toBe("N2faCode");
 			expect(toPascalCase("123abc")).toBe("N123abc");
@@ -206,16 +204,6 @@ describe("Shared Utilities", () => {
 	});
 
 	describe("createTypeScriptLoader", () => {
-		const tempDir = join(__dirname, "cli-config-test");
-
-		beforeAll(() => {
-			// Create temp directory is already handled by existing tests
-		});
-
-		afterAll(() => {
-			// Cleanup is handled by existing tests
-		});
-
 		it("should create a loader function", () => {
 			const loader = createTypeScriptLoader();
 			expect(loader).toBeDefined();
@@ -223,25 +211,19 @@ describe("Shared Utilities", () => {
 		});
 
 		it("should transpile TypeScript config files", async () => {
-			const configPath = join(tempDir, "test-shared-ts-loader.config.ts");
-			const configContent = `
-export default {
-	specs: [
-		{
-			input: "test.yaml",
-			output: "test.ts",
-		},
-	],
-};
-`;
-			writeFileSync(configPath, configContent, "utf-8");
+			const configPath = join(__dirname, "fixtures", "config-files", "openapi-to-zod.config.ts");
 
 			const loader = createTypeScriptLoader();
 			const result = await loader(configPath, "");
 
 			expect(result).toBeDefined();
 			expect(result.specs).toBeDefined();
-			expect(result.specs[0].input).toBe("test.yaml");
+			expect(result.specs).toHaveLength(2);
+			expect(result.specs[0].input).toBe("tests/fixtures/simple.yaml");
+			expect(result.specs[0].output).toBe("tests/output/simple-from-ts-config.ts");
+			expect(result.specs[1].prefix).toBe("api");
+			expect(result.defaults?.mode).toBe("strict");
+			expect(result.executionMode).toBe("parallel");
 		});
 	});
 

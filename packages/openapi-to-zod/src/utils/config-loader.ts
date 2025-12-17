@@ -14,6 +14,7 @@ const OpenApiGeneratorOptionsSchema = z.strictObject({
 	schemaType: z.enum(["all", "request", "response"]).optional(),
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
+	stripSchemaPrefix: z.string().optional(),
 	showStats: z.boolean().optional(),
 	request: RequestResponseOptionsSchema.optional(),
 	response: RequestResponseOptionsSchema.optional(),
@@ -32,6 +33,7 @@ const ConfigFileSchema = z.strictObject({
 			schemaType: z.enum(["all", "request", "response"]).optional(),
 			prefix: z.string().optional(),
 			suffix: z.string().optional(),
+			stripSchemaPrefix: z.string().optional(),
 			showStats: z.boolean().optional(),
 			request: RequestResponseOptionsSchema.optional(),
 			response: RequestResponseOptionsSchema.optional(),
@@ -82,7 +84,7 @@ export async function loadConfig(configPath?: string): Promise<ConfigFile> {
 		throw new Error(
 			configPath
 				? `Config file not found at: ${configPath}`
-				: "No config file found. Searched for: openapi-to-zod.config.ts, openapi-to-zod.config.json, package.json (openapi-to-zod key)"
+				: "No config file found. Searched for: openapi-to-zod.config.ts, openapi-to-zod.config.json, package.json (openapi-to-zod key)\nRun 'openapi-to-zod init' to create a new config file."
 		);
 	}
 

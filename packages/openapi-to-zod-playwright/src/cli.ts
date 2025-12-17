@@ -6,7 +6,6 @@ import { Command } from "commander";
 import prompts from "prompts";
 import { CliOptionsError } from "./errors";
 import { OpenApiPlaywrightGenerator } from "./openapi-playwright-generator";
-import type { PlaywrightConfigFile } from "./types";
 import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 
 const program = new Command();
@@ -116,12 +115,7 @@ function findSpecFiles(): { files: Array<{ path: string; size: string }>; totalC
  */
 async function executeConfigMode(options: { config?: string }): Promise<void> {
 	// Load config file
-	let config: PlaywrightConfigFile;
-	try {
-		config = await loadConfig(options.config);
-	} catch {
-		throw new CliOptionsError("No config file found. Run 'openapi-to-zod-playwright init' to create one.");
-	}
+	const config = await loadConfig(options.config);
 
 	// Merge defaults with specs
 	const specs = mergeConfigWithDefaults(config);

@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: Schema Prefix Stripping Test API
+  version: 1.0.0
+  description: Test API for stripSchemaPrefix functionality
+
+paths:
+  /users:
+    get:
+      summary: List users
+      operationId: listUsers
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company.Models.User'
+    post:
+      summary: Create user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company.Models.CreateUserRequest'
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company.Models.User'
+
+  /posts:
+    get:
+      summary: List posts
+      operationId: listPosts
+      responses:
+        '200':
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company.Models.Post'
+
+  /comments:
+    get:
+      summary: List comments
+      operationId: listComments
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/App.V1.Comment'
+
+components:
+  schemas:
+    Company.Models.User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Company.Models.UserRole'
+      required:
+        - id
+        - username
+        - email
+        - role
+
+    Company.Models.CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Company.Models.UserRole'
+      required:
+        - username
+        - email
+        - role
+
+    Company.Models.UserRole:
+      type: string
+      enum:
+        - admin
+        - user
+        - guest
+
+    Company.Models.Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+        authorId:
+          type: string
+          format: uuid
+      required:
+        - id
+        - title
+        - content
+        - authorId
+
+    App.V1.Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          minLength: 1
+        postId:
+          type: string
+          format: uuid
+        post:
+          $ref: '#/components/schemas/Company.Models.Post'
+      required:
+        - id
+        - text
+        - postId

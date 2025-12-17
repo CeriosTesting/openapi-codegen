@@ -25,19 +25,23 @@ const OpenApiPlaywrightGeneratorOptionsSchema = z.strictObject({
 	output: z.string().optional(),
 	outputClient: z.string().optional(),
 	outputService: z.string().optional(),
+	includeDescriptions: z.boolean().optional(),
 	validateServiceRequest: z.boolean().optional(),
 	ignoreHeaders: z.array(z.string()).optional(),
 	useDescribe: z.boolean().optional(),
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
+	stripSchemaPrefix: z.string().optional(),
 	showStats: z.boolean().optional(),
 	request: RequestResponseOptionsSchema.optional(),
 	response: RequestResponseOptionsSchema.optional(),
 	name: z.string().optional(),
 	basePath: z.string().optional(),
+	stripPathPrefix: z.string().optional(),
 	operationFilters: OperationFiltersSchema.optional(),
 	cacheSize: z.number().positive().optional(),
 	batchSize: z.number().positive().optional(),
+	useOperationId: z.boolean().optional(),
 	// schemaType is not included - always "all" for Playwright
 });
 
@@ -49,6 +53,7 @@ const PlaywrightConfigFileSchema = z.strictObject({
 			useDescribe: z.boolean().optional(),
 			prefix: z.string().optional(),
 			suffix: z.string().optional(),
+			stripSchemaPrefix: z.string().optional(),
 			showStats: z.boolean().optional(),
 			request: RequestResponseOptionsSchema.optional(),
 			response: RequestResponseOptionsSchema.optional(),
@@ -58,9 +63,11 @@ const PlaywrightConfigFileSchema = z.strictObject({
 			outputClient: z.string().optional(),
 			outputService: z.string().optional(),
 			basePath: z.string().optional(),
+			stripPathPrefix: z.string().optional(),
 			operationFilters: OperationFiltersSchema.optional(),
 			cacheSize: z.number().positive().optional(),
 			batchSize: z.number().positive().optional(),
+			useOperationId: z.boolean().optional(),
 		})
 		.optional(),
 	specs: z
@@ -105,7 +112,7 @@ export async function loadConfig(configPath?: string): Promise<PlaywrightConfigF
 		throw new Error(
 			configPath
 				? `Config file not found at: ${configPath}`
-				: "No config file found. Searched for: openapi-to-zod-playwright.config.ts, openapi-to-zod-playwright.config.json, package.json (openapi-to-zod-playwright key)"
+				: "No config file found. Searched for: openapi-to-zod-playwright.config.ts, openapi-to-zod-playwright.config.json, package.json (openapi-to-zod-playwright key)\nRun 'openapi-to-zod-playwright init' to create a new config file."
 		);
 	}
 
