@@ -571,10 +571,46 @@ OpenAPI's `nullable: true` is converted to `.nullable()`
 
 ### Enums
 
-Enums are generated as Zod enums with:
-- Proper string value handling
-- Zod schema using `z.enum()`
-- TypeScript type inference from the Zod schema
+Enums are generated based on their value types:
+
+- **String enums**: `z.enum()` for type-safe string unions
+- **Numeric enums**: `z.union([z.literal(n), ...])` for proper number types
+- **Boolean enums**: `z.boolean()` for true/false values
+- **Mixed enums**: `z.union([z.literal(...), ...])` for heterogeneous values
+
+**Examples:**
+
+```yaml
+# String enum
+Status:
+  type: string
+  enum: [active, inactive, pending]
+
+# Integer enum
+Priority:
+  type: integer
+  enum: [0, 1, 2, 3]
+
+# Mixed enum
+Value:
+  enum: [0, "none", 1, "some"]
+```
+
+**Generated schemas:**
+
+```typescript
+// String enum → z.enum()
+export const statusSchema = z.enum(["active", "inactive", "pending"]);
+export type Status = z.infer<typeof statusSchema>; // "active" | "inactive" | "pending"
+
+// Integer enum → z.union with z.literal
+export const prioritySchema = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
+export type Priority = z.infer<typeof prioritySchema>; // 0 | 1 | 2 | 3
+
+// Mixed enum → z.union with z.literal
+export const valueSchema = z.union([z.literal(0), z.literal("none"), z.literal(1), z.literal("some")]);
+export type Value = z.infer<typeof valueSchema>; // 0 | "none" | 1 | "some"
+```
 
 ## Schema Naming
 

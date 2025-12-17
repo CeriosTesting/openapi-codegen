@@ -279,7 +279,7 @@ export interface OperationFilters {
 export interface OpenAPISchema {
 	type?: string | string[];
 	format?: string;
-	enum?: (string | number)[];
+	enum?: (string | number | boolean)[];
 	const?: string | number | boolean | null;
 	properties?: Record<string, OpenAPISchema>;
 	required?: string[];
