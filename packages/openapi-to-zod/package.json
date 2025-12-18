@@ -8,27 +8,14 @@
 		"access": "public",
 		"provenance": true
 	},
-	"keywords": [
-		"zod",
-		"openapi",
-		"validation",
-		"typescript",
-		"schema",
-		"generator",
-		"api",
-		"yaml",
-		"codegen",
-		"cerios"
-	],
+	"keywords": ["zod", "openapi", "validation", "typescript", "schema", "generator", "api", "yaml", "codegen", "cerios"],
 	"bin": {
 		"openapi-to-zod": "./dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"type": "commonjs",
 	"sideEffects": false,
 	"exports": {
@@ -72,7 +59,7 @@
 		"dev": "tsup --watch",
 		"lint": "biome lint",
 		"pack": "npm pack --pack-destination=../..",
-		"prepare": "husky",
+		"prepare": "node -e \"if (process.env.CI !== 'true') require('husky').install()\"",
 		"test": "vitest run",
 		"test:generate": "node dist/cli.js -i src/phx-case-management-api.openapi.yaml -o output/schemas.ts",
 		"update-all-packages": "npx npm-check-updates -u && npm i"
