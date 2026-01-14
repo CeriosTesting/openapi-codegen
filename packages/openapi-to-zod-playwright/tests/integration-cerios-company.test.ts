@@ -29,7 +29,7 @@ describe("Integration Tests for Cerios Company", () => {
 			serviceContent = generator.generateServiceString();
 		});
 
-		it("schemas should compile without errors", () => {
+		it("schemas should compile without errors", { timeout: 10_000 }, () => {
 			try {
 				execSync(`npx tsc --noEmit --skipLibCheck ${schemasFile}`, {
 					stdio: "pipe",
@@ -51,7 +51,7 @@ describe("Integration Tests for Cerios Company", () => {
 			expect(schemasContent).toContain("archiveCompactDocumentSchema");
 		});
 
-		it("client should compile without errors", () => {
+		it("client should compile without errors", { timeout: 10_000 }, () => {
 			try {
 				execSync(`npx tsc --noEmit --skipLibCheck ${clientFile}`, {
 					stdio: "pipe",
@@ -67,7 +67,7 @@ describe("Integration Tests for Cerios Company", () => {
 			expect(clientContent).toContain(" /api/v0.1/ArchiveCompact/Documents/Search");
 		});
 
-		it("service should compile without errors", () => {
+		it("service should compile without errors", { timeout: 10_000 }, () => {
 			try {
 				execSync(`npx tsc --noEmit --skipLibCheck ${serviceFile}`, {
 					stdio: "pipe",

@@ -37,17 +37,23 @@ export function wrapNullable(validation: string, isNullable: boolean): string {
 
 /**
  * Check if schema is nullable (supports both OpenAPI 3.0 and 3.1 syntax)
+ * @param schema - The OpenAPI schema to check
+ * @param defaultNullable - Default nullable behavior when not explicitly specified (default: false)
  */
-export function isNullable(schema: OpenAPISchema): boolean {
-	// OpenAPI 3.0 style: nullable: true
+export function isNullable(schema: OpenAPISchema, defaultNullable = false): boolean {
+	// OpenAPI 3.0 style: nullable explicitly set
 	if (schema.nullable === true) {
 		return true;
+	}
+	if (schema.nullable === false) {
+		return false;
 	}
 	// OpenAPI 3.1 style: type can be an array including "null"
 	if (Array.isArray(schema.type)) {
 		return schema.type.includes("null");
 	}
-	return false;
+	// No explicit nullable annotation - use default
+	return defaultNullable;
 }
 
 /**

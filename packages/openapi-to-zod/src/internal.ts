@@ -37,6 +37,7 @@ export {
 // Pattern matching utilities
 export { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
 export { escapeJSDoc } from "./utils/string-utils";
-
 // TypeScript loading utilities
 export { createTypeScriptLoader } from "./utils/typescript-loader";
+// String validator configuration
+export { configureDateTimeFormat, resetFormatMap } from "./validators/string-validator";

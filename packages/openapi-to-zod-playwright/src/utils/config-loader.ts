@@ -29,6 +29,7 @@ const OpenApiPlaywrightGeneratorOptionsSchema = z.strictObject({
 	validateServiceRequest: z.boolean().optional(),
 	ignoreHeaders: z.array(z.string()).optional(),
 	useDescribe: z.boolean().optional(),
+	defaultNullable: z.boolean().optional(),
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
 	stripSchemaPrefix: z.string().optional(),
@@ -42,6 +43,23 @@ const OpenApiPlaywrightGeneratorOptionsSchema = z.strictObject({
 	cacheSize: z.number().positive().optional(),
 	batchSize: z.number().positive().optional(),
 	useOperationId: z.boolean().optional(),
+	preferredContentTypes: z.array(z.string()).optional(),
+	customDateTimeFormatRegex: z
+		.union([
+			z.string().refine(
+				pattern => {
+					try {
+						new RegExp(pattern);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				{ message: "Must be a valid regular expression pattern" }
+			),
+			z.instanceof(RegExp),
+		])
+		.optional(),
 	// schemaType is not included - always "all" for Playwright
 });
 
@@ -51,6 +69,7 @@ const PlaywrightConfigFileSchema = z.strictObject({
 			mode: z.enum(["strict", "normal", "loose"]).optional(),
 			includeDescriptions: z.boolean().optional(),
 			useDescribe: z.boolean().optional(),
+			defaultNullable: z.boolean().optional(),
 			prefix: z.string().optional(),
 			suffix: z.string().optional(),
 			stripSchemaPrefix: z.string().optional(),
@@ -68,6 +87,23 @@ const PlaywrightConfigFileSchema = z.strictObject({
 			cacheSize: z.number().positive().optional(),
 			batchSize: z.number().positive().optional(),
 			useOperationId: z.boolean().optional(),
+			preferredContentTypes: z.array(z.string()).optional(),
+			customDateTimeFormatRegex: z
+				.union([
+					z.string().refine(
+						pattern => {
+							try {
+								new RegExp(pattern);
+								return true;
+							} catch {
+								return false;
+							}
+						},
+						{ message: "Must be a valid regular expression pattern" }
+					),
+					z.instanceof(RegExp),
+				])
+				.optional(),
 		})
 		.optional(),
 	specs: z
@@ -151,11 +187,14 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			mode: defaults.mode,
 			includeDescriptions: defaults.includeDescriptions,
 			useDescribe: defaults.useDescribe,
+			defaultNullable: defaults.defaultNullable,
 			prefix: defaults.prefix,
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
 			validateServiceRequest: defaults.validateServiceRequest,
 			ignoreHeaders: defaults.ignoreHeaders,
+			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
+			preferredContentTypes: defaults.preferredContentTypes,
 			// outputClient and outputService are intentionally NOT inherited from defaults
 			// Each spec should define its own file paths
 

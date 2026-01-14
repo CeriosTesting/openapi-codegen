@@ -16,7 +16,7 @@ import {
 	validateFilters,
 } from "./utils/operation-filters";
 import { stripPrefix } from "./utils/pattern-utils";
-import { configurePatternCache } from "./validators/string-validator";
+import { configureDateTimeFormat, configurePatternCache } from "./validators/string-validator";
 
 type SchemaContext = "request" | "response" | "both";
 
@@ -45,6 +45,7 @@ export class OpenApiGenerator {
 			output: options.output,
 			includeDescriptions: options.includeDescriptions ?? true,
 			useDescribe: options.useDescribe ?? false,
+			defaultNullable: options.defaultNullable ?? false,
 			schemaType: options.schemaType || "all",
 			prefix: options.prefix,
 			suffix: options.suffix,
@@ -56,11 +57,17 @@ export class OpenApiGenerator {
 			ignoreHeaders: options.ignoreHeaders,
 			cacheSize: options.cacheSize ?? 1000,
 			batchSize: options.batchSize ?? 10,
+			customDateTimeFormatRegex: options.customDateTimeFormatRegex,
 		};
 
 		// Configure pattern cache size if specified
 		if (this.options.cacheSize) {
 			configurePatternCache(this.options.cacheSize);
+		}
+
+		// Configure custom date-time format if specified
+		if (this.options.customDateTimeFormatRegex) {
+			configureDateTimeFormat(this.options.customDateTimeFormatRegex);
 		}
 
 		// Validate input file exists
@@ -139,6 +146,7 @@ export class OpenApiGenerator {
 			mode: this.requestOptions.mode,
 			includeDescriptions: this.requestOptions.includeDescriptions,
 			useDescribe: this.requestOptions.useDescribe,
+			defaultNullable: this.options.defaultNullable ?? false,
 			namingOptions: {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
@@ -637,6 +645,7 @@ export class OpenApiGenerator {
 			mode: resolvedOptions.mode,
 			includeDescriptions: resolvedOptions.includeDescriptions,
 			useDescribe: resolvedOptions.useDescribe,
+			defaultNullable: this.options.defaultNullable ?? false,
 			namingOptions: {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
@@ -645,8 +654,8 @@ export class OpenApiGenerator {
 		});
 
 		// Check if this is just a simple $ref (alias)
-		const isAlias = !!(schema.$ref && !schema.properties && !schema.allOf && !schema.oneOf && !schema.anyOf);
-		const zodSchema = this.propertyGenerator.generatePropertySchema(schema, name, isAlias);
+		// Pass isTopLevel=true for top-level schema generation to prevent defaultNullable from applying
+		const zodSchema = this.propertyGenerator.generatePropertySchema(schema, name, true);
 		const zodSchemaCode = `${jsdoc}export const ${schemaName} = ${zodSchema};`;
 
 		// Track dependencies from discriminated unions
@@ -692,8 +701,8 @@ export class OpenApiGenerator {
 					continue;
 				}
 
-				// Skip operations without operationId or parameters
-				if (!operation.operationId || !operation.parameters || !Array.isArray(operation.parameters)) {
+				// Skip operations without parameters
+				if (!operation.parameters || !Array.isArray(operation.parameters)) {
 					continue;
 				}
 
@@ -706,11 +715,17 @@ export class OpenApiGenerator {
 					continue;
 				}
 
-				// Generate schema name from operationId
-				// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-				const pascalOperationId = operation.operationId.includes("-")
-					? toPascalCase(operation.operationId)
-					: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+				// Generate schema name from operationId or path+method fallback
+				let pascalOperationId: string;
+				if (operation.operationId) {
+					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
+					pascalOperationId = operation.operationId.includes("-")
+						? toPascalCase(operation.operationId)
+						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+				} else {
+					// Fallback: generate name from path + method
+					pascalOperationId = this.generateMethodNameFromPath(method, path);
+				}
 				const schemaName = `${pascalOperationId}QueryParams`; // Initialize dependencies for this schema
 				if (!this.schemaDependencies.has(schemaName)) {
 					this.schemaDependencies.set(schemaName, new Set());
@@ -795,6 +810,54 @@ export class OpenApiGenerator {
 	}
 
 	/**
+	 * Generate a PascalCase method name from HTTP method and path
+	 * Used as fallback when operationId is not available
+	 * @internal
+	 */
+	private generateMethodNameFromPath(method: string, path: string): string {
+		// Convert path to PascalCase
+		// e.g., GET /users/{userId}/posts -> GetUsersByUserIdPosts
+		// e.g., GET /api/v0.1/users -> GetApiV01Users
+		const segments = path
+			.split("/")
+			.filter(Boolean)
+			.map(segment => {
+				if (segment.startsWith("{") && segment.endsWith("}")) {
+					// Path parameter - convert to "ByParamName"
+					const paramName = segment.slice(1, -1);
+					return `By${this.capitalizeSegment(paramName)}`;
+				}
+				// Regular segment - capitalize and handle special characters
+				return this.capitalizeSegment(segment);
+			})
+			.join("");
+
+		// Capitalize first letter of method
+		const capitalizedMethod = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
+		return `${capitalizedMethod}${segments}`;
+	}
+
+	/**
+	 * Capitalizes a path segment, handling special characters like dashes, underscores, and dots
+	 * @internal
+	 */
+	private capitalizeSegment(str: string): string {
+		// Handle kebab-case, snake_case, and dots
+		if (str.includes("-") || str.includes("_") || str.includes(".")) {
+			return str
+				.split(/[-_.]/)
+				.map(part => {
+					if (!part) return "";
+					return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+				})
+				.join("");
+		}
+
+		// Regular word - just capitalize first letter
+		return str.charAt(0).toUpperCase() + str.slice(1);
+	}
+
+	/**
 	 * Check if a header should be ignored based on filter patterns
 	 * @internal
 	 */
@@ -839,8 +902,8 @@ export class OpenApiGenerator {
 					continue;
 				}
 
-				// Skip operations without operationId or parameters
-				if (!operation.operationId || !operation.parameters || !Array.isArray(operation.parameters)) {
+				// Skip operations without parameters
+				if (!operation.parameters || !Array.isArray(operation.parameters)) {
 					continue;
 				}
 
@@ -854,10 +917,16 @@ export class OpenApiGenerator {
 					continue;
 				}
 
-				// Generate schema name from operationId
-				const pascalOperationId = operation.operationId.includes("-")
-					? toPascalCase(operation.operationId)
-					: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+				// Generate schema name from operationId or path+method fallback
+				let pascalOperationId: string;
+				if (operation.operationId) {
+					pascalOperationId = operation.operationId.includes("-")
+						? toPascalCase(operation.operationId)
+						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+				} else {
+					// Fallback: generate name from path + method
+					pascalOperationId = this.generateMethodNameFromPath(method, path);
+				}
 				const schemaName = `${pascalOperationId}HeaderParams`;
 
 				// Initialize dependencies for this schema

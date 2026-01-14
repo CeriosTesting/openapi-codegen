@@ -59,7 +59,6 @@
 		"dev": "tsup --watch",
 		"lint": "biome lint",
 		"pack": "npm pack --pack-destination=../..",
-		"prepare": "node -e \"if (process.env.CI !== 'true') require('husky').install()\"",
 		"test": "vitest run",
 		"test:generate": "node dist/cli.js -i src/phx-case-management-api.openapi.yaml -o output/schemas.ts",
 		"update-all-packages": "npx npm-check-updates -u && npm i"

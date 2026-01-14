@@ -184,6 +184,7 @@ Examples:
 | `mode` | `"strict"` \| `"normal"` \| `"loose"` | Validation mode |
 | `includeDescriptions` | `boolean` | Include JSDoc comments |
 | `useDescribe` | `boolean` | Add `.describe()` calls |
+| `defaultNullable` | `boolean` | Treat properties as nullable by default when not explicitly specified (default: `false`) |
 | `schemaType` | `"all"` \| `"request"` \| `"response"` | Schema filtering |
 | `prefix` | `string` | Prefix for schema names |
 | `suffix` | `string` | Suffix for schema names |
@@ -410,6 +411,68 @@ The generator supports all OpenAPI string formats with Zod v4:
 | `cidrv4` | `z.cidrv4()` |
 | `cidrv6` | `z.cidrv6()` |
 
+### Custom Date-Time Format
+
+By default, the generator uses `z.iso.datetime()` for `date-time` format fields, which requires an ISO 8601 datetime string with a timezone suffix (e.g., `2026-01-07T14:30:00Z`).
+
+If your API returns date-times **without the `Z` suffix** (e.g., `2026-01-07T14:30:00`), you can override this with a custom regex pattern:
+
+```typescript
+import { defineConfig } from '@cerios/openapi-to-zod';
+
+export default defineConfig({
+  defaults: {
+    // For date-times without Z suffix
+    customDateTimeFormatRegex: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$',
+  },
+  specs: [
+    {
+      input: 'openapi.yaml',
+      output: 'src/schemas.ts',
+    },
+  ],
+});
+```
+
+**TypeScript Config - RegExp Literals:**
+
+In TypeScript config files, you can also use RegExp literals (which don't require double-escaping):
+
+```typescript
+export default defineConfig({
+  defaults: {
+    // Use RegExp literal (single escaping)
+    customDateTimeFormatRegex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
+  },
+  specs: [
+    {
+      input: 'openapi.yaml',
+      output: 'src/schemas.ts',
+    },
+  ],
+});
+```
+
+**Common Custom Formats:**
+
+| Use Case | String Pattern (JSON/YAML) | RegExp Literal (TypeScript) |
+|----------|----------------------------|----------------------------|
+| No timezone suffix<br>`2026-01-07T14:30:00` | `'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$'` | `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/` |
+| With milliseconds, no Z<br>`2026-01-07T14:30:00.123` | `'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}$'` | `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/` |
+| Optional Z suffix<br>`2026-01-07T14:30:00` or<br>`2026-01-07T14:30:00Z` | `'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z?$'` | `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/` |
+| With milliseconds + optional Z<br>`2026-01-07T14:30:00.123Z` | `'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z?$'` | `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z?$/` |
+
+**Generated Output:**
+
+When using a custom regex, the generator will produce:
+
+```typescript
+// Instead of: z.iso.datetime()
+// You get: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
+```
+
+**Note:** This option only affects `date-time` format fields. Other formats (like `date`, `email`, `uuid`) remain unchanged.
+
 ## Advanced Features
 
 ### Operation Filtering
@@ -562,6 +625,68 @@ export const userSchema = z.object({
 ### Nullable Types
 
 OpenAPI's `nullable: true` is converted to `.nullable()`
+
+#### Default Nullable Behavior
+
+By default, properties are only nullable when explicitly marked with `nullable: true` (OpenAPI 3.0) or `type: ["string", "null"]` (OpenAPI 3.1).
+
+However, many teams follow the industry de facto standard for OpenAPI 3.0.x where properties are assumed nullable unless explicitly constrained. You can enable this behavior with the `defaultNullable` option:
+
+```typescript
+export default defineConfig({
+  specs: [{
+    input: 'openapi.yaml',
+    output: 'schemas.ts',
+    defaultNullable: true,  // Treat unspecified properties as nullable
+  }]
+});
+```
+
+**Behavior comparison:**
+
+| Schema Property | `defaultNullable: false` (default) | `defaultNullable: true` |
+|-----------------|-------------------------------------|-------------------------|
+| `nullable: true` | `.nullable()` | `.nullable()` |
+| `nullable: false` | No `.nullable()` | No `.nullable()` |
+| No `nullable` specified | No `.nullable()` | `.nullable()` |
+
+**Example:**
+
+```yaml
+User:
+  type: object
+  properties:
+    id:
+      type: integer
+    name:
+      type: string
+    email:
+      type: string
+      nullable: true
+    phone:
+      type: string
+      nullable: false
+```
+
+**With `defaultNullable: false` (default):**
+```typescript
+export const userSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),           // Not nullable (no annotation)
+  email: z.string().nullable(), // Explicitly nullable
+  phone: z.string(),           // Explicitly not nullable
+});
+```
+
+**With `defaultNullable: true`:**
+```typescript
+export const userSchema = z.object({
+  id: z.number().int().nullable(),  // Nullable by default
+  name: z.string().nullable(),       // Nullable by default
+  email: z.string().nullable(),      // Explicitly nullable
+  phone: z.string(),                 // Explicitly NOT nullable (respected)
+});
+```
 
 ### Schema Composition
 

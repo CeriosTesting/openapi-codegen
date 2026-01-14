@@ -20,6 +20,20 @@ export interface CommonSchemaOptions {
 	 * Whether to include descriptions as JSDoc comments
 	 */
 	includeDescriptions?: boolean;
+
+	/**
+	 * Default nullable behavior when not explicitly specified in the schema
+	 *
+	 * When true: Properties without explicit nullable annotation are treated as nullable.
+	 * This follows the industry de facto standard for OpenAPI 3.0.x where tooling convergence
+	 * made "nullable by default" the safest assumption.
+	 *
+	 * When false (default): Properties are only nullable when explicitly marked with `nullable: true`
+	 * (OpenAPI 3.0) or `type: ["string", "null"]` (OpenAPI 3.1).
+	 *
+	 * @default false
+	 */
+	defaultNullable?: boolean;
 }
 
 /**
@@ -67,6 +81,20 @@ export interface OpenApiGeneratorOptions {
 	 * @default false
 	 */
 	useDescribe?: boolean;
+
+	/**
+	 * Default nullable behavior when not explicitly specified in the schema
+	 *
+	 * When true: Properties without explicit nullable annotation are treated as nullable.
+	 * This follows the industry de facto standard for OpenAPI 3.0.x where tooling convergence
+	 * made "nullable by default" the safest assumption.
+	 *
+	 * When false (default): Properties are only nullable when explicitly marked with `nullable: true`
+	 * (OpenAPI 3.0) or `type: ["string", "null"]` (OpenAPI 3.1).
+	 *
+	 * @default false
+	 */
+	defaultNullable?: boolean;
 
 	/**
 	 * Schema filtering mode
@@ -206,6 +234,32 @@ export interface OpenApiGeneratorOptions {
 	 * @default 10
 	 */
 	batchSize?: number;
+
+	/**
+	 * Custom regex pattern for date-time format validation
+	 * Overrides the default z.iso.datetime() which requires ISO 8601 format with timezone suffix (Z)
+	 *
+	 * **Config File Formats:**
+	 * - JSON/YAML configs: Must use string pattern (requires double-escaping: `\\d`)
+	 * - TypeScript configs: Can use either string pattern OR RegExp literal (`/\d/`)
+	 *
+	 * **Common Patterns:**
+	 * ```typescript
+	 * // No timezone suffix (e.g., "2026-01-07T14:30:00")
+	 * customDateTimeFormatRegex: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$'
+	 * // OR in TypeScript config:
+	 * customDateTimeFormatRegex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/
+	 *
+	 * // With milliseconds, no Z (e.g., "2026-01-07T14:30:00.123")
+	 * customDateTimeFormatRegex: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}$'
+	 *
+	 * // Optional Z suffix (e.g., "2026-01-07T14:30:00" or "2026-01-07T14:30:00Z")
+	 * customDateTimeFormatRegex: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z?$'
+	 * ```
+	 *
+	 * @default "z.iso.datetime()" (requires Z suffix per ISO 8601)
+	 */
+	customDateTimeFormatRegex?: string | RegExp;
 }
 
 /**
