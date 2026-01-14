@@ -328,3 +328,73 @@ describe("Query Parameter Schema Generation Without OperationId", () => {
 		expect(output).toContain('.describe("Number of items per page")');
 	});
 });
+
+describe("Query Parameter Schema Generation with stripPathPrefix", () => {
+	const stripPathPrefixFixture = resolve(__dirname, "fixtures/strip-path-prefix-query-params.yaml");
+
+	it("should strip path prefix when generating query param schema names", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Without stripPathPrefix, would be GetApiV1UsersQueryParams
+		// With stripPathPrefix: "/api/v1", should be GetUsersQueryParams
+		expect(output).toContain("getSearchQueryParamsSchema");
+		expect(output).toContain("GetUsersQueryParams");
+
+		// Should NOT contain the full path version
+		expect(output).not.toContain("GetApiV1UsersQueryParams");
+		expect(output).not.toContain("getApiV1UsersQueryParamsSchema");
+	});
+
+	it("should handle path params correctly with stripPathPrefix", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Path: /api/v1/users/{userId}/posts should become /users/{userId}/posts
+		// Which generates GetUsersByUserIdPostsQueryParams
+		expect(output).toContain("GetUsersByUserIdPostsQueryParams");
+		expect(output).not.toContain("GetApiV1UsersByUserIdPostsQueryParams");
+	});
+
+	it("should support glob patterns in stripPathPrefix", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v*",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// With glob pattern, should still strip the prefix
+		expect(output).toContain("GetUsersQueryParams");
+		expect(output).not.toContain("GetApiV1UsersQueryParams");
+	});
+
+	it("should generate typed schema imports", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Should generate both schema and type
+		expect(output).toContain("getSearchQueryParamsSchema");
+		expect(output).toContain("type GetSearchQueryParams = z.infer<typeof getSearchQueryParamsSchema>");
+	});
+});

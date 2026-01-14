@@ -221,6 +221,23 @@ export interface OpenApiGeneratorOptions {
 	ignoreHeaders?: string[];
 
 	/**
+	 * Strip a common prefix from all paths before generating query/header parameter schema names
+	 * This is used when operationId is not available and schema names are derived from the path.
+	 *
+	 * Supports both literal strings and glob patterns:
+	 * - Literal string: "/api/v1" (must match exactly)
+	 * - Glob pattern: "/api/v*" (uses minimatch for pattern matching)
+	 *
+	 * @example
+	 * // Path: "/api/v1/users" with stripPathPrefix: "/api/v1"
+	 * // Results in: GetUsersQueryParams (not GetApiV1UsersQueryParams)
+	 *
+	 * @internal Used by Playwright generator
+	 * @default undefined (no stripping)
+	 */
+	stripPathPrefix?: string;
+
+	/**
 	 * Cache size for pattern regex compilation
 	 * Higher values improve performance for large specifications with many string patterns
 	 * @default 1000

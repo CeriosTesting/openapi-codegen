@@ -15,7 +15,7 @@ import {
 	shouldIncludeOperation,
 	validateFilters,
 } from "./utils/operation-filters";
-import { stripPrefix } from "./utils/pattern-utils";
+import { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
 import { configureDateTimeFormat, configurePatternCache } from "./validators/string-validator";
 
 type SchemaContext = "request" | "response" | "both";
@@ -50,6 +50,7 @@ export class OpenApiGenerator {
 			prefix: options.prefix,
 			suffix: options.suffix,
 			stripSchemaPrefix: options.stripSchemaPrefix,
+			stripPathPrefix: options.stripPathPrefix,
 			showStats: options.showStats ?? true,
 			request: options.request,
 			response: options.response,
@@ -724,7 +725,9 @@ export class OpenApiGenerator {
 						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
 				} else {
 					// Fallback: generate name from path + method
-					pascalOperationId = this.generateMethodNameFromPath(method, path);
+					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
+					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
+					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
 				}
 				const schemaName = `${pascalOperationId}QueryParams`; // Initialize dependencies for this schema
 				if (!this.schemaDependencies.has(schemaName)) {
@@ -799,8 +802,9 @@ export class OpenApiGenerator {
 				const suffixedName = this.options.suffix ? `${prefixedName}${toPascalCase(this.options.suffix)}` : prefixedName;
 				const camelCaseSchemaName = `${suffixedName.charAt(0).toLowerCase() + suffixedName.slice(1)}QueryParamsSchema`;
 
-				// Generate JSDoc
-				const jsdoc = `/**\n * Query parameters for ${operation.operationId}\n */\n`;
+				// Generate JSDoc - use operationId if available, otherwise use method + path
+				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+				const jsdoc = `/**\n * Query parameters for ${jsdocOperationName}\n */\n`;
 				const fullSchemaCode = `${jsdoc}export const ${camelCaseSchemaName} = ${schemaCode};`;
 
 				this.schemas.set(schemaName, fullSchemaCode);
@@ -925,7 +929,9 @@ export class OpenApiGenerator {
 						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
 				} else {
 					// Fallback: generate name from path + method
-					pascalOperationId = this.generateMethodNameFromPath(method, path);
+					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
+					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
+					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
 				}
 				const schemaName = `${pascalOperationId}HeaderParams`;
 
@@ -988,8 +994,9 @@ export class OpenApiGenerator {
 				const suffixedName = this.options.suffix ? `${prefixedName}${toPascalCase(this.options.suffix)}` : prefixedName;
 				const camelCaseSchemaName = `${suffixedName.charAt(0).toLowerCase() + suffixedName.slice(1)}HeaderParamsSchema`;
 
-				// Generate JSDoc
-				const jsdoc = `/**\n * Header parameters for ${operation.operationId}\n */\n`;
+				// Generate JSDoc - use operationId if available, otherwise use method + path
+				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+				const jsdoc = `/**\n * Header parameters for ${jsdocOperationName}\n */\n`;
 				const fullSchemaCode = `${jsdoc}export const ${camelCaseSchemaName} = ${schemaCode};`;
 
 				this.schemas.set(schemaName, fullSchemaCode);
