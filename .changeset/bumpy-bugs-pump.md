@@ -10,3 +10,5 @@ Makes the client property private by prefixing with underscore, following TypeSc
 Updates JSDoc @returns tags to show actual type names instead of HTTP status descriptions, providing more useful documentation for developers consuming the generated service methods.
 
 Removes unnecessary explicit return statements from void methods, as TypeScript functions without a return value don't require them.
+
+Ensures the required @cerios/openapi-to-zod peer dependency is installed before the package attempts to use it. Introduces an early runtime check that validates dependency availability and throws a descriptive error if missing.

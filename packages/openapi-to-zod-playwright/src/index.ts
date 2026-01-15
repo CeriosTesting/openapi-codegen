@@ -1,3 +1,8 @@
+// Check for core dependency before any imports from it
+import { checkCoreDependency } from "./utils/dependency-check";
+
+checkCoreDependency();
+
 // Re-export commonly used types from @cerios/openapi-to-zod for convenience
 export type {
 	CommonSchemaOptions,
@@ -15,6 +20,7 @@ export {
 	CliOptionsError,
 	ConfigValidationError,
 	FileOperationError,
+	MissingDependencyError,
 	OpenApiPlaywrightGeneratorError,
 	SpecValidationError,
 } from "./errors";

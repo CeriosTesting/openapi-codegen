@@ -105,3 +105,16 @@ export class ConfigurationError extends OpenApiPlaywrightGeneratorError {
 		this.name = "ConfigurationError";
 	}
 }
+
+/**
+ * Thrown when a required dependency is not installed
+ */
+export class MissingDependencyError extends OpenApiPlaywrightGeneratorError {
+	constructor(
+		message: string,
+		public readonly packageName: string
+	) {
+		super(message);
+		this.name = "MissingDependencyError";
+	}
+}
