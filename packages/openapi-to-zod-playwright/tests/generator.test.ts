@@ -34,7 +34,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 
 		// Check for ApiService class
 		expect(serviceOutput).toContain("export class ApiService");
-		expect(serviceOutput).toContain("constructor(private readonly client: ApiClient)");
+		expect(serviceOutput).toContain("constructor(private readonly _client: ApiClient)");
 	});
 
 	it("should generate client methods with correct names", () => {
@@ -61,7 +61,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		expect(serviceOutput).toContain("async deleteUsersByUserId");
 
 		// Service methods call client
-		expect(serviceOutput).toContain("this.client.");
+		expect(serviceOutput).toContain("this._client.");
 	});
 
 	it("should use expect for status validation", () => {
@@ -82,7 +82,8 @@ describe("OpenApiPlaywrightGenerator", () => {
 
 		// DELETE returns 204 with void
 		expect(serviceOutput).toContain("async deleteUsersByUserId(userId: string): Promise<void>");
-		expect(serviceOutput).toContain("return;");
+		// Void methods should not have unnecessary return; statements
+		expect(serviceOutput).not.toContain("return;");
 	});
 
 	it("should use raw Playwright options in client methods", () => {
@@ -133,7 +134,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 
 			// Should contain ApiService class
 			expect(serviceString).toContain("export class ApiService");
-			expect(serviceString).toContain("constructor(private readonly client: ApiClient)");
+			expect(serviceString).toContain("constructor(private readonly _client: ApiClient)");
 
 			// Should NOT contain schemas or client class
 			expect(serviceString).not.toContain("export const userSchema");

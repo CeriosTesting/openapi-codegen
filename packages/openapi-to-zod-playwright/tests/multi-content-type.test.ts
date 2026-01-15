@@ -39,8 +39,8 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postUsers");
-			expect(serviceSection).toMatch(/this\.client\.postUsers\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postUsers");
+			expect(serviceSection).toMatch(/this\._client\.postUsers\([^)]*options/);
 		});
 	});
 
@@ -84,8 +84,8 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postLogin");
-			expect(serviceSection).toMatch(/this\.client\.postLogin\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postLogin");
+			expect(serviceSection).toMatch(/this\._client\.postLogin\([^)]*options/);
 		});
 	});
 
@@ -129,8 +129,8 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postUpload");
-			expect(serviceSection).toMatch(/this\.client\.postUpload\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postUpload");
+			expect(serviceSection).toMatch(/this\._client\.postUpload\([^)]*options/);
 		});
 	});
 
@@ -167,7 +167,7 @@ describe("Multi-Content-Type Support", () => {
 			expect(clientSection).toContain("async postUsers(");
 
 			// Service method calls the client method
-			expect(serviceSection).toContain("this.client.postUsers");
+			expect(serviceSection).toContain("this._client.postUsers");
 		});
 
 		it("should use first content type for parameter type", () => {

@@ -89,7 +89,7 @@ export function generateServiceClass(
  * Response validation with Zod schemas
  */
 export class ${className} {
-	constructor(private readonly client: ${clientClassName}) {}
+	constructor(private readonly _client: ${clientClassName}) {}
 
 ${methods}
 }
@@ -481,21 +481,26 @@ function generateServiceMethod(
 
 	// Determine return type
 	let returnType = "Promise<void>";
+	let returnTypeName: string | null = null; // For JSDoc @returns
 	if (response?.hasBody && response.schemaName) {
 		// Apply stripSchemaPrefix before converting to valid TypeScript type name
 		const strippedName = stripPrefix(response.schemaName, stripSchemaPrefix);
 		const typeName = toPascalCase(strippedName);
 		returnType = `Promise<${typeName}>`;
+		returnTypeName = typeName;
 		schemaImports.add(response.schemaName);
 	} else if (response?.hasBody && response.inlineSchema) {
 		const inlineInfo = generateInlineSchemaCode(response.inlineSchema, stripSchemaPrefix);
 		if (inlineInfo) {
 			returnType = `Promise<${inlineInfo.typeName}>`;
+			returnTypeName = inlineInfo.typeName;
 		} else {
 			returnType = "Promise<any>";
+			returnTypeName = "any";
 		}
 	} else if (response?.hasBody && !response.schemaName) {
 		returnType = "Promise<any>";
+		returnTypeName = "any";
 	}
 
 	// Generate method body
@@ -517,7 +522,7 @@ function generateServiceMethod(
 	const validationCode: string[] = [];
 
 	// Add client call
-	validationCode.push(`\t\tconst response = await this.client.${clientMethod}(${clientArgs});`);
+	validationCode.push(`\t\tconst response = await this._client.${clientMethod}(${clientArgs});`);
 	validationCode.push("");
 
 	// Add status validation
@@ -560,9 +565,8 @@ function generateServiceMethod(
 		validationCode.push(`\t\t// Parse response body (no schema validation available)`);
 		validationCode.push(`\t\tconst body = await ${parseMethod};`);
 		validationCode.push(`\t\treturn body;`);
-	} else {
-		validationCode.push(`\t\treturn;`);
 	}
+	// Note: No else clause - void methods don't need a return statement
 
 	// Build JSDoc tags
 	const additionalTags: string[] = [];
@@ -571,9 +575,9 @@ function generateServiceMethod(
 	const contentTypeInfo = requestContentType ? ` [${requestContentType}]` : "";
 	const statusInfo = response ? ` (${statusCode})` : "";
 
-	// Add @returns tag ONLY if there's a response description AND a body
-	if (response?.description && response.hasBody) {
-		additionalTags.push(`@returns ${response.description}`);
+	// Add @returns tag ONLY if there's a body with a meaningful return type
+	if (response?.hasBody && returnTypeName) {
+		additionalTags.push(`@returns ${returnTypeName}`);
 	}
 
 	const jsdoc = generateOperationJSDoc({

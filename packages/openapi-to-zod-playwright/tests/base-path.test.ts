@@ -229,8 +229,8 @@ describe("BasePath Option", () => {
 
 			// Service delegates to client which has basePath
 			// Service should just call client methods normally
-			expect(serviceContent).toContain("await this.client.getUsers");
-			expect(serviceContent).toContain("await this.client.getUsersByUserId");
+			expect(serviceContent).toContain("await this._client.getUsers");
+			expect(serviceContent).toContain("await this._client.getUsersByUserId");
 		});
 	});
 

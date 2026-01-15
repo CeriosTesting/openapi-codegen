@@ -16,7 +16,7 @@ describe("Advanced Features", () => {
 			// Service should extract data parameter for JSON content types
 			expect(serviceOutput).toContain("export class ApiService");
 			// Service calls client with extracted options
-			expect(serviceOutput).toContain("this.client.");
+			expect(serviceOutput).toContain("this._client.");
 		});
 
 		it("should generate client methods with raw Playwright options", () => {
