@@ -176,6 +176,17 @@ export interface OpenApiPlaywrightGeneratorOptions
 	 * @default true
 	 */
 	useOperationId?: boolean;
+
+	/**
+	 * Preferred content types for response handling, in order of priority.
+	 * When a response has multiple content types, the generator will select
+	 * the first matching content type from this list.
+	 * Falls back to the first content type in the spec if no match is found.
+	 *
+	 * @default ["application/json"]
+	 * @example ["application/json", "text/json", "application/xml"]
+	 */
+	preferredContentTypes?: string[];
 }
 
 /**

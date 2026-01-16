@@ -1,0 +1,92 @@
+openapi: 3.0.3
+info:
+  title: Multi Response Content Types API
+  description: API with multiple content types in responses for testing preferredContentTypes
+  version: 1.0.0
+paths:
+  /data:
+    get:
+      operationId: getData
+      summary: Get data in multiple formats
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/xml:
+              schema:
+                type: string
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Data'
+            text/plain:
+              schema:
+                type: string
+  /report:
+    get:
+      operationId: getReport
+      summary: Get report with JSON preference
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/html:
+              schema:
+                type: string
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+  /legacy:
+    get:
+      operationId: getLegacy
+      summary: Get legacy data without JSON
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+  /single:
+    get:
+      operationId: getSingle
+      summary: Get data with only one content type
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Data'
+  /text-json:
+    get:
+      operationId: getTextJson
+      summary: Get data with text/json content type
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Data'
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    Data:
+      type: object
+      properties:
+        id:
+          type: string
+        value:
+          type: number
+    Report:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string

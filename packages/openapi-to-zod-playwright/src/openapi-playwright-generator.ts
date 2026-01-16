@@ -192,7 +192,8 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			this.options.operationFilters,
 			this.options.ignoreHeaders,
 			this.options.stripPathPrefix,
-			this.options.stripSchemaPrefix
+			this.options.stripSchemaPrefix,
+			this.options.preferredContentTypes
 		);
 	}
 

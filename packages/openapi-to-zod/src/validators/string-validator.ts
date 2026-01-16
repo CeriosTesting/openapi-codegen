@@ -16,7 +16,8 @@ export function configurePatternCache(size: number): void {
 	}
 }
 
-const FORMAT_MAP: Record<string, string> = {
+// Default format map (without date-time, which can be customized)
+const DEFAULT_FORMAT_MAP: Record<string, string> = {
 	uuid: "z.uuid()",
 	email: "z.email()",
 	uri: "z.url()",
@@ -27,7 +28,6 @@ const FORMAT_MAP: Record<string, string> = {
 	byte: "z.base64()",
 	binary: "z.string()",
 	date: "z.iso.date()",
-	"date-time": "z.iso.datetime()",
 	time: "z.iso.time()",
 	duration:
 		'z.string().refine((val) => /^P(?:(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?)?|\\d+W)$/.test(val) && !/^PT?$/.test(val), { message: "Must be a valid ISO 8601 duration" })',
@@ -48,6 +48,70 @@ const FORMAT_MAP: Record<string, string> = {
 	"relative-json-pointer":
 		'z.string().refine((val) => /^(0|[1-9]\\d*)(#|(\\/([^~/]|~0|~1)+)*)$/.test(val), { message: "Must be a valid relative JSON Pointer" })',
 };
+
+// Mutable format map that includes date-time and can be configured
+let FORMAT_MAP: Record<string, string> = {
+	...DEFAULT_FORMAT_MAP,
+	"date-time": "z.iso.datetime()",
+};
+
+/**
+ * Configure custom date-time format validation
+ * Overrides the default z.iso.datetime() with a custom regex pattern
+ *
+ * @param pattern - Regex pattern (string or RegExp) for date-time validation
+ * @throws {Error} If the provided pattern is not a valid regular expression
+ * @example
+ * // String pattern (required for JSON/YAML configs)
+ * configureDateTimeFormat('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$')
+ *
+ * @example
+ * // RegExp literal (TypeScript configs only)
+ * configureDateTimeFormat(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
+ */
+export function configureDateTimeFormat(pattern?: string | RegExp): void {
+	if (!pattern) {
+		// Reset to default
+		FORMAT_MAP["date-time"] = "z.iso.datetime()";
+		return;
+	}
+
+	// Convert RegExp to string if needed
+	const patternStr = pattern instanceof RegExp ? pattern.source : pattern;
+
+	// Empty string resets to default
+	if (patternStr === "") {
+		FORMAT_MAP["date-time"] = "z.iso.datetime()";
+		return;
+	}
+
+	// Validate the regex pattern
+	try {
+		new RegExp(patternStr);
+	} catch (error) {
+		throw new Error(
+			`Invalid regular expression pattern for customDateTimeFormatRegex: ${patternStr}. ${
+				error instanceof Error ? error.message : "Pattern is malformed"
+			}`
+		);
+	}
+
+	// Escape the pattern for use in generated code
+	const escapedPattern = escapePattern(patternStr);
+
+	// Update the format map with the custom regex
+	FORMAT_MAP["date-time"] = `z.string().regex(/${escapedPattern}/)`;
+}
+
+/**
+ * Reset format map to defaults (useful for testing)
+ */
+export function resetFormatMap(): void {
+	FORMAT_MAP = {
+		...DEFAULT_FORMAT_MAP,
+		"date-time": "z.iso.datetime()",
+	};
+}
 
 /**
  * Generate Zod validation for string with format (Zod v4 compatible)

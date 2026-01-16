@@ -39,8 +39,8 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postUsers");
-			expect(serviceSection).toMatch(/this\.client\.postUsers\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postUsers");
+			expect(serviceSection).toMatch(/this\._client\.postUsers\([^)]*options/);
 		});
 	});
 
@@ -84,8 +84,8 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postLogin");
-			expect(serviceSection).toMatch(/this\.client\.postLogin\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postLogin");
+			expect(serviceSection).toMatch(/this\._client\.postLogin\([^)]*options/);
 		});
 	});
 
@@ -129,13 +129,13 @@ describe("Multi-Content-Type Support", () => {
 			const serviceSection = generator.generateServiceString();
 
 			// Service calls client with options
-			expect(serviceSection).toContain("this.client.postUpload");
-			expect(serviceSection).toMatch(/this\.client\.postUpload\([^)]*options/);
+			expect(serviceSection).toContain("this._client.postUpload");
+			expect(serviceSection).toMatch(/this\._client\.postUpload\([^)]*options/);
 		});
 	});
 
 	describe("Multiple Content Types in One Endpoint", () => {
-		it("should generate separate methods for each content type", () => {
+		it("should generate single method using first content type", () => {
 			const fixture = TestUtils.getFixturePath("multi-content-api.yaml");
 
 			const generator = new OpenApiPlaywrightGenerator({
@@ -145,12 +145,14 @@ describe("Multi-Content-Type Support", () => {
 
 			const serviceSection = generator.generateServiceString();
 
-			// Should generate both postUsersJson and postUsersForm with suffixes
-			expect(serviceSection).toContain("async postUsersJson");
-			expect(serviceSection).toContain("async postUsersForm");
+			// Should generate single postUsers method (first content type, no suffix)
+			expect(serviceSection).toContain("async postUsers(");
+			// Should NOT have content-type suffixes
+			expect(serviceSection).not.toContain("async postUsersJson");
+			expect(serviceSection).not.toContain("async postUsersForm");
 		});
 
-		it("should call the same client method from all service methods", () => {
+		it("should call the same client method from service method", () => {
 			const fixture = TestUtils.getFixturePath("multi-content-api.yaml");
 
 			const generator = new OpenApiPlaywrightGenerator({
@@ -164,11 +166,11 @@ describe("Multi-Content-Type Support", () => {
 			// Client should have one method
 			expect(clientSection).toContain("async postUsers(");
 
-			// Both service methods call the same client method
-			expect(serviceSection).toContain("this.client.postUsers");
+			// Service method calls the client method
+			expect(serviceSection).toContain("this._client.postUsers");
 		});
 
-		it("should pass correct parameter type for each content type", () => {
+		it("should use first content type for parameter type", () => {
 			const fixture = TestUtils.getFixturePath("multi-content-api.yaml");
 
 			const generator = new OpenApiPlaywrightGenerator({
@@ -178,11 +180,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const serviceSection = generator.generateServiceString();
 
-			// JSON method should have data in options
-			expect(serviceSection).toMatch(/async postUsersJson\w*\([^)]*options[^)]*:\s*\{[^}]*data:/);
-
-			// Form method should have form in options
-			expect(serviceSection).toMatch(/async postUsersForm\w*\([^)]*options[^)]*:\s*\{[^}]*form:/);
+			// First content type is application/json, so should have data in options
+			expect(serviceSection).toMatch(/async postUsers\([^)]*options[^)]*:\s*\{[^}]*data:/);
 		});
 	});
 

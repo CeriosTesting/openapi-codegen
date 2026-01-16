@@ -20,6 +20,11 @@ export interface PropertyGeneratorContext {
 	useDescribe: boolean;
 	namingOptions: NamingOptions;
 	stripSchemaPrefix?: string;
+	/**
+	 * Default nullable behavior when not explicitly specified
+	 * @default false
+	 */
+	defaultNullable: boolean;
 }
 
 /**
@@ -333,7 +338,10 @@ export class PropertyGenerator {
 			schema = this.filterNestedProperties(schema);
 		}
 
-		const nullable = isNullable(schema);
+		// defaultNullable should only apply to properties within objects, NOT to top-level schema definitions
+		// Top-level schemas should only be nullable if explicitly marked as such
+		const effectiveDefaultNullable = isTopLevel ? false : this.context.defaultNullable;
+		const nullable = isNullable(schema, effectiveDefaultNullable);
 
 		// Handle multiple types (OpenAPI 3.1)
 		if (hasMultipleTypes(schema)) {

@@ -9,6 +9,7 @@ export const RequestResponseOptionsSchema = z.strictObject({
 	mode: z.enum(["strict", "normal", "loose"]).optional(),
 	useDescribe: z.boolean().optional(),
 	includeDescriptions: z.boolean().optional(),
+	defaultNullable: z.boolean().optional(),
 });
 
 /**

@@ -218,3 +218,183 @@ describe("Query Parameter Schema Generation", () => {
 		expect(output).toMatch(/z\.(object|strictObject|looseObject)\(/);
 	});
 });
+
+describe("Query Parameter Schema Generation Without OperationId", () => {
+	const noOperationIdFixture = resolve(__dirname, "fixtures/query-params-no-operationid.yaml");
+
+	it("should generate query param schemas using path+method naming when no operationId", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Should generate schema for GET /users -> GetUsersQueryParams
+		expect(output).toContain("GetUsersQueryParams");
+		expect(output).toContain("export const getUsersQueryParamsSchema");
+
+		// Should generate schema for GET /users/{userId} -> GetUsersByUserIdQueryParams
+		expect(output).toContain("GetUsersByUserIdQueryParams");
+		expect(output).toContain("export const getUsersByUserIdQueryParamsSchema");
+
+		// Should generate schema for GET /organizations/{orgId}/members -> GetOrganizationsByOrgIdMembersQueryParams
+		expect(output).toContain("GetOrganizationsByOrgIdMembersQueryParams");
+		expect(output).toContain("export const getOrganizationsByOrgIdMembersQueryParamsSchema");
+
+		// Should generate schema for POST /search -> PostSearchQueryParams
+		expect(output).toContain("PostSearchQueryParams");
+		expect(output).toContain("export const postSearchQueryParamsSchema");
+	});
+
+	it("should NOT generate query param schema when no query params exist", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// GET /config has no query params, should not generate schema
+		expect(output).not.toContain("GetConfigQueryParams");
+		expect(output).not.toContain("getConfigQueryParamsSchema");
+	});
+
+	it("should generate header param schemas using path+method naming when no operationId", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Should generate schema for GET /headers -> GetHeadersHeaderParams
+		expect(output).toContain("GetHeadersHeaderParams");
+	});
+
+	it("should generate correct types for query params without operationId", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Check GET /users parameters
+		expect(output).toContain("page: z.number().int().gte(1).optional()");
+		expect(output).toContain("limit: z.number().int().gte(1).lte(100).optional()");
+		expect(output).toContain("search: z.string().optional()");
+
+		// Check required param in GET /organizations/{orgId}/members
+		expect(output).toContain("active: z.boolean()");
+		// Role should be an enum
+		expect(output).toContain('role: z.enum(["admin", "member", "viewer"]).optional()');
+	});
+
+	it("should handle path params correctly when generating query param schema names", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Path: /users/{userId} should generate GetUsersByUserIdQueryParams
+		// The "ByUserId" part comes from the path parameter
+		expect(output).toContain("GetUsersByUserIdQueryParams");
+
+		// Path: /organizations/{orgId}/members should generate GetOrganizationsByOrgIdMembersQueryParams
+		expect(output).toContain("GetOrganizationsByOrgIdMembersQueryParams");
+	});
+
+	it("should work with useDescribe option for operations without operationId", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: noOperationIdFixture,
+			mode: "normal",
+			useDescribe: true,
+			includeDescriptions: true,
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Should add .describe() calls for parameters with descriptions
+		expect(output).toContain('.describe("Page number for pagination")');
+		expect(output).toContain('.describe("Number of items per page")');
+	});
+});
+
+describe("Query Parameter Schema Generation with stripPathPrefix", () => {
+	const stripPathPrefixFixture = resolve(__dirname, "fixtures/strip-path-prefix-query-params.yaml");
+
+	it("should strip path prefix when generating query param schema names", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Without stripPathPrefix, would be GetApiV1UsersQueryParams
+		// With stripPathPrefix: "/api/v1", should be GetUsersQueryParams
+		expect(output).toContain("getSearchQueryParamsSchema");
+		expect(output).toContain("GetUsersQueryParams");
+
+		// Should NOT contain the full path version
+		expect(output).not.toContain("GetApiV1UsersQueryParams");
+		expect(output).not.toContain("getApiV1UsersQueryParamsSchema");
+	});
+
+	it("should handle path params correctly with stripPathPrefix", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Path: /api/v1/users/{userId}/posts should become /users/{userId}/posts
+		// Which generates GetUsersByUserIdPostsQueryParams
+		expect(output).toContain("GetUsersByUserIdPostsQueryParams");
+		expect(output).not.toContain("GetApiV1UsersByUserIdPostsQueryParams");
+	});
+
+	it("should support glob patterns in stripPathPrefix", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v*",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// With glob pattern, should still strip the prefix
+		expect(output).toContain("GetUsersQueryParams");
+		expect(output).not.toContain("GetApiV1UsersQueryParams");
+	});
+
+	it("should generate typed schema imports", () => {
+		const options: OpenApiGeneratorOptions = {
+			input: stripPathPrefixFixture,
+			mode: "normal",
+			stripPathPrefix: "/api/v1",
+		};
+
+		const generator = new OpenApiGenerator(options);
+		const output = generator.generateString();
+
+		// Should generate both schema and type
+		expect(output).toContain("getSearchQueryParamsSchema");
+		expect(output).toContain("type GetSearchQueryParams = z.infer<typeof getSearchQueryParamsSchema>");
+	});
+});

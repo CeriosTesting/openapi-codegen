@@ -119,11 +119,48 @@ describe("String Utilities", () => {
 			expect(isNullable(schema)).toBe(false);
 		});
 
-		it("should return false for simple type", () => {
+		it("should return false for simple type with defaultNullable=false", () => {
 			const schema: OpenAPISchema = {
 				type: "string",
 			};
 			expect(isNullable(schema)).toBe(false);
+			expect(isNullable(schema, false)).toBe(false);
+		});
+
+		it("should return true for simple type with defaultNullable=true", () => {
+			const schema: OpenAPISchema = {
+				type: "string",
+			};
+			expect(isNullable(schema, true)).toBe(true);
+		});
+
+		it("should respect explicit nullable: false even with defaultNullable=true", () => {
+			const schema: OpenAPISchema = {
+				type: "string",
+				nullable: false,
+			};
+			expect(isNullable(schema, true)).toBe(false);
+		});
+
+		it("should respect explicit nullable: true even with defaultNullable=false", () => {
+			const schema: OpenAPISchema = {
+				type: "string",
+				nullable: true,
+			};
+			expect(isNullable(schema, false)).toBe(true);
+		});
+
+		it("should use type array null detection over defaultNullable", () => {
+			const schemaWithNull: OpenAPISchema = {
+				type: ["string", "null"],
+			};
+			const schemaWithoutNull: OpenAPISchema = {
+				type: ["string", "number"],
+			};
+			// Type array with null should be nullable regardless of default
+			expect(isNullable(schemaWithNull, false)).toBe(true);
+			// Type array without null should not be nullable even with defaultNullable=true
+			expect(isNullable(schemaWithoutNull, true)).toBe(false);
 		});
 	});
 

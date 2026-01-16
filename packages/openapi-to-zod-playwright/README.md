@@ -486,6 +486,43 @@ Common inherited options:
 - `includeDescriptions`: Include JSDoc comments in generated schemas
 - `showStats`: Include generation statistics in output
 - `prefix`/`suffix`: Add prefixes/suffixes to schema names
+- `defaultNullable`: Treat properties as nullable by default when not explicitly specified (default: `false`)
+- `customDateTimeFormatRegex`: Custom regex pattern for date-time validation (see below)
+
+#### Custom Date-Time Format
+
+By default, `date-time` format fields use `z.iso.datetime()`, which requires timezone suffix (`Z`). If your API returns date-times **without the `Z` suffix** (e.g., `2026-01-07T14:30:00`), you can override this:
+
+```typescript
+import { defineConfig } from '@cerios/openapi-to-zod-playwright';
+
+export default defineConfig({
+  defaults: {
+    // For date-times without Z suffix (JSON/YAML config)
+    customDateTimeFormatRegex: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$',
+  },
+  specs: [
+    {
+      input: 'openapi.yaml',
+      output: 'src/schemas.ts',
+    },
+  ],
+});
+```
+
+Or using RegExp literal in TypeScript config:
+
+```typescript
+export default defineConfig({
+  defaults: {
+    // TypeScript config - RegExp literal (single escaping)
+    customDateTimeFormatRegex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
+  },
+  specs: [{ input: 'openapi.yaml', output: 'src/schemas.ts' }],
+});
+```
+
+See the [@cerios/openapi-to-zod Custom Date-Time Format documentation](../openapi-to-zod/README.md#custom-date-time-format) for more examples and patterns.
 
 ## Response Handling
 

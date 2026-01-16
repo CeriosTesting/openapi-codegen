@@ -235,7 +235,7 @@ describe("Split Files - Path Edge Cases", () => {
 			// Class names should be derived from filename, not full path
 			expect(clientContent).toContain("export class PetstoreClient");
 			expect(serviceContent).toContain("export class PetstoreService");
-			expect(serviceContent).toContain("private readonly client: PetstoreClient");
+			expect(serviceContent).toContain("private readonly _client: PetstoreClient");
 		});
 
 		it("should handle different naming patterns across directories", () => {
@@ -254,7 +254,7 @@ describe("Split Files - Path Edge Cases", () => {
 			// Should strip -client/-service suffixes
 			expect(clientContent).toContain("export class MyApiClient");
 			expect(serviceContent).toContain("export class MyApiService");
-			expect(serviceContent).toContain("private readonly client: MyApiClient");
+			expect(serviceContent).toContain("private readonly _client: MyApiClient");
 		});
 	});
 

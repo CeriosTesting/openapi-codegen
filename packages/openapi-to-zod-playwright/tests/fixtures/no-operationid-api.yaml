@@ -1,0 +1,154 @@
+openapi: 3.0.0
+info:
+  title: No OperationId API
+  version: 1.0.0
+  description: API without operationId to test path-based naming for query params
+paths:
+  /users:
+    get:
+      # No operationId - should use GetUsers naming
+      summary: List users with query params
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /products/{productId}:
+    get:
+      # No operationId - should use GetProductsByProductId naming
+      summary: Get product by ID with options
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of relations to include
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [USD, EUR, GBP]
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /orders:
+    get:
+      # No operationId - should use GetOrders naming
+      summary: List orders with filters
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pending, processing, shipped, delivered]
+        - name: customerId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    post:
+      # No operationId - should use PostOrders naming
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrder'
+      responses:
+        '201':
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /config:
+    get:
+      # No operationId, no query params - should NOT generate query param schema
+      summary: Get configuration
+      responses:
+        '200':
+          description: Configuration
+          content:
+            application/json:
+              schema:
+                type: object
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        total:
+          type: number
+    CreateOrder:
+      type: object
+      properties:
+        productIds:
+          type: array
+          items:
+            type: string
+        customerId:
+          type: string

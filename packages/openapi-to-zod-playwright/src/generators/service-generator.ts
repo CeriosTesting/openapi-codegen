@@ -1,6 +1,7 @@
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { stripPathPrefix, stripPrefix, toCamelCase, toPascalCase } from "@cerios/openapi-to-zod/internal";
 import type { PlaywrightOperationFilters } from "../types";
+import { selectContentType } from "../utils/content-type-selector";
 import { shouldIgnoreHeader } from "../utils/header-filters";
 import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
@@ -39,66 +40,6 @@ function stripContentTypeParams(contentType: string): string {
 }
 
 /**
- * Extracts a PascalCase suffix from content-type
- * Handles wildcards, standard types, vendor types with/without +suffix
- */
-function extractContentTypeSuffix(contentType: string): string {
-	// Handle wildcards
-	if (contentType === "*/*") return "Any";
-	if (contentType === "text/*") return "Text";
-	if (contentType === "image/*") return "Image";
-	if (contentType === "application/*") return "Application";
-
-	// Handle standard types
-	const standardTypes: Record<string, string> = {
-		"application/json": "Json",
-		"application/x-www-form-urlencoded": "Form",
-		"multipart/form-data": "Multipart",
-		"application/xml": "Xml",
-		"text/xml": "Xml",
-		"text/html": "Html",
-		"text/plain": "Text",
-		"application/pdf": "Pdf",
-	};
-
-	if (standardTypes[contentType]) {
-		return standardTypes[contentType];
-	}
-
-	// Handle image/* subtypes - all become "Image"
-	if (contentType.startsWith("image/")) {
-		return "Image";
-	}
-
-	// Handle vendor types with +suffix (e.g., application/vnd.api+json)
-	if (contentType.includes("+")) {
-		const suffix = contentType.split("+")[1];
-		return suffix.charAt(0).toUpperCase() + suffix.slice(1);
-	}
-
-	// Handle vendor types without +suffix (e.g., application/vnd.company-name.api)
-	// Convert full path to PascalCase, replacing hyphens and periods
-	const parts = contentType.split("/");
-	const subtype = parts[parts.length - 1];
-	return subtype
-		.split(/[-.]/)
-		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
-		.join("");
-}
-
-/**
- * Handles duplicate suffixes by appending numbers
- */
-function deduplicateSuffixes(suffixes: string[]): string[] {
-	const counts = new Map<string, number>();
-	return suffixes.map(suffix => {
-		const count = counts.get(suffix) || 0;
-		counts.set(suffix, count + 1);
-		return count === 0 ? suffix : `${suffix}${count + 1}`;
-	});
-}
-
-/**
  * Generate a type-safe API service class with response validation
  * Separate methods for each request content-type and status code combination
  * @param spec - OpenAPI specification
@@ -110,6 +51,7 @@ function deduplicateSuffixes(suffixes: string[]): string[] {
  * @param ignoreHeaders - Optional array of header patterns to ignore
  * @param stripPrefix - Optional path prefix to strip before processing
  * @param stripSchemaPrefix - Optional schema name prefix to strip
+ * @param preferredContentTypes - Optional array of preferred content types for response handling
  */
 export function generateServiceClass(
 	spec: OpenAPISpec,
@@ -120,9 +62,17 @@ export function generateServiceClass(
 	operationFilters?: PlaywrightOperationFilters,
 	ignoreHeaders?: string[],
 	stripPrefix?: string,
-	stripSchemaPrefix?: string
+	stripSchemaPrefix?: string,
+	preferredContentTypes?: string[]
 ): string {
-	const endpoints = extractEndpoints(spec, useOperationId, operationFilters, ignoreHeaders, stripPrefix);
+	const endpoints = extractEndpoints(
+		spec,
+		useOperationId,
+		operationFilters,
+		ignoreHeaders,
+		stripPrefix,
+		preferredContentTypes
+	);
 
 	if (endpoints.length === 0) {
 		return "";
@@ -139,7 +89,7 @@ export function generateServiceClass(
  * Response validation with Zod schemas
  */
 export class ${className} {
-	constructor(private readonly client: ${clientClassName}) {}
+	constructor(private readonly _client: ${clientClassName}) {}
 
 ${methods}
 }
@@ -154,7 +104,8 @@ function extractEndpoints(
 	useOperationId: boolean,
 	operationFilters?: PlaywrightOperationFilters,
 	ignoreHeaders?: string[],
-	stripPrefix?: string
+	stripPrefix?: string,
+	preferredContentTypes?: string[]
 ): EndpointInfo[] {
 	const endpoints: EndpointInfo[] = [];
 
@@ -198,44 +149,49 @@ function extractEndpoints(
 
 					if (!isSuccess) continue;
 
-					// Extract content types and create a ResponseInfo for each
+					// Extract first content type only (Playwright handles content negotiation)
 					const content = (responseObj as any).content;
 
 					if (content && typeof content === "object") {
-						// Iterate all content-type keys
-						for (const [rawContentType, contentObj] of Object.entries(content)) {
-							if (typeof contentObj !== "object" || !contentObj) continue;
+						// Get available content types and select based on preference
+						const contentTypes = Object.keys(content);
+						if (contentTypes.length > 0) {
+							const rawContentType = selectContentType(contentTypes, preferredContentTypes);
+							if (!rawContentType) continue;
+							const contentObj = content[rawContentType];
 
-							// Strip charset and parameters from content-type
-							const contentType = stripContentTypeParams(rawContentType);
+							if (typeof contentObj === "object" && contentObj) {
+								// Strip charset and parameters from content-type
+								const contentType = stripContentTypeParams(rawContentType);
 
-							let schemaRef: string | undefined;
-							let schemaName: string | undefined;
-							let inlineSchema: any;
-							const hasBody = statusCode !== "204";
+								let schemaRef: string | undefined;
+								let schemaName: string | undefined;
+								let inlineSchema: any;
+								const hasBody = statusCode !== "204";
 
-							if ((contentObj as any).schema) {
-								const schema = (contentObj as any).schema;
-								schemaRef = schema.$ref;
-								if (schemaRef) {
-									// Extract schema name from $ref
-									const parts = schemaRef.split("/");
-									schemaName = parts[parts.length - 1];
-								} else {
-									// No $ref - it's an inline schema
-									inlineSchema = schema;
+								if ((contentObj as any).schema) {
+									const schema = (contentObj as any).schema;
+									schemaRef = schema.$ref;
+									if (schemaRef) {
+										// Extract schema name from $ref
+										const parts = schemaRef.split("/");
+										schemaName = parts[parts.length - 1];
+									} else {
+										// No $ref - it's an inline schema
+										inlineSchema = schema;
+									}
 								}
-							}
 
-							responses.push({
-								statusCode,
-								schema: schemaRef,
-								schemaName,
-								description: (responseObj as any).description,
-								hasBody,
-								contentType,
-								inlineSchema,
-							});
+								responses.push({
+									statusCode,
+									schema: schemaRef,
+									schemaName,
+									description: (responseObj as any).description,
+									hasBody,
+									contentType,
+									inlineSchema,
+								});
+							}
 						}
 					} else {
 						// No content defined - assume no body
@@ -253,23 +209,32 @@ function extractEndpoints(
 
 			// Check if operation has query parameters
 			let queryParamSchemaName: string | undefined;
-			if (operation.operationId && operation.parameters && Array.isArray(operation.parameters)) {
+			if (operation.parameters && Array.isArray(operation.parameters)) {
 				const hasQueryParams = operation.parameters.some(
 					(param: any) => param && typeof param === "object" && param.in === "query"
 				);
 				if (hasQueryParams) {
 					// Generate schema name matching the base generator pattern
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					const pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+					// The base generator uses operationId if present, path+method fallback otherwise
+					// We must use the same logic to reference the correct schema
+					let pascalOperationId: string;
+					if (operation.operationId) {
+						// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
+						pascalOperationId = operation.operationId.includes("-")
+							? toPascalCase(operation.operationId)
+							: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+					} else {
+						// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
+						const methodName = generateMethodName(method, path);
+						pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
+					}
 					queryParamSchemaName = `${pascalOperationId}QueryParams`;
 				}
 			}
 
 			// Check if operation has header parameters (excluding ignored ones)
 			let headerParamSchemaName: string | undefined;
-			if (operation.operationId && operation.parameters && Array.isArray(operation.parameters)) {
+			if (operation.parameters && Array.isArray(operation.parameters)) {
 				const hasHeaderParams = operation.parameters.some(
 					(param: any) =>
 						param &&
@@ -279,10 +244,19 @@ function extractEndpoints(
 				);
 				if (hasHeaderParams) {
 					// Generate schema name matching the base generator pattern
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					const pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+					// The base generator uses operationId if present, path+method fallback otherwise
+					// We must use the same logic to reference the correct schema
+					let pascalOperationId: string;
+					if (operation.operationId) {
+						// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
+						pascalOperationId = operation.operationId.includes("-")
+							? toPascalCase(operation.operationId)
+							: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
+					} else {
+						// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
+						const methodName = generateMethodName(method, path);
+						pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
+					}
 					headerParamSchemaName = `${pascalOperationId}HeaderParams`;
 				}
 			}
@@ -309,7 +283,7 @@ function extractEndpoints(
 
 /**
  * Generates success methods for an endpoint
- * Creates method variants for each request content-type and response status/content-type combination
+ * Creates one method per status code (content types are handled by using the first one)
  */
 function generateSuccessMethods(
 	endpoint: EndpointInfo,
@@ -317,143 +291,30 @@ function generateSuccessMethods(
 	ignoreHeaders?: string[],
 	stripSchemaPrefix?: string
 ): string[] {
-	const { responses, requestBody } = endpoint;
+	const { responses } = endpoint;
 	const methods: string[] = [];
 
-	// Extract request content-types
-	const requestContentTypes: string[] = [];
-	if (requestBody?.content && typeof requestBody.content === "object") {
-		for (const contentType of Object.keys(requestBody.content)) {
-			requestContentTypes.push(stripContentTypeParams(contentType));
+	// No responses defined - generate single method
+	if (responses.length === 0) {
+		return [generateServiceMethod(endpoint, undefined, schemaImports, "", ignoreHeaders, stripSchemaPrefix)];
+	}
+
+	// Group responses by status code
+	const statusGroups = new Map<string, ResponseInfo>();
+	for (const response of responses) {
+		// Only keep the first response per status code (already filtered to first content type)
+		if (!statusGroups.has(response.statusCode)) {
+			statusGroups.set(response.statusCode, response);
 		}
 	}
 
-	// If no request body, generate methods without request content-type suffix
-	if (requestContentTypes.length === 0) {
-		if (responses.length === 0) {
-			return [generateServiceMethod(endpoint, undefined, schemaImports, "", "", "", ignoreHeaders, stripSchemaPrefix)];
-		}
+	const hasMultipleStatuses = statusGroups.size > 1;
 
-		// Group responses by status code
-		const statusGroups = new Map<string, ResponseInfo[]>();
-		for (const response of responses) {
-			const group = statusGroups.get(response.statusCode) || [];
-			group.push(response);
-			statusGroups.set(response.statusCode, group);
-		}
-
-		const hasMultipleStatuses = statusGroups.size > 1;
-
-		for (const [statusCode, responseGroup] of statusGroups) {
-			const statusSuffix = hasMultipleStatuses ? statusCode : "";
-			const hasMultipleContentTypes = responseGroup.length > 1;
-
-			if (!hasMultipleContentTypes) {
-				methods.push(
-					generateServiceMethod(
-						endpoint,
-						responseGroup[0],
-						schemaImports,
-						statusSuffix,
-						"",
-						"",
-						ignoreHeaders,
-						stripSchemaPrefix
-					)
-				);
-			} else {
-				const suffixes = responseGroup.map(r => extractContentTypeSuffix(r.contentType));
-				const deduplicated = deduplicateSuffixes(suffixes);
-				for (let i = 0; i < responseGroup.length; i++) {
-					methods.push(
-						generateServiceMethod(
-							endpoint,
-							responseGroup[i],
-							schemaImports,
-							statusSuffix,
-							deduplicated[i],
-							"",
-							ignoreHeaders,
-							stripSchemaPrefix
-						)
-					);
-				}
-			}
-		}
-		return methods;
-	}
-
-	// Generate methods for each request content-type
-	const hasMultipleRequestTypes = requestContentTypes.length > 1;
-	const requestSuffixes = hasMultipleRequestTypes
-		? deduplicateSuffixes(requestContentTypes.map(ct => extractContentTypeSuffix(ct)))
-		: [""];
-
-	for (let reqIdx = 0; reqIdx < requestContentTypes.length; reqIdx++) {
-		const requestSuffix = requestSuffixes[reqIdx];
-
-		if (responses.length === 0) {
-			methods.push(
-				generateServiceMethod(
-					endpoint,
-					undefined,
-					schemaImports,
-					"",
-					"",
-					requestSuffix,
-					ignoreHeaders,
-					stripSchemaPrefix
-				)
-			);
-			continue;
-		}
-
-		// Group responses by status code
-		const statusGroups = new Map<string, ResponseInfo[]>();
-		for (const response of responses) {
-			const group = statusGroups.get(response.statusCode) || [];
-			group.push(response);
-			statusGroups.set(response.statusCode, group);
-		}
-
-		const hasMultipleStatuses = statusGroups.size > 1;
-
-		for (const [statusCode, responseGroup] of statusGroups) {
-			const statusSuffix = hasMultipleStatuses ? statusCode : "";
-			const hasMultipleContentTypes = responseGroup.length > 1;
-
-			if (!hasMultipleContentTypes) {
-				methods.push(
-					generateServiceMethod(
-						endpoint,
-						responseGroup[0],
-						schemaImports,
-						statusSuffix,
-						"",
-						requestSuffix,
-						ignoreHeaders,
-						stripSchemaPrefix
-					)
-				);
-			} else {
-				const suffixes = responseGroup.map(r => extractContentTypeSuffix(r.contentType));
-				const deduplicated = deduplicateSuffixes(suffixes);
-				for (let i = 0; i < responseGroup.length; i++) {
-					methods.push(
-						generateServiceMethod(
-							endpoint,
-							responseGroup[i],
-							schemaImports,
-							statusSuffix,
-							deduplicated[i],
-							requestSuffix,
-							ignoreHeaders,
-							stripSchemaPrefix
-						)
-					);
-				}
-			}
-		}
+	for (const [statusCode, response] of statusGroups) {
+		const statusSuffix = hasMultipleStatuses ? statusCode : "";
+		methods.push(
+			generateServiceMethod(endpoint, response, schemaImports, statusSuffix, ignoreHeaders, stripSchemaPrefix)
+		);
 	}
 
 	return methods;
@@ -512,22 +373,20 @@ function generateInlineSchemaCode(
 }
 
 /**
- * Generates a single service method with content-type handling
+ * Generates a single service method
  */
 function generateServiceMethod(
 	endpoint: EndpointInfo,
 	response: ResponseInfo | undefined,
 	schemaImports: Set<string>,
 	statusSuffix: string,
-	responseContentTypeSuffix: string,
-	requestContentTypeSuffix: string,
 	ignoreHeaders?: string[],
 	stripSchemaPrefix?: string
 ): string {
 	const { path, method, methodName, pathParams, requestBody } = endpoint;
 
-	// Determine method name - request suffix comes before status/response suffixes
-	const finalMethodName = `${methodName}${requestContentTypeSuffix}${statusSuffix}${responseContentTypeSuffix}`;
+	// Determine method name - only status suffix if multiple status codes
+	const finalMethodName = `${methodName}${statusSuffix}`;
 
 	// Build parameter list
 	const params: string[] = [];
@@ -544,28 +403,14 @@ function generateServiceMethod(
 		(p: any) => p.in === "header" && !shouldIgnoreHeader(p.name, ignoreHeaders)
 	);
 
-	// Extract request content-type info if we have a request body
+	// Extract request content-type info if we have a request body (use first content type)
 	let requestContentType = "";
 	let hasRequestBody = false;
 	if (requestBody?.content) {
-		if (requestContentTypeSuffix === "") {
-			// Single content-type: take the first one
-			const firstContentType = Object.keys(requestBody.content)[0];
-			if (firstContentType) {
-				requestContentType = stripContentTypeParams(firstContentType);
-				hasRequestBody = true;
-			}
-		} else {
-			// Multiple content-types: find the one matching our suffix
-			for (const [ct, _ctObj] of Object.entries(requestBody.content)) {
-				const stripped = stripContentTypeParams(ct);
-				const suffix = extractContentTypeSuffix(stripped);
-				if (requestContentTypeSuffix === suffix || requestContentTypeSuffix.startsWith(suffix)) {
-					requestContentType = stripped;
-					hasRequestBody = true;
-					break;
-				}
-			}
+		const firstContentType = Object.keys(requestBody.content)[0];
+		if (firstContentType) {
+			requestContentType = stripContentTypeParams(firstContentType);
+			hasRequestBody = true;
 		}
 	}
 
@@ -636,21 +481,26 @@ function generateServiceMethod(
 
 	// Determine return type
 	let returnType = "Promise<void>";
+	let returnTypeName: string | null = null; // For JSDoc @returns
 	if (response?.hasBody && response.schemaName) {
 		// Apply stripSchemaPrefix before converting to valid TypeScript type name
 		const strippedName = stripPrefix(response.schemaName, stripSchemaPrefix);
 		const typeName = toPascalCase(strippedName);
 		returnType = `Promise<${typeName}>`;
+		returnTypeName = typeName;
 		schemaImports.add(response.schemaName);
 	} else if (response?.hasBody && response.inlineSchema) {
 		const inlineInfo = generateInlineSchemaCode(response.inlineSchema, stripSchemaPrefix);
 		if (inlineInfo) {
 			returnType = `Promise<${inlineInfo.typeName}>`;
+			returnTypeName = inlineInfo.typeName;
 		} else {
 			returnType = "Promise<any>";
+			returnTypeName = "any";
 		}
 	} else if (response?.hasBody && !response.schemaName) {
 		returnType = "Promise<any>";
+		returnTypeName = "any";
 	}
 
 	// Generate method body
@@ -661,16 +511,18 @@ function generateServiceMethod(
 	const pathParamArgs = pathParams.map(p => sanitizeParamName(p));
 	const clientArgs =
 		pathParamArgs.length > 0
-			? `${pathParamArgs.join(", ")}, ${needsOptions ? "options" : "{}"}`
+			? needsOptions
+				? `${pathParamArgs.join(", ")}, options`
+				: pathParamArgs.join(", ")
 			: needsOptions
 				? "options"
-				: "{}";
+				: "";
 
 	// Build validation code (for response only, not query params)
 	const validationCode: string[] = [];
 
 	// Add client call
-	validationCode.push(`\t\tconst response = await this.client.${clientMethod}(${clientArgs});`);
+	validationCode.push(`\t\tconst response = await this._client.${clientMethod}(${clientArgs});`);
 	validationCode.push("");
 
 	// Add status validation
@@ -713,9 +565,8 @@ function generateServiceMethod(
 		validationCode.push(`\t\t// Parse response body (no schema validation available)`);
 		validationCode.push(`\t\tconst body = await ${parseMethod};`);
 		validationCode.push(`\t\treturn body;`);
-	} else {
-		validationCode.push(`\t\treturn;`);
 	}
+	// Note: No else clause - void methods don't need a return statement
 
 	// Build JSDoc tags
 	const additionalTags: string[] = [];
@@ -724,9 +575,9 @@ function generateServiceMethod(
 	const contentTypeInfo = requestContentType ? ` [${requestContentType}]` : "";
 	const statusInfo = response ? ` (${statusCode})` : "";
 
-	// Add @returns tag with response description if present
-	if (response?.description) {
-		additionalTags.push(`@returns ${response.description}`);
+	// Add @returns tag ONLY if there's a body with a meaningful return type
+	if (response?.hasBody && returnTypeName) {
+		additionalTags.push(`@returns ${returnTypeName}`);
 	}
 
 	const jsdoc = generateOperationJSDoc({

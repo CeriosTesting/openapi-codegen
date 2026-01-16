@@ -56,7 +56,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		// Basic validation of service class structure (class name derived from filename)
 		expect(output).toContain("export class TestService");
 		expect(output).toContain("constructor(private");
-		expect(output).toContain("readonly client: TestClient");
+		expect(output).toContain("readonly _client: TestClient");
 	});
 
 	it("should include query parameter types (not schemas)", () => {

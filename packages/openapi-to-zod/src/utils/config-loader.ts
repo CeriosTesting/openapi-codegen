@@ -11,6 +11,7 @@ const OpenApiGeneratorOptionsSchema = z.strictObject({
 	output: z.string(),
 	includeDescriptions: z.boolean().optional(),
 	useDescribe: z.boolean().optional(),
+	defaultNullable: z.boolean().optional(),
 	schemaType: z.enum(["all", "request", "response"]).optional(),
 	prefix: z.string().optional(),
 	suffix: z.string().optional(),
@@ -22,6 +23,22 @@ const OpenApiGeneratorOptionsSchema = z.strictObject({
 	operationFilters: OperationFiltersSchema.optional(),
 	cacheSize: z.number().positive().optional(),
 	batchSize: z.number().positive().optional(),
+	customDateTimeFormatRegex: z
+		.union([
+			z.string().refine(
+				pattern => {
+					try {
+						new RegExp(pattern);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				{ message: "Must be a valid regular expression pattern" }
+			),
+			z.instanceof(RegExp),
+		])
+		.optional(),
 });
 
 const ConfigFileSchema = z.strictObject({
@@ -30,6 +47,7 @@ const ConfigFileSchema = z.strictObject({
 			mode: z.enum(["strict", "normal", "loose"]).optional(),
 			includeDescriptions: z.boolean().optional(),
 			useDescribe: z.boolean().optional(),
+			defaultNullable: z.boolean().optional(),
 			schemaType: z.enum(["all", "request", "response"]).optional(),
 			prefix: z.string().optional(),
 			suffix: z.string().optional(),
@@ -40,6 +58,22 @@ const ConfigFileSchema = z.strictObject({
 			operationFilters: OperationFiltersSchema.optional(),
 			cacheSize: z.number().positive().optional(),
 			batchSize: z.number().positive().optional(),
+			customDateTimeFormatRegex: z
+				.union([
+					z.string().refine(
+						pattern => {
+							try {
+								new RegExp(pattern);
+								return true;
+							} catch {
+								return false;
+							}
+						},
+						{ message: "Must be a valid regular expression pattern" }
+					),
+					z.instanceof(RegExp),
+				])
+				.optional(),
 		})
 		.optional(),
 	specs: z
@@ -122,10 +156,12 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			mode: defaults.mode,
 			includeDescriptions: defaults.includeDescriptions,
 			useDescribe: defaults.useDescribe,
+			defaultNullable: defaults.defaultNullable,
 			schemaType: defaults.schemaType,
 			prefix: defaults.prefix,
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
+			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
 
 			// Override with spec-specific values (including required input/output)
 			...spec,

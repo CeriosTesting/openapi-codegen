@@ -86,7 +86,14 @@ describe("Response Types", () => {
 
 			// DELETE should return void for 204 in service
 			expect(serviceString).toContain("Promise<void>");
-			expect(serviceString).toContain("return;");
+		});
+
+		it("should not have empty return; for void methods", () => {
+			const generator = new OpenApiPlaywrightGenerator({ useOperationId: false, input: fixtureFile });
+			const serviceString = generator.generateServiceString();
+
+			// Void methods should not have unnecessary return; statements
+			expect(serviceString).not.toContain("return;");
 		});
 
 		it("should not try to parse body for 204 responses", () => {
@@ -95,6 +102,27 @@ describe("Response Types", () => {
 
 			// Should check for method existence
 			expect(serviceString).toContain("deleteUsersByUserId");
+		});
+	});
+
+	describe("JSDoc @returns", () => {
+		const fixtureFile = TestUtils.getFixturePath("simple-api.yaml");
+
+		it("should have @returns with actual type name, not HTTP status description", () => {
+			const generator = new OpenApiPlaywrightGenerator({ useOperationId: false, input: fixtureFile });
+			const serviceString = generator.generateServiceString();
+
+			// @returns should contain the actual type name
+			expect(serviceString).toContain("@returns User[]");
+			expect(serviceString).toContain("@returns User");
+		});
+
+		it("should not have @returns for void methods", () => {
+			const generator = new OpenApiPlaywrightGenerator({ useOperationId: false, input: fixtureFile });
+			const serviceString = generator.generateServiceString();
+
+			// Void methods should not have @returns tag
+			expect(serviceString).not.toContain("@returns User deleted");
 		});
 	});
 });
