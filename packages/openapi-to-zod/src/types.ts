@@ -34,6 +34,20 @@ export interface CommonSchemaOptions {
 	 * @default false
 	 */
 	defaultNullable?: boolean;
+
+	/**
+	 * Behavior for empty object schemas (objects with no properties defined)
+	 *
+	 * - 'strict': Uses z.strictObject({}) - no additional properties allowed
+	 * - 'loose': Uses z.looseObject({}) - explicitly allows additional properties (Zod v4)
+	 * - 'record': Uses z.record(z.string(), z.unknown()) - treat as arbitrary key-value map
+	 *
+	 * Note: This option controls nested/property-level empty objects.
+	 * The top-level `mode` option controls how schema definitions are wrapped.
+	 *
+	 * @default 'loose'
+	 */
+	emptyObjectBehavior?: "strict" | "loose" | "record";
 }
 
 /**
@@ -95,6 +109,20 @@ export interface OpenApiGeneratorOptions {
 	 * @default false
 	 */
 	defaultNullable?: boolean;
+
+	/**
+	 * Behavior for empty object schemas (objects with no properties defined)
+	 *
+	 * - 'strict': Uses z.strictObject({}) - no additional properties allowed
+	 * - 'loose': Uses z.looseObject({}) - explicitly allows additional properties (Zod v4)
+	 * - 'record': Uses z.record(z.string(), z.unknown()) - treat as arbitrary key-value map
+	 *
+	 * Note: This option controls nested/property-level empty objects.
+	 * The top-level `mode` option controls how schema definitions are wrapped.
+	 *
+	 * @default 'loose'
+	 */
+	emptyObjectBehavior?: "strict" | "loose" | "record";
 
 	/**
 	 * Schema filtering mode

@@ -47,6 +47,7 @@ export class OpenApiGenerator {
 			includeDescriptions: options.includeDescriptions ?? true,
 			useDescribe: options.useDescribe ?? false,
 			defaultNullable: options.defaultNullable ?? false,
+			emptyObjectBehavior: options.emptyObjectBehavior ?? "loose",
 			schemaType: options.schemaType || "all",
 			prefix: options.prefix,
 			suffix: options.suffix,
@@ -149,6 +150,7 @@ export class OpenApiGenerator {
 			includeDescriptions: this.requestOptions.includeDescriptions,
 			useDescribe: this.requestOptions.useDescribe,
 			defaultNullable: this.options.defaultNullable ?? false,
+			emptyObjectBehavior: this.options.emptyObjectBehavior ?? "loose",
 			namingOptions: {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
@@ -648,6 +650,7 @@ export class OpenApiGenerator {
 			includeDescriptions: resolvedOptions.includeDescriptions,
 			useDescribe: resolvedOptions.useDescribe,
 			defaultNullable: this.options.defaultNullable ?? false,
+			emptyObjectBehavior: this.options.emptyObjectBehavior ?? "loose",
 			namingOptions: {
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,

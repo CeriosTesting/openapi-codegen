@@ -25,6 +25,11 @@ export interface PropertyGeneratorContext {
 	 * @default false
 	 */
 	defaultNullable: boolean;
+	/**
+	 * Behavior for empty object schemas (objects with no properties defined)
+	 * @default 'loose'
+	 */
+	emptyObjectBehavior: "strict" | "loose" | "record";
 }
 
 /**
@@ -197,6 +202,15 @@ export class PropertyGenerator {
 	}
 
 	/**
+	 * Resolve a $ref string to the actual schema
+	 */
+	private resolveSchemaRef(ref: string): OpenAPISchema | undefined {
+		const schemaName = ref.split("/").pop();
+		if (!schemaName) return undefined;
+		return this.context.spec.components?.schemas?.[schemaName];
+	}
+
+	/**
 	 * Resolve a schema name through any aliases to get the actual schema name
 	 * If the schema is an alias (allOf with single $ref), return the target name
 	 */
@@ -294,14 +308,14 @@ export class PropertyGenerator {
 		const evaluatedPropsSet = `new Set(${JSON.stringify([...evaluatedProps])})`;
 
 		// For unions (oneOf/anyOf), we need to add .catchall(z.unknown()) to EACH branch
-		// For allOf with merge(), add catchall to the final result
+		// For allOf with extend(), add catchall to the final result
 		let schemaWithCatchall = baseSchema;
 		if (baseSchema.includes(".union([") || baseSchema.includes(".discriminatedUnion(")) {
 			// For unions, we need to make each branch allow additional properties
 			// This is complex, so we'll apply refinement and let the refinement check the raw input
 			// The union will have already validated structure, refinement checks extra props
 			schemaWithCatchall = baseSchema;
-		} else if (baseSchema.includes(".merge(")) {
+		} else if (baseSchema.includes(".extend(")) {
 			// Wrap in catchall - apply to final result
 			schemaWithCatchall = `${baseSchema}.catchall(z.unknown())`;
 		}
@@ -338,9 +352,21 @@ export class PropertyGenerator {
 			schema = this.filterNestedProperties(schema);
 		}
 
-		// defaultNullable should only apply to properties within objects, NOT to top-level schema definitions
-		// Top-level schemas should only be nullable if explicitly marked as such
-		const effectiveDefaultNullable = isTopLevel ? false : this.context.defaultNullable;
+		// Determine if defaultNullable should apply to this schema.
+		// defaultNullable should ONLY apply to primitive property values within objects, NOT to:
+		// 1. Top-level schema definitions (isTopLevel = true)
+		// 2. Schema references ($ref) - nullability must be explicitly specified on the reference
+		// 3. Enum values - enums define discrete values and shouldn't be nullable by default
+		// 4. Const/literal values - these are exact values and shouldn't be nullable by default
+		//
+		// For $ref: The referenced schema controls its own structure. If you want
+		// a nullable reference, you must explicitly add `nullable: true` to the
+		// schema containing the $ref.
+		const isSchemaRef = !!schema.$ref;
+		const isEnum = !!schema.enum;
+		const isConst = schema.const !== undefined;
+		const shouldApplyDefaultNullable = !isTopLevel && !isSchemaRef && !isEnum && !isConst;
+		const effectiveDefaultNullable = shouldApplyDefaultNullable ? this.context.defaultNullable : false;
 		const nullable = isNullable(schema, effectiveDefaultNullable);
 
 		// Handle multiple types (OpenAPI 3.1)
@@ -417,7 +443,10 @@ export class PropertyGenerator {
 			let composition = generateAllOf(
 				schema.allOf,
 				nullable,
-				{ generatePropertySchema: this.generatePropertySchema.bind(this) },
+				{
+					generatePropertySchema: this.generatePropertySchema.bind(this),
+					resolveSchemaRef: this.resolveSchemaRef.bind(this),
+				},
 				currentSchema
 			);
 
@@ -439,6 +468,7 @@ export class PropertyGenerator {
 				{
 					generatePropertySchema: this.generatePropertySchema.bind(this),
 					resolveDiscriminatorMapping: this.resolveDiscriminatorMapping.bind(this),
+					resolveSchemaRef: this.resolveSchemaRef.bind(this),
 				},
 				{
 					passthrough: needsPassthrough,
@@ -465,6 +495,7 @@ export class PropertyGenerator {
 				{
 					generatePropertySchema: this.generatePropertySchema.bind(this),
 					resolveDiscriminatorMapping: this.resolveDiscriminatorMapping.bind(this),
+					resolveSchemaRef: this.resolveSchemaRef.bind(this),
 				},
 				{
 					passthrough: needsPassthrough,
@@ -551,7 +582,19 @@ export class PropertyGenerator {
 					);
 					validation = addDescription(validation, schema.description, this.context.useDescribe);
 				} else {
-					validation = "z.record(z.string(), z.unknown())";
+					// Empty object schema - behavior controlled by emptyObjectBehavior option
+					switch (this.context.emptyObjectBehavior) {
+						case "strict":
+							validation = "z.strictObject({})";
+							break;
+						case "loose":
+							validation = "z.looseObject({})";
+							break;
+						case "record":
+						default:
+							validation = "z.record(z.string(), z.unknown())";
+							break;
+					}
 					validation = addDescription(validation, schema.description, this.context.useDescribe);
 				}
 				break;
