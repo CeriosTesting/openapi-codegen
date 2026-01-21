@@ -233,7 +233,7 @@ components:
 		});
 	});
 
-	describe("defaultNullable should NOT apply to schema references ($ref)", () => {
+	describe("defaultNullable should apply to schema references ($ref)", () => {
 		const refSpecPath = join(testDir, "ref-spec.yaml");
 
 		beforeAll(() => {
@@ -283,7 +283,7 @@ components:
 			writeFileSync(refSpecPath, refSpec.trim());
 		});
 
-		it("should not add .nullable() to $ref schemas when defaultNullable: true", () => {
+		it("should add .nullable() to $ref schemas when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
 				output: "output.ts",
@@ -291,13 +291,10 @@ components:
 			});
 			const output = generator.generateString();
 
-			// Schema references should NOT have .nullable() added by defaultNullable
-			// status: statusSchema (not statusSchema.nullable())
-			expect(output).toMatch(/status:\s*statusSchema(?!\.nullable)/);
-			// role: userRoleSchema (not userRoleSchema.nullable())
-			expect(output).toMatch(/role:\s*userRoleSchema(?!\.nullable)/);
-			// address: addressSchema (not addressSchema.nullable())
-			expect(output).toMatch(/address:\s*addressSchema(?!\.nullable)/);
+			// Schema references SHOULD have .nullable() added by defaultNullable
+			expect(output).toMatch(/status:\s*statusSchema\.nullable\(\)/);
+			expect(output).toMatch(/role:\s*userRoleSchema\.nullable\(\)/);
+			expect(output).toMatch(/address:\s*addressSchema\.nullable\(\)/);
 		});
 
 		it("should add .nullable() to explicitly nullable refs", () => {

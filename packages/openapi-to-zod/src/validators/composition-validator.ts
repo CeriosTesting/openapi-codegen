@@ -2,7 +2,12 @@ import type { OpenAPISchema } from "../types";
 import { wrapNullable } from "../utils/string-utils";
 
 export interface CompositionValidatorContext {
-	generatePropertySchema: (schema: OpenAPISchema, currentSchema?: string, isTopLevel?: boolean) => string;
+	generatePropertySchema: (
+		schema: OpenAPISchema,
+		currentSchema?: string,
+		isTopLevel?: boolean,
+		suppressDefaultNullable?: boolean
+	) => string;
 	/**
 	 * Generate inline object shape for use with .extend()
 	 * Returns just the shape object literal: { prop1: z.string(), prop2: z.number() }
@@ -221,10 +226,13 @@ export function generateAllOf(
 	schemas: OpenAPISchema[],
 	isNullable: boolean,
 	context: CompositionValidatorContext,
-	currentSchema?: string
+	currentSchema?: string,
+	explicitNullableFalse = false
 ): string {
 	if (schemas.length === 1) {
-		const singleSchema = context.generatePropertySchema(schemas[0], currentSchema, false);
+		// When outer schema has explicit nullable: false, suppress defaultNullable on inner schema
+		// This ensures that allOf: [{ $ref: '...' }] with nullable: false won't make the ref nullable
+		const singleSchema = context.generatePropertySchema(schemas[0], currentSchema, false, explicitNullableFalse);
 		return wrapNullable(singleSchema, isNullable);
 	}
 

@@ -5,6 +5,33 @@
 import { z } from "zod";
 
 /**
+ * Error thrown when Zod schema validation fails at runtime
+ * Used by generated Playwright services for request/response validation
+ */
+export class ZodValidationError extends Error {
+	declare readonly cause: z.ZodError;
+
+	constructor(
+		message: string,
+		/** The original Zod error containing validation issues */
+		public readonly zodError: z.ZodError,
+		/** The input data that failed validation (only populated for WithValues variant) */
+		public readonly input?: unknown
+	) {
+		super(message);
+		this.name = "ZodValidationError";
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, this.constructor);
+		}
+	}
+
+	/** Access validation issues from the underlying ZodError */
+	get issues(): z.ZodIssue[] {
+		return this.zodError.issues;
+	}
+}
+
+/**
  * Format Zod error path for display
  * @param path - Array of property keys representing the error path
  * @returns Formatted path string
@@ -43,12 +70,12 @@ export function formatZodErrorWithValues(error: z.ZodError, input: unknown): str
  * @param schema - Zod schema to validate against
  * @param data - Data to parse and validate
  * @returns Validated data
- * @throws Error with prettified message if validation fails
+ * @throws ZodValidationError with prettified message if validation fails
  */
 export async function parseWithPrettifyError<T>(schema: z.ZodType<T>, data: unknown): Promise<T> {
 	const result = await schema.safeParseAsync(data);
 	if (!result.success) {
-		throw Object.assign(new Error(z.prettifyError(result.error)), { cause: result.error });
+		throw new ZodValidationError(z.prettifyError(result.error), result.error);
 	}
 	return result.data;
 }
@@ -58,12 +85,12 @@ export async function parseWithPrettifyError<T>(schema: z.ZodType<T>, data: unkn
  * @param schema - Zod schema to validate against
  * @param data - Data to parse and validate
  * @returns Validated data
- * @throws Error with formatted message including received values if validation fails
+ * @throws ZodValidationError with formatted message including received values if validation fails
  */
 export async function parseWithPrettifyErrorWithValues<T>(schema: z.ZodType<T>, data: unknown): Promise<T> {
 	const result = await schema.safeParseAsync(data);
 	if (!result.success) {
-		throw Object.assign(new Error(formatZodErrorWithValues(result.error, data)), { cause: result.error });
+		throw new ZodValidationError(formatZodErrorWithValues(result.error, data), result.error, data);
 	}
 	return result.data;
 }

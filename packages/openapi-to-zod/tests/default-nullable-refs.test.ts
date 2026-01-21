@@ -7,12 +7,14 @@ import { OpenApiGenerator } from "../src/openapi-generator";
  * Tests specifically for defaultNullable behavior with schema references ($ref),
  * enums, and const values.
  *
- * The defaultNullable option should ONLY apply to primitive properties within objects.
+ * The defaultNullable option applies to property values within objects.
  * It should NOT apply to:
  * - Top-level schema definitions
- * - Schema references ($ref)
  * - Enum values
  * - Const/literal values
+ *
+ * Note: $ref properties DO respect defaultNullable. They will be nullable when
+ * defaultNullable: true, unless explicitly marked with nullable: false.
  */
 describe("defaultNullable with Schema References", () => {
 	const testDir = join(__dirname, "fixtures", "default-nullable-refs-test");
@@ -25,7 +27,7 @@ describe("defaultNullable with Schema References", () => {
 		rmSync(testDir, { recursive: true, force: true });
 	});
 
-	describe("$ref properties should not be affected by defaultNullable", () => {
+	describe("$ref properties should respect defaultNullable", () => {
 		const specPath = join(testDir, "ref-nullable.yaml");
 
 		beforeAll(() => {
@@ -76,7 +78,7 @@ components:
 			writeFileSync(specPath, spec.trim());
 		});
 
-		it("should not add .nullable() to enum $ref when defaultNullable: true", () => {
+		it("should add .nullable() to object $ref when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -84,12 +86,11 @@ components:
 			});
 			const output = generator.generateString();
 
-			// The enum reference should NOT have .nullable() appended
-			expect(output).not.toContain("recoveryReasonEnumOptionsSchema.nullable()");
-			expect(output).not.toContain("paymentStatusSchema.nullable()");
+			// Object $ref SHOULD have .nullable() when defaultNullable: true
+			expect(output).toContain("contactInfoSchema.nullable()");
 		});
 
-		it("should not add .nullable() to object $ref when defaultNullable: true", () => {
+		it("should add .nullable() to enum $ref when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -97,8 +98,10 @@ components:
 			});
 			const output = generator.generateString();
 
-			// The object reference should NOT have .nullable() appended
-			expect(output).not.toContain("contactInfoSchema.nullable()");
+			// Enum $ref SHOULD have .nullable() when defaultNullable: true
+			// (enums at property level respect defaultNullable for $ref)
+			expect(output).toContain("recoveryReasonEnumOptionsSchema.nullable()");
+			expect(output).toContain("paymentStatusSchema.nullable()");
 		});
 
 		it("should add .nullable() to primitive properties when defaultNullable: true", () => {
@@ -114,7 +117,7 @@ components:
 			expect(output).toMatch(/notes:\s*z\.string\(\)\.nullable\(\)/);
 		});
 
-		it("should not add .nullable() to any $ref when defaultNullable: false", () => {
+		it("should not add .nullable() to $ref when defaultNullable: false", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -122,7 +125,7 @@ components:
 			});
 			const output = generator.generateString();
 
-			// No references should have .nullable()
+			// No references should have .nullable() when defaultNullable is false
 			expect(output).not.toContain("recoveryReasonEnumOptionsSchema.nullable()");
 			expect(output).not.toContain("paymentStatusSchema.nullable()");
 			expect(output).not.toContain("contactInfoSchema.nullable()");
@@ -185,7 +188,7 @@ components:
 			writeFileSync(specPath, spec.trim());
 		});
 
-		it("should add .nullable() only to explicitly nullable refs with defaultNullable: true", () => {
+		it("should add .nullable() to all refs when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -193,16 +196,16 @@ components:
 			});
 			const output = generator.generateString();
 
-			// Non-nullable refs should NOT have .nullable()
-			expect(output).not.toMatch(/status:\s*statusSchema\.nullable\(\)/);
-			expect(output).not.toMatch(/address:\s*addressSchema\.nullable\(\)/);
+			// All refs should have .nullable() when defaultNullable: true
+			expect(output).toMatch(/status:\s*statusSchema\.nullable\(\)/);
+			expect(output).toMatch(/address:\s*addressSchema\.nullable\(\)/);
 
-			// Explicitly nullable refs SHOULD have .nullable()
+			// Explicitly nullable refs SHOULD also have .nullable()
 			expect(output).toMatch(/nullableStatus:.*\.nullable\(\)/);
 			expect(output).toMatch(/nullableAddress:.*\.nullable\(\)/);
 		});
 
-		it("should add .nullable() only to explicitly nullable refs with defaultNullable: false", () => {
+		it("should add .nullable() only to explicitly nullable refs when defaultNullable: false", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -210,13 +213,209 @@ components:
 			});
 			const output = generator.generateString();
 
-			// Non-nullable refs should NOT have .nullable()
+			// Non-explicitly-nullable refs should NOT have .nullable() when defaultNullable: false
 			expect(output).not.toMatch(/status:\s*statusSchema\.nullable\(\)/);
 			expect(output).not.toMatch(/address:\s*addressSchema\.nullable\(\)/);
 
 			// Explicitly nullable refs SHOULD have .nullable()
 			expect(output).toMatch(/nullableStatus:.*\.nullable\(\)/);
 			expect(output).toMatch(/nullableAddress:.*\.nullable\(\)/);
+		});
+	});
+
+	describe("$ref properties without allOf wrapper", () => {
+		const specPath = join(testDir, "direct-ref.yaml");
+
+		beforeAll(() => {
+			const spec = `
+openapi: 3.0.3
+info:
+  title: Direct Ref Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mailingAddress:
+          $ref: '#/components/schemas/Address'
+`;
+			writeFileSync(specPath, spec.trim());
+		});
+
+		it("should add .nullable() to direct $ref when defaultNullable: true", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: true,
+			});
+			const output = generator.generateString();
+
+			// Direct $ref should have .nullable() with defaultNullable: true
+			expect(output).toMatch(/mailingAddress:\s*addressSchema\.nullable\(\)/);
+		});
+
+		it("should NOT add .nullable() to direct $ref when defaultNullable: false", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: false,
+			});
+			const output = generator.generateString();
+
+			// Direct $ref should NOT have .nullable() with defaultNullable: false
+			expect(output).not.toMatch(/mailingAddress:\s*addressSchema\.nullable\(\)/);
+		});
+	});
+
+	describe("allOf with explicit nullable: false should override defaultNullable", () => {
+		const specPath = join(testDir, "allof-explicit-non-nullable.yaml");
+
+		beforeAll(() => {
+			const spec = `
+openapi: 3.0.3
+info:
+  title: AllOf Explicit Non-Nullable Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        headquarters:
+          allOf:
+            - $ref: '#/components/schemas/Address'
+          nullable: false
+        mailingAddress:
+          $ref: '#/components/schemas/Address'
+        nullableAddress:
+          allOf:
+            - $ref: '#/components/schemas/Address'
+          nullable: true
+`;
+			writeFileSync(specPath, spec.trim());
+		});
+
+		it("should NOT add .nullable() to allOf with explicit nullable: false when defaultNullable: true", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: true,
+			});
+			const output = generator.generateString();
+
+			// headquarters has explicit nullable: false, should NOT have .nullable()
+			expect(output).not.toMatch(/headquarters:\s*addressSchema\.nullable\(\)/);
+			expect(output).toMatch(/headquarters:\s*addressSchema(?:\.optional\(\))?(?!.*\.nullable)/);
+
+			// mailingAddress has no explicit nullable, should have .nullable() with defaultNullable: true
+			expect(output).toMatch(/mailingAddress:\s*addressSchema\.nullable\(\)/);
+
+			// nullableAddress has explicit nullable: true, should have .nullable()
+			expect(output).toMatch(/nullableAddress:.*addressSchema\.nullable\(\)/);
+		});
+
+		it("should handle nullable correctly when defaultNullable: false", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: false,
+			});
+			const output = generator.generateString();
+
+			// headquarters has explicit nullable: false, should NOT have .nullable()
+			expect(output).not.toMatch(/headquarters:\s*addressSchema\.nullable\(\)/);
+
+			// mailingAddress has no explicit nullable, should NOT have .nullable() with defaultNullable: false
+			expect(output).not.toMatch(/mailingAddress:\s*addressSchema\.nullable\(\)/);
+
+			// nullableAddress has explicit nullable: true, should have .nullable()
+			expect(output).toMatch(/nullableAddress:.*addressSchema\.nullable\(\)/);
+		});
+	});
+
+	describe("circular $ref should respect defaultNullable", () => {
+		const specPath = join(testDir, "circular-ref-nullable.yaml");
+
+		beforeAll(() => {
+			const spec = `
+openapi: 3.0.3
+info:
+  title: Circular Ref Nullable Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    TreeNode:
+      type: object
+      properties:
+        value:
+          type: string
+        parent:
+          $ref: '#/components/schemas/TreeNode'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreeNode'
+`;
+			writeFileSync(specPath, spec.trim());
+		});
+
+		it("should add .nullable() to circular $ref (z.lazy) when defaultNullable: true", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: true,
+			});
+			const output = generator.generateString();
+
+			// Circular refs use z.lazy() and should have .nullable() when defaultNullable: true
+			expect(output).toMatch(/parent:\s*z\.lazy\(\(\): z\.ZodTypeAny => treeNodeSchema\)\.nullable\(\)/);
+
+			// Array of circular refs: both the items and the array get .nullable()
+			// Items are refs, so they get .nullable(). The array wrapper also gets .nullable().
+			expect(output).toMatch(
+				/children:\s*z\.array\(z\.lazy\(\(\): z\.ZodTypeAny => treeNodeSchema\)\.nullable\(\)\)\.nullable\(\)/
+			);
+		});
+
+		it("should NOT add .nullable() to circular $ref when defaultNullable: false", () => {
+			const generator = new OpenApiGenerator({
+				input: specPath,
+				output: "output.ts",
+				defaultNullable: false,
+			});
+			const output = generator.generateString();
+
+			// Without defaultNullable, circular refs should NOT have .nullable()
+			expect(output).toMatch(/parent:\s*z\.lazy\(\(\): z\.ZodTypeAny => treeNodeSchema\)(?!\.nullable)/);
+
+			// Array should also NOT have .nullable()
+			expect(output).toMatch(/children:\s*z\.array\(z\.lazy\(\(\): z\.ZodTypeAny => treeNodeSchema\)\)(?!\.nullable)/);
 		});
 	});
 
@@ -446,7 +645,7 @@ components:
 			writeFileSync(specPath, spec.trim());
 		});
 
-		it("should correctly apply defaultNullable only to primitive properties", () => {
+		it("should correctly apply defaultNullable to primitive and $ref properties", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -458,10 +657,10 @@ components:
 			expect(output).toMatch(/title:\s*z\.string\(\)\.nullable\(\)/);
 			expect(output).toMatch(/description:\s*z\.string\(\)\.nullable\(\)/);
 
-			// $ref properties should NOT have .nullable() from defaultNullable
-			expect(output).not.toMatch(/status:\s*statusSchema\.nullable\(\)/);
-			expect(output).not.toMatch(/priority:\s*prioritySchema\.nullable\(\)/);
-			expect(output).not.toMatch(/config:\s*configSchema\.nullable\(\)/);
+			// $ref properties SHOULD have .nullable() when defaultNullable: true
+			expect(output).toMatch(/status:\s*statusSchema\.nullable\(\)/);
+			expect(output).toMatch(/priority:\s*prioritySchema\.nullable\(\)/);
+			expect(output).toMatch(/config:\s*configSchema\.nullable\(\)/);
 
 			// const/literal should NOT have .nullable()
 			expect(output).toMatch(/type:\s*z\.literal\("task"\)(?!\.nullable)/);
@@ -474,7 +673,7 @@ components:
 			expect(output).toMatch(/nullableStatus:.*\.nullable\(\)/);
 		});
 
-		it("should not apply defaultNullable to anything when set to false", () => {
+		it("should not apply defaultNullable when set to false", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
 				output: "output.ts",
@@ -487,8 +686,7 @@ components:
 			// description appears twice, once as primitive (not nullable) and once as nullableDescription (nullable)
 			expect(output).toMatch(/description:\s*z\.string\(\)\.optional\(\)(?!\.nullable)/);
 
-			// $ref properties should NOT have .nullable() - check specific property patterns
-			// status: statusSchema.optional() (NOT statusSchema.nullable())
+			// $ref properties should NOT have .nullable() when defaultNullable: false
 			expect(output).toMatch(/status:\s*statusSchema\.optional\(\)(?!\.nullable)/);
 			expect(output).toMatch(/priority:\s*prioritySchema\.optional\(\)(?!\.nullable)/);
 			expect(output).toMatch(/config:\s*configSchema\.optional\(\)(?!\.nullable)/);

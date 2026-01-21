@@ -103,3 +103,5 @@ export function serializeParams(
 	}
 	return serialized;
 }
+
+export { ZodValidationError } from "./zod-helpers";

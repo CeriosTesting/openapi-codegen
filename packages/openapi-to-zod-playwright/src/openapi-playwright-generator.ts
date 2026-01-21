@@ -370,19 +370,45 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			output.push(`import { z } from "zod";`);
 		}
 		output.push(`import { expect } from "@playwright/test";`);
-		// Add runtime type imports if needed (only if not already imported by service string)
-		if (runtimeTypeImports.length > 0 && !serviceString.includes("@cerios/openapi-to-zod-playwright")) {
-			output.push(`import type { ${runtimeTypeImports.join(", ")} } from "@cerios/openapi-to-zod-playwright";`);
-		} else if (runtimeTypeImports.length > 0) {
-			// If service already imports from the package, we need to merge the imports
-			// The service string already has the import, so we'll handle this differently
+
+		// Check if service already has package import (from zodErrorFormat helpers like parseWithPrettifyError)
+		const existingPackageImportMatch = serviceString.match(
+			/import\s+\{\s*([^}]+)\s*\}\s+from\s+["']@cerios\/openapi-to-zod-playwright["']/
+		);
+
+		// Collect value imports (like parseWithPrettifyError) from existing service string
+		const valueImports: string[] = [];
+		if (existingPackageImportMatch) {
+			const existingImports = existingPackageImportMatch[1].split(",").map(s => s.trim());
+			valueImports.push(...existingImports);
 		}
+
+		// Add value imports if any
+		if (valueImports.length > 0) {
+			output.push(`import { ${valueImports.join(", ")} } from "@cerios/openapi-to-zod-playwright";`);
+		}
+
+		// Add runtime type imports (these are always type-only imports)
+		if (runtimeTypeImports.length > 0) {
+			output.push(`import type { ${runtimeTypeImports.join(", ")} } from "@cerios/openapi-to-zod-playwright";`);
+		}
+
 		output.push(`import { ${clientImports.join(", ")} } from "${relativeImportClient}";`);
 		if (schemaImportStatement) {
 			output.push(schemaImportStatement.trim());
 		}
 		output.push("");
-		output.push(serviceString);
+
+		// Remove the existing package import from service string if present (we already added it above)
+		let cleanedServiceString = serviceString;
+		if (existingPackageImportMatch) {
+			cleanedServiceString = serviceString.replace(
+				/import\s+\{\s*[^}]+\s*\}\s+from\s+["']@cerios\/openapi-to-zod-playwright["'];\n?/,
+				""
+			);
+		}
+
+		output.push(cleanedServiceString);
 
 		return output.join("\n");
 	}

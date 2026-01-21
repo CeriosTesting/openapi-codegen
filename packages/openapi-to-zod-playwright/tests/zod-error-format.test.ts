@@ -203,6 +203,56 @@ describe("zodErrorFormat option", () => {
 			// z is needed for inline schemas like z.array()
 			expect(serviceFile).toContain('import { z } from "zod"');
 		});
+
+		it("should include runtime type imports (RequestBody, UrlEncodedFormData) alongside zodErrorFormat helpers", () => {
+			// This test verifies the fix for the bug where RequestBody and other runtime types
+			// were not imported when zodErrorFormat was set to prettify/prettifyWithValues
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "form-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// Should have value import for the helper function
+			expect(serviceFile).toContain('import { parseWithPrettifyError } from "@cerios/openapi-to-zod-playwright"');
+			// Should have type import for runtime types (UrlEncodedFormData is used by form-api.yaml)
+			expect(serviceFile).toContain("import type {");
+			expect(serviceFile).toContain("UrlEncodedFormData");
+			expect(serviceFile).toContain('} from "@cerios/openapi-to-zod-playwright"');
+		});
+
+		it("should include runtime type imports alongside prettifyWithValues helper", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "form-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// Should have value import for the helper function
+			expect(serviceFile).toContain(
+				'import { parseWithPrettifyErrorWithValues } from "@cerios/openapi-to-zod-playwright"'
+			);
+			// Should have type import for runtime types
+			expect(serviceFile).toContain("import type {");
+			expect(serviceFile).toContain("UrlEncodedFormData");
+			expect(serviceFile).toContain('} from "@cerios/openapi-to-zod-playwright"');
+		});
 	});
 
 	describe("query and header parameter validation", () => {

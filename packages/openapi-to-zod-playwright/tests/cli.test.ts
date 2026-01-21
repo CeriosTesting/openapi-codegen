@@ -44,12 +44,14 @@ describe("CLI - Playwright", () => {
 		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
 		const inputPath = join(__dirname, "fixtures", "simple-api.yaml");
 		const outputPath = join(TEST_DIR, "output.ts");
+		const outputClientPath = join(TEST_DIR, "client.ts");
 
 		const config = {
 			specs: [
 				{
 					input: inputPath,
 					output: outputPath,
+					outputClient: outputClientPath,
 					showStats: false,
 				},
 			],
