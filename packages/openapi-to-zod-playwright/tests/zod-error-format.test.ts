@@ -1,0 +1,364 @@
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
+const FIXTURES_DIR = resolve(__dirname, "fixtures");
+
+describe("zodErrorFormat option", () => {
+	describe("standard format (default)", () => {
+		it("should use parseAsync for response validation by default", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use parseAsync for response validation
+			expect(serviceString).toContain(".parseAsync(body)");
+			// Should NOT contain prettify helper function imports
+			expect(serviceString).not.toContain("parseWithPrettifyError");
+			expect(serviceString).not.toContain("parseWithPrettifyErrorWithValues");
+		});
+
+		it("should use parseAsync for request validation with standard format", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				validateServiceRequest: true,
+				zodErrorFormat: "standard",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use parseAsync for request validation
+			expect(serviceString).toContain(".parseAsync(options.data)");
+		});
+	});
+
+	describe("prettify format", () => {
+		it("should import parseWithPrettifyError from package", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should import the helper from the package
+			expect(serviceString).toContain('import { parseWithPrettifyError } from "@cerios/openapi-to-zod-playwright"');
+		});
+
+		it("should use parseWithPrettifyError for response validation", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use the imported helper (no this. prefix)
+			expect(serviceString).toContain("parseWithPrettifyError(");
+			expect(serviceString).toContain(", body)");
+			// Should NOT use this. prefix since it's imported
+			expect(serviceString).not.toContain("this.parseWithPrettifyError(");
+		});
+
+		it("should use parseWithPrettifyError for request validation", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				validateServiceRequest: true,
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use the imported helper for request validation
+			expect(serviceString).toContain("parseWithPrettifyError(");
+			expect(serviceString).toContain(", options.data)");
+		});
+
+		it("should NOT contain prettifyWithValues helper", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			expect(serviceString).not.toContain("parseWithPrettifyErrorWithValues");
+		});
+	});
+
+	describe("prettifyWithValues format", () => {
+		it("should import parseWithPrettifyErrorWithValues from package", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should import the helper from the package
+			expect(serviceString).toContain(
+				'import { parseWithPrettifyErrorWithValues } from "@cerios/openapi-to-zod-playwright"'
+			);
+		});
+
+		it("should use parseWithPrettifyErrorWithValues for validation", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use the imported helper
+			expect(serviceString).toContain("parseWithPrettifyErrorWithValues(");
+		});
+
+		it("should use parseWithPrettifyErrorWithValues for request validation", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				validateServiceRequest: true,
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use the helper function for request validation
+			expect(serviceString).toContain("parseWithPrettifyErrorWithValues(");
+			expect(serviceString).toContain(", options.data)");
+		});
+
+		it("should NOT contain simple prettify helper", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should only import prettifyWithValues, not the simple one
+			expect(serviceString).not.toContain("import { parseWithPrettifyError }");
+			expect(serviceString).toContain("parseWithPrettifyErrorWithValues");
+		});
+	});
+
+	describe("generated service file imports", () => {
+		it("should import z from zod when using prettify format with inline schemas", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettify",
+			});
+
+			// Access private method for testing
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// z is needed for inline schemas like z.array()
+			expect(serviceFile).toContain('import { z } from "zod"');
+		});
+
+		it("should import z from zod when using prettifyWithValues format with inline schemas", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			// Access private method for testing
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// z is needed for inline schemas like z.array()
+			expect(serviceFile).toContain('import { z } from "zod"');
+		});
+
+		it("should include runtime type imports (RequestBody, UrlEncodedFormData) alongside zodErrorFormat helpers", () => {
+			// This test verifies the fix for the bug where RequestBody and other runtime types
+			// were not imported when zodErrorFormat was set to prettify/prettifyWithValues
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "form-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// Should have value import for the helper function
+			expect(serviceFile).toContain('import { parseWithPrettifyError } from "@cerios/openapi-to-zod-playwright"');
+			// Should have type import for runtime types (UrlEncodedFormData is used by form-api.yaml)
+			expect(serviceFile).toContain("import type {");
+			expect(serviceFile).toContain("UrlEncodedFormData");
+			expect(serviceFile).toContain('} from "@cerios/openapi-to-zod-playwright"');
+		});
+
+		it("should include runtime type imports alongside prettifyWithValues helper", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "form-api.yaml"),
+				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
+				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceFile = (generator as any).generateServiceFile(
+				resolve(FIXTURES_DIR, "../output/test-service.ts"),
+				resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				resolve(FIXTURES_DIR, "../output/test-client.ts")
+			);
+
+			// Should have value import for the helper function
+			expect(serviceFile).toContain(
+				'import { parseWithPrettifyErrorWithValues } from "@cerios/openapi-to-zod-playwright"'
+			);
+			// Should have type import for runtime types
+			expect(serviceFile).toContain("import type {");
+			expect(serviceFile).toContain("UrlEncodedFormData");
+			expect(serviceFile).toContain('} from "@cerios/openapi-to-zod-playwright"');
+		});
+	});
+
+	describe("query and header parameter validation", () => {
+		it("should use correct format for query param validation with prettify", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "query-params-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				validateServiceRequest: true,
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use prettify helper for query params
+			expect(serviceString).toContain("parseWithPrettifyError(");
+			expect(serviceString).toContain("options.params)");
+		});
+
+		it("should use correct format for header param validation with prettifyWithValues", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "headers-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				validateServiceRequest: true,
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use prettifyWithValues helper for headers
+			expect(serviceString).toContain("parseWithPrettifyErrorWithValues(");
+			expect(serviceString).toContain("options.headers)");
+		});
+	});
+
+	describe("inline schema validation", () => {
+		it("should use correct format for inline schemas with prettify", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "inline-schema-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettify",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use prettify helper even for inline schemas
+			expect(serviceString).toContain("parseWithPrettifyError(");
+		});
+
+		it("should use correct format for inline schemas with prettifyWithValues", () => {
+			const generator = new OpenApiPlaywrightGenerator({
+				input: resolve(FIXTURES_DIR, "inline-schema-api.yaml"),
+				output: "output.ts",
+				outputClient: "client.ts",
+				zodErrorFormat: "prettifyWithValues",
+			});
+
+			const serviceString = generator.generateServiceString();
+
+			// Should use prettifyWithValues helper for inline schemas
+			expect(serviceString).toContain("parseWithPrettifyErrorWithValues(");
+		});
+	});
+
+	describe("runtime helpers work correctly", () => {
+		it("parseWithPrettifyError should throw formatted error on validation failure", async () => {
+			const { parseWithPrettifyError } = await import("../src/runtime/zod-helpers");
+			const { z } = await import("zod");
+
+			const schema = z.object({ name: z.string(), age: z.number() });
+
+			await expect(parseWithPrettifyError(schema, { name: 123, age: "invalid" })).rejects.toThrow();
+		});
+
+		it("parseWithPrettifyError should return data on success", async () => {
+			const { parseWithPrettifyError } = await import("../src/runtime/zod-helpers");
+			const { z } = await import("zod");
+
+			const schema = z.object({ name: z.string(), age: z.number() });
+			const result = await parseWithPrettifyError(schema, { name: "John", age: 30 });
+
+			expect(result).toEqual({ name: "John", age: 30 });
+		});
+
+		it("parseWithPrettifyErrorWithValues should throw formatted error with values", async () => {
+			const { parseWithPrettifyErrorWithValues } = await import("../src/runtime/zod-helpers");
+			const { z } = await import("zod");
+
+			const schema = z.object({ name: z.string() });
+
+			try {
+				await parseWithPrettifyErrorWithValues(schema, { name: 123 });
+				expect.fail("Should have thrown");
+			} catch (error) {
+				expect((error as Error).message).toContain("received:");
+			}
+		});
+
+		it("formatZodErrorPath should format paths correctly", async () => {
+			const { formatZodErrorPath } = await import("../src/runtime/zod-helpers");
+
+			expect(formatZodErrorPath(["user", "name"])).toBe("user.name");
+			expect(formatZodErrorPath(["items", 0, "value"])).toBe("items[0].value");
+			expect(formatZodErrorPath([])).toBe("");
+		});
+	});
+});

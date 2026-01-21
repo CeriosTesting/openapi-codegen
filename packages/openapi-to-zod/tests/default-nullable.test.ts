@@ -66,6 +66,7 @@ components:
 		it("should not add .nullable() to properties without explicit nullable annotation", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -80,6 +81,7 @@ components:
 		it("should still add .nullable() when explicitly set to true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -91,6 +93,7 @@ components:
 		it("should not add .nullable() when explicitly set to false", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -104,6 +107,7 @@ components:
 		it("should add .nullable() to properties without explicit nullable annotation", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -116,6 +120,7 @@ components:
 		it("should still respect explicit nullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -127,6 +132,7 @@ components:
 		it("should respect explicit nullable: false and NOT add .nullable()", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -138,6 +144,7 @@ components:
 		it("should add .nullable() to implicit fields in NullableTest schema", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -155,6 +162,7 @@ components:
 		it("should default to false (strict mode - only explicit nullable)", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				// defaultNullable not specified - should default to false
 			});
 			const output = generator.generateString();
@@ -169,6 +177,7 @@ components:
 		it("should NOT add .nullable() to top-level object schema definitions with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -183,6 +192,7 @@ components:
 		it("should add .nullable() to properties but not to the containing object schema", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -202,6 +212,7 @@ components:
 		it("should produce correct output format with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -222,7 +233,7 @@ components:
 		});
 	});
 
-	describe("defaultNullable should NOT apply to schema references ($ref)", () => {
+	describe("defaultNullable should apply to schema references ($ref)", () => {
 		const refSpecPath = join(testDir, "ref-spec.yaml");
 
 		beforeAll(() => {
@@ -272,25 +283,24 @@ components:
 			writeFileSync(refSpecPath, refSpec.trim());
 		});
 
-		it("should not add .nullable() to $ref schemas when defaultNullable: true", () => {
+		it("should add .nullable() to $ref schemas when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
 
-			// Schema references should NOT have .nullable() added by defaultNullable
-			// status: statusSchema (not statusSchema.nullable())
-			expect(output).toMatch(/status:\s*statusSchema(?!\.nullable)/);
-			// role: userRoleSchema (not userRoleSchema.nullable())
-			expect(output).toMatch(/role:\s*userRoleSchema(?!\.nullable)/);
-			// address: addressSchema (not addressSchema.nullable())
-			expect(output).toMatch(/address:\s*addressSchema(?!\.nullable)/);
+			// Schema references SHOULD have .nullable() added by defaultNullable
+			expect(output).toMatch(/status:\s*statusSchema\.nullable\(\)/);
+			expect(output).toMatch(/role:\s*userRoleSchema\.nullable\(\)/);
+			expect(output).toMatch(/address:\s*addressSchema\.nullable\(\)/);
 		});
 
 		it("should add .nullable() to explicitly nullable refs", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -302,6 +312,7 @@ components:
 		it("should still add .nullable() to primitive properties with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -354,6 +365,7 @@ components:
 		it("should not add .nullable() to inline enum properties when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -366,6 +378,7 @@ components:
 		it("should add .nullable() to explicitly nullable enum properties", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -377,6 +390,7 @@ components:
 		it("should still add .nullable() to regular string properties", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -388,6 +402,7 @@ components:
 		it("should not add .nullable() to top-level enum schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -432,6 +447,7 @@ components:
 		it("should not add .nullable() to const properties when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -443,6 +459,7 @@ components:
 		it("should add .nullable() to explicitly nullable const properties", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -454,6 +471,7 @@ components:
 		it("should still add .nullable() to regular string properties", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -465,6 +483,7 @@ components:
 		it("should not add .nullable() to top-level const schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
+				output: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();

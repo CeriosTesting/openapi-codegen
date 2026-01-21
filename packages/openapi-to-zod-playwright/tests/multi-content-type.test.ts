@@ -9,6 +9,8 @@ describe("Multi-Content-Type Support", () => {
 		it("should generate service method for application/json", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -21,6 +23,8 @@ describe("Multi-Content-Type Support", () => {
 		it("should accept data parameter for JSON content type", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -33,6 +37,8 @@ describe("Multi-Content-Type Support", () => {
 		it("should pass options to client", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -50,6 +56,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -64,6 +72,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -78,6 +88,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -95,6 +107,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -109,6 +123,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -123,6 +139,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -140,6 +158,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -157,6 +177,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -175,6 +197,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -191,6 +215,8 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
+				output: "output.ts",
+				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
@@ -209,17 +235,15 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
+				output: "output.ts",
+				outputClient: "client.ts",
 			});
 
 			const clientSection = generator.generateClientString();
 
-			// Should define ApiRequestContextOptions type with all properties
-			expect(clientSection).toContain("export type ApiRequestContextOptions");
-			expect(clientSection).toContain("data?:");
-			expect(clientSection).toContain("form?:");
-			expect(clientSection).toContain("multipart?:");
-			expect(clientSection).toContain("params?:");
-			expect(clientSection).toContain("headers?:");
+			// Should import ApiRequestContextOptions type from package
+			expect(clientSection).toContain("import type { ApiRequestContextOptions");
+			expect(clientSection).toContain("@cerios/openapi-to-zod-playwright");
 
 			// Client methods should use the type
 			expect(clientSection).toContain("options?: ApiRequestContextOptions");
@@ -230,14 +254,15 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
+				output: "output.ts",
+				outputClient: "client.ts",
 			});
 
 			const clientSection = generator.generateClientString();
 
-			// ApiRequestContextOptions should include Playwright request options
-			expect(clientSection).toContain("export type ApiRequestContextOptions");
-			expect(clientSection).toContain("timeout?:");
-			expect(clientSection).toContain("failOnStatusCode?:");
+			// ApiRequestContextOptions is imported from package (includes timeout, failOnStatusCode, etc)
+			expect(clientSection).toContain("@cerios/openapi-to-zod-playwright");
+			expect(clientSection).toContain("ApiRequestContextOptions");
 
 			// Client methods should use the type
 			expect(clientSection).toContain("options?: ApiRequestContextOptions");

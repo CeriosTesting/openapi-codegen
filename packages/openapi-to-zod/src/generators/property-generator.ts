@@ -334,13 +334,27 @@ export class PropertyGenerator {
 
 	/**
 	 * Generate Zod schema for a property
+	 * @param schema - The OpenAPI schema to generate
+	 * @param currentSchema - The name of the current schema being processed (for circular ref detection)
+	 * @param isTopLevel - Whether this is a top-level schema definition
+	 * @param suppressDefaultNullable - When true, don't apply defaultNullable (used when outer schema has explicit nullable: false)
 	 */
-	generatePropertySchema(schema: OpenAPISchema, currentSchema?: string, isTopLevel = false): string {
+	generatePropertySchema(
+		schema: OpenAPISchema,
+		currentSchema?: string,
+		isTopLevel = false,
+		suppressDefaultNullable = false
+	): string {
 		// Performance optimization: Check cache for simple schemas
 		// Only cache schemas without $ref or complex compositions to avoid stale circular refs
 		const isCacheable = !schema.$ref && !schema.allOf && !schema.oneOf && !schema.anyOf && !currentSchema;
 		if (isCacheable) {
-			const cacheKey = JSON.stringify({ schema, type: this.context.schemaType, mode: this.context.mode });
+			const cacheKey = JSON.stringify({
+				schema,
+				type: this.context.schemaType,
+				mode: this.context.mode,
+				suppressDefaultNullable,
+			});
 			const cached = this.schemaCache.get(cacheKey);
 			if (cached) {
 				return cached;
@@ -353,19 +367,18 @@ export class PropertyGenerator {
 		}
 
 		// Determine if defaultNullable should apply to this schema.
-		// defaultNullable should ONLY apply to primitive property values within objects, NOT to:
+		// defaultNullable should apply to property values within objects, NOT to:
 		// 1. Top-level schema definitions (isTopLevel = true)
-		// 2. Schema references ($ref) - nullability must be explicitly specified on the reference
-		// 3. Enum values - enums define discrete values and shouldn't be nullable by default
-		// 4. Const/literal values - these are exact values and shouldn't be nullable by default
+		// 2. Enum values - enums define discrete values and shouldn't be nullable by default
+		// 3. Const/literal values - these are exact values and shouldn't be nullable by default
+		// 4. When suppressDefaultNullable is true (outer schema has explicit nullable: false)
 		//
-		// For $ref: The referenced schema controls its own structure. If you want
-		// a nullable reference, you must explicitly add `nullable: true` to the
-		// schema containing the $ref.
-		const isSchemaRef = !!schema.$ref;
+		// Note: $ref properties DO respect defaultNullable. If you want a non-nullable
+		// reference when defaultNullable is true, you must explicitly add `nullable: false`
+		// to the schema containing the $ref.
 		const isEnum = !!schema.enum;
 		const isConst = schema.const !== undefined;
-		const shouldApplyDefaultNullable = !isTopLevel && !isSchemaRef && !isEnum && !isConst;
+		const shouldApplyDefaultNullable = !isTopLevel && !isEnum && !isConst && !suppressDefaultNullable;
 		const effectiveDefaultNullable = shouldApplyDefaultNullable ? this.context.defaultNullable : false;
 		const nullable = isNullable(schema, effectiveDefaultNullable);
 
@@ -440,6 +453,9 @@ export class PropertyGenerator {
 
 		// Handle allOf
 		if (schema.allOf) {
+			// Check if outer schema has explicit nullable: false
+			// This needs to be passed to generateAllOf so inner schemas don't get defaultNullable applied
+			const explicitNullableFalse = schema.nullable === false;
 			let composition = generateAllOf(
 				schema.allOf,
 				nullable,
@@ -448,7 +464,8 @@ export class PropertyGenerator {
 					generateInlineObjectShape: this.generateInlineObjectShape.bind(this),
 					resolveSchemaRef: this.resolveSchemaRef.bind(this),
 				},
-				currentSchema
+				currentSchema,
+				explicitNullableFalse
 			);
 
 			// Apply unevaluatedProperties if specified

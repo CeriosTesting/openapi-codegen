@@ -57,30 +57,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	/**
 	 * Generate output files with mandatory file splitting
 	 * - Main file: Always contains schemas and types
-	 * - Client file: Optional, generated when outputClient is specified
-	 * - Service file: Optional, generated when outputService is specified (requires outputClient)
+	 * - Client file: Always generated (outputClient is required)
+	 * - Service file: Optional, generated when outputService is specified
 	 */
 	generate(): void {
-		if (!this.options.output) {
-			throw new FileOperationError(
-				"Output path is required when calling generate(). " +
-					"Either provide an 'output' option or use generateString() to get the result as a string.",
-				""
-			);
-		}
-
-		// Validation: service requires client
-		if (this.options.outputService && !this.options.outputClient) {
-			throw new ConfigurationError(
-				"Service generation requires client. Service class depends on client class for API calls. " +
-					"Please specify outputClient path when using outputService.",
-				{
-					outputService: this.options.outputService,
-					outputClient: undefined,
-				}
-			);
-		}
-
 		try {
 			const { output, outputClient, outputService } = this.options;
 
@@ -193,7 +173,12 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			this.options.ignoreHeaders,
 			this.options.stripPathPrefix,
 			this.options.stripSchemaPrefix,
-			this.options.preferredContentTypes
+			this.options.preferredContentTypes,
+			this.options.prefix,
+			this.options.suffix,
+			this.options.fallbackContentTypeParsing,
+			this.options.validateServiceRequest ?? false,
+			this.options.zodErrorFormat ?? "standard"
 		);
 	}
 
@@ -354,8 +339,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			schemaImportStatement += `import type { ${schemaTypes.join(", ")} } from "${relativeImportMain}";\n`;
 		}
 
-		// Check for all client type aliases that might be used in service
-		const clientTypeAliases = [
+		// Check for type aliases that are needed from the runtime package
+		// These are now exported from @cerios/openapi-to-zod-playwright
+		const runtimeTypeAliases = [
 			"ApiRequestContextOptions",
 			"MultipartFormValue",
 			"QueryParams",
@@ -365,28 +351,64 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			"RequestBody",
 		];
 
-		const clientImports = [clientClassName];
-		for (const typeAlias of clientTypeAliases) {
-			// Use word boundary regex to avoid matching partial strings (e.g., QueryParams shouldn't match SomeQueryParams)
+		const runtimeTypeImports: string[] = [];
+		for (const typeAlias of runtimeTypeAliases) {
+			// Use word boundary regex to avoid matching partial strings
 			const regex = new RegExp(`\\b${typeAlias}\\b`);
 			if (regex.test(serviceString)) {
-				clientImports.push(`type ${typeAlias}`);
+				runtimeTypeImports.push(typeAlias);
 			}
 		}
 
+		// Client import - only the class name
+		const clientImports = [clientClassName];
+
 		// Only import z from zod if it's actually used for inline schemas
-		// Check for actual Zod method calls like z.string(), z.array(), z.number(), etc.
+		// Note: prettify helpers are now imported from the package, not using z directly
 		const zodUsagePattern = /\bz\.(string|number|boolean|array|object|parse)\(/;
 		if (zodUsagePattern.test(serviceString)) {
 			output.push(`import { z } from "zod";`);
 		}
 		output.push(`import { expect } from "@playwright/test";`);
+
+		// Check if service already has package import (from zodErrorFormat helpers like parseWithPrettifyError)
+		const existingPackageImportMatch = serviceString.match(
+			/import\s+\{\s*([^}]+)\s*\}\s+from\s+["']@cerios\/openapi-to-zod-playwright["']/
+		);
+
+		// Collect value imports (like parseWithPrettifyError) from existing service string
+		const valueImports: string[] = [];
+		if (existingPackageImportMatch) {
+			const existingImports = existingPackageImportMatch[1].split(",").map(s => s.trim());
+			valueImports.push(...existingImports);
+		}
+
+		// Add value imports if any
+		if (valueImports.length > 0) {
+			output.push(`import { ${valueImports.join(", ")} } from "@cerios/openapi-to-zod-playwright";`);
+		}
+
+		// Add runtime type imports (these are always type-only imports)
+		if (runtimeTypeImports.length > 0) {
+			output.push(`import type { ${runtimeTypeImports.join(", ")} } from "@cerios/openapi-to-zod-playwright";`);
+		}
+
 		output.push(`import { ${clientImports.join(", ")} } from "${relativeImportClient}";`);
 		if (schemaImportStatement) {
 			output.push(schemaImportStatement.trim());
 		}
 		output.push("");
-		output.push(serviceString);
+
+		// Remove the existing package import from service string if present (we already added it above)
+		let cleanedServiceString = serviceString;
+		if (existingPackageImportMatch) {
+			cleanedServiceString = serviceString.replace(
+				/import\s+\{\s*[^}]+\s*\}\s+from\s+["']@cerios\/openapi-to-zod-playwright["'];\n?/,
+				""
+			);
+		}
+
+		output.push(cleanedServiceString);
 
 		return output.join("\n");
 	}
