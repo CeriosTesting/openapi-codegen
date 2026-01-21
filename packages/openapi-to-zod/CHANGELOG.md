@@ -1,5 +1,15 @@
 # @cerios/openapi-to-zod
 
+## 1.3.2
+
+### Patch Changes
+
+- 07b5fe3: Prevents defaultNullable from applying to compositions
+
+  Fixes incorrect nullable behavior where defaultNullable was being applied to schema composition results (allOf, oneOf, anyOf) when it should only apply to actual property values.
+
+  Composition schemas define shapes and types, not property nullability. The defaultNullable option should only affect properties inside object shapes, which is already handled correctly by the inline object shape generator.
+
 ## 1.3.1
 
 ### Patch Changes
