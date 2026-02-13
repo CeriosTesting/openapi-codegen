@@ -53,10 +53,32 @@ const PlaywrightSpecificOptionsSchema = z.strictObject({
  */
 const OpenApiPlaywrightGeneratorOptionsSchema = BaseGeneratorOptionsSchema.omit({
 	operationFilters: true, // Use Playwright-specific version
-}).extend({
-	...PlaywrightSpecificOptionsSchema.shape,
-	outputTypes: z.string(), // Make outputTypes required for Playwright generator
-});
+})
+	.extend({
+		...PlaywrightSpecificOptionsSchema.shape,
+		outputTypes: z.string().optional(),
+		output: z.string().optional(),
+	})
+	.superRefine((spec, ctx) => {
+		const hasOutputTypes = Boolean(spec.outputTypes);
+		const hasOutput = Boolean(spec.output);
+
+		if (!hasOutputTypes && !hasOutput) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["outputTypes"],
+				message: "Each spec must specify an output file path using 'outputTypes' (preferred) or deprecated 'output'.",
+			});
+		}
+
+		if (hasOutputTypes && hasOutput && spec.outputTypes !== spec.output) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["output"],
+				message: "Invalid configuration: 'outputTypes' and deprecated 'output' are both set but have different values.",
+			});
+		}
+	});
 
 /**
  * Playwright defaults schema - base defaults + Playwright-specific options
@@ -88,9 +110,7 @@ const errorMessages: FormatZodErrorsOptions = {
 		outputTypes: "Each spec must specify an output file path for generated Zod schemas.",
 		outputClient: "Each spec must specify an output file path for the generated Playwright API client.",
 	},
-	unrecognizedKeyMessages: {
-		output: "Did you mean 'outputTypes' or 'outputClient'? The 'output' field was renamed.",
-	},
+	unrecognizedKeyMessages: {},
 	requiredFieldsHelp: "All required fields are present (specs array with input/outputTypes/outputClient)",
 };
 
@@ -127,8 +147,30 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 	}
 
 	const defaults = config.defaults || {};
+	let warnedDeprecatedOutput = false;
 
 	return config.specs.map(spec => {
+		const output = spec.output;
+		const outputTypes = spec.outputTypes;
+		const resolvedOutputTypes = outputTypes ?? output;
+
+		if (resolvedOutputTypes === undefined) {
+			throw new Error("Each spec must define 'outputTypes' (preferred) or deprecated 'output'.");
+		}
+
+		if (output && outputTypes && output !== outputTypes) {
+			throw new Error("Invalid configuration: 'outputTypes' and deprecated 'output' cannot have different values.");
+		}
+
+		if (output && !warnedDeprecatedOutput) {
+			console.warn(
+				"[openapi-to-zod-playwright] Deprecation warning: 'output' is deprecated and will be removed in a future release. Use 'outputTypes' instead."
+			);
+			warnedDeprecatedOutput = true;
+		}
+
+		const { output: _deprecatedOutput, ...specWithoutDeprecatedOutput } = spec;
+
 		// Deep merge: spec options override defaults
 		const merged: OpenApiPlaywrightGeneratorOptions = {
 			// Apply defaults first
@@ -149,8 +191,9 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			// outputClient and outputService are intentionally NOT inherited from defaults
 			// Each spec should define its own file paths
 
-			// Override with spec-specific values (including required input)
-			...spec,
+			// Override with spec-specific values
+			...specWithoutDeprecatedOutput,
+			outputTypes: resolvedOutputTypes,
 		};
 		return merged;
 	});

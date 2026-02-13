@@ -59,6 +59,11 @@ The tool will auto-discover your config file and generate schemas.
 
 ### Configuration
 
+> `outputTypes` is the preferred config key.
+> Deprecated alias: `output` is still supported for backward compatibility.
+> You must provide one of `outputTypes` or `output` per spec.
+> If both are provided, they must have the same value.
+
 #### TypeScript Config (Recommended)
 
 **Minimal:**
@@ -180,7 +185,8 @@ Examples:
 |-------------|------|-------------|
 | `name` | `string` | Optional identifier for logging |
 | `input` | `string` | Input OpenAPI YAML file path (required) |
-| `outputTypes` | `string` | Output TypeScript file path (required) |
+| `outputTypes` | `string` | Preferred output TypeScript file path (required unless deprecated `output` is set) |
+| `output` | `string` | Deprecated alias for `outputTypes`; allowed for backward compatibility |
 | `mode` | `"strict"` \| `"normal"` \| `"loose"` | Validation mode for top-level schemas (default: `"normal"`) |
 | `emptyObjectBehavior` | `"strict"` \| `"loose"` \| `"record"` | How to handle empty objects (default: `"loose"`) |
 | `includeDescriptions` | `boolean` | Include JSDoc comments |
@@ -194,6 +200,8 @@ Examples:
 | `request` | `object` | Request-specific options (mode, includeDescriptions, useDescribe) |
 | `response` | `object` | Response-specific options (mode, includeDescriptions, useDescribe) |
 | `operationFilters` | `object` | Filter operations by tags, paths, methods, etc. (see below) |
+
+If `outputTypes` and `output` are both set with different values, configuration validation fails.
 
 #### Operation Filters
 

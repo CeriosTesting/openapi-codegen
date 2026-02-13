@@ -116,12 +116,13 @@ describe("CLI - Playwright", () => {
 	it("should not duplicate error message for config validation errors", () => {
 		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
 
-		// Create config with old 'output' property instead of 'outputTypes'
+		// Create config with both output keys set to different values
 		const invalidConfig = {
 			specs: [
 				{
 					input: "openapi.yaml",
-					output: "schemas.ts", // Old property name
+					output: "legacy.ts",
+					outputTypes: "new.ts",
 					outputClient: "client.ts",
 				},
 			],
@@ -141,7 +142,8 @@ describe("CLI - Playwright", () => {
 
 			// Should contain the error message
 			expect(stderr).toContain("Invalid configuration file");
-			expect(stderr).toContain("Did you mean 'outputTypes'");
+			expect(stderr).toContain("outputTypes");
+			expect(stderr).toContain("deprecated 'output'");
 
 			// Should NOT contain "Stack trace:" for config validation errors
 			expect(stderr).not.toContain("Stack trace:");
@@ -150,5 +152,35 @@ describe("CLI - Playwright", () => {
 			const matches = stderr.match(/Invalid configuration file/g);
 			expect(matches).toHaveLength(1);
 		}
+	});
+
+	it("should warn and still generate when deprecated output is used", () => {
+		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
+		const inputPath = join(__dirname, "fixtures", "simple-api.yaml");
+		const outputPath = join(TEST_DIR, "schemas.ts");
+		const outputClientPath = join(TEST_DIR, "client.ts");
+
+		const config = {
+			specs: [
+				{
+					input: inputPath,
+					output: outputPath,
+					outputClient: outputClientPath,
+					showStats: false,
+				},
+			],
+		};
+
+		writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+		const output = execSync(`node ${CLI_PATH} --config ${configPath} 2>&1`, {
+			encoding: "utf-8",
+			cwd: TEST_DIR,
+		});
+
+		expect(output).toContain("Deprecation warning");
+		expect(output).toContain("'output' is deprecated");
+		expect(existsSync(outputPath)).toBe(true);
+		expect(existsSync(outputClientPath)).toBe(true);
 	});
 });

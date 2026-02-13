@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { OpenApiPlaywrightGeneratorOptions, PlaywrightConfigFile } from "../src/types";
 import { loadConfig, mergeCliWithConfig, mergeConfigWithDefaults } from "../src/utils/config-loader";
 import { TestUtils } from "./utils/test-utils";
@@ -180,6 +180,53 @@ describe("Config Loading - Playwright", () => {
 
 			expect(merged[0].emptyObjectBehavior).toBe("record");
 			expect(merged[1].emptyObjectBehavior).toBe("strict");
+		});
+
+		it("should accept deprecated output and normalize to outputTypes", () => {
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const config = {
+				specs: [{ input: "api.yaml", output: "api.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			const merged = mergeConfigWithDefaults(config);
+
+			expect(merged).toHaveLength(1);
+			expect(merged[0].outputTypes).toBe("api.ts");
+			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("'output' is deprecated"));
+
+			warnSpy.mockRestore();
+		});
+
+		it("should allow output and outputTypes when values are equal", () => {
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const config = {
+				specs: [{ input: "api.yaml", output: "api.ts", outputTypes: "api.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			const merged = mergeConfigWithDefaults(config);
+
+			expect(merged[0].outputTypes).toBe("api.ts");
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+
+			warnSpy.mockRestore();
+		});
+
+		it("should throw when output and outputTypes differ", () => {
+			const config = {
+				specs: [{ input: "api.yaml", output: "legacy.ts", outputTypes: "new.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			expect(() => mergeConfigWithDefaults(config)).toThrow(/cannot have different values/i);
+		});
+
+		it("should throw when both output and outputTypes are missing", () => {
+			const config = {
+				specs: [{ input: "api.yaml", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			expect(() => mergeConfigWithDefaults(config)).toThrow(/must define 'outputTypes'.*deprecated 'output'/i);
 		});
 	});
 

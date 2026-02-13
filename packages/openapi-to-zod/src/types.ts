@@ -204,9 +204,17 @@ export interface ConfigFile {
 
 	/**
 	 * Array of OpenAPI specifications to process
-	 * Each specification must have input and output paths
+	 * Each specification must provide `input` and at least one of:
+	 * - `outputTypes` (preferred)
+	 * - `output` (deprecated alias)
 	 */
-	specs: OpenApiGeneratorOptions[];
+	specs: (Omit<OpenApiGeneratorOptions, "outputTypes"> & {
+		outputTypes?: string;
+		/**
+		 * @deprecated Use `outputTypes` instead.
+		 */
+		output?: string;
+	})[];
 
 	/**
 	 * Execution mode for batch processing

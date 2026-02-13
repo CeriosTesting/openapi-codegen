@@ -216,15 +216,25 @@ export interface PlaywrightConfigFile {
 	/**
 	 * Global default options applied to all specs
 	 * Can be overridden by individual spec configurations
-	 * Note: File paths (input, output, outputClient, outputService) must be specified per-spec
+	 * Note: File paths (input, outputTypes/output, outputClient, outputService) must be specified per-spec
 	 */
-	defaults?: Partial<Omit<OpenApiPlaywrightGeneratorOptions, "input" | "output" | "outputClient" | "outputService">>;
+	defaults?: Partial<
+		Omit<OpenApiPlaywrightGeneratorOptions, "input" | "outputTypes" | "outputClient" | "outputService">
+	>;
 
 	/**
 	 * Array of OpenAPI specifications to process
-	 * Each spec must have input, output, and outputClient paths
+	 * Each spec must have input, outputClient, and at least one of:
+	 * - `outputTypes` (preferred)
+	 * - `output` (deprecated alias)
 	 */
-	specs: OpenApiPlaywrightGeneratorOptions[];
+	specs: (Omit<OpenApiPlaywrightGeneratorOptions, "outputTypes"> & {
+		outputTypes?: string;
+		/**
+		 * @deprecated Use `outputTypes` instead.
+		 */
+		output?: string;
+	})[];
 
 	/**
 	 * Execution mode for batch processing

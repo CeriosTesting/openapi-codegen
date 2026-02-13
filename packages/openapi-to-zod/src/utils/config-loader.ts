@@ -30,7 +30,27 @@ const ZodSpecificOptionsSchema = z.strictObject({
  */
 const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
 	...ZodSpecificOptionsSchema.shape,
-	outputTypes: z.string(), // Make outputTypes required for Zod generator
+	outputTypes: z.string().optional(),
+	output: z.string().optional(),
+}).superRefine((spec, ctx) => {
+	const hasOutputTypes = Boolean(spec.outputTypes);
+	const hasOutput = Boolean(spec.output);
+
+	if (!hasOutputTypes && !hasOutput) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["outputTypes"],
+			message: "Each spec must specify an output file path using 'outputTypes' (preferred) or deprecated 'output'.",
+		});
+	}
+
+	if (hasOutputTypes && hasOutput && spec.outputTypes !== spec.output) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["output"],
+			message: "Invalid configuration: 'outputTypes' and deprecated 'output' are both set but have different values.",
+		});
+	}
 });
 
 /**
@@ -59,9 +79,7 @@ const errorMessages: FormatZodErrorsOptions = {
 		input: "Each spec must specify the path to your OpenAPI specification file.",
 		outputTypes: "Each spec must specify an output file path for generated Zod schemas.",
 	},
-	unrecognizedKeyMessages: {
-		output: "Did you mean 'outputTypes'? The 'output' field was renamed to 'outputTypes'.",
-	},
+	unrecognizedKeyMessages: {},
 	requiredFieldsHelp: "All required fields are present (specs array with input/outputTypes)",
 };
 
@@ -97,8 +115,30 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 	}
 
 	const defaults = config.defaults || {};
+	let warnedDeprecatedOutput = false;
 
 	return config.specs.map(spec => {
+		const output = spec.output;
+		const outputTypes = spec.outputTypes;
+		const resolvedOutputTypes = outputTypes ?? output;
+
+		if (resolvedOutputTypes === undefined) {
+			throw new Error("Each spec must define 'outputTypes' (preferred) or deprecated 'output'.");
+		}
+
+		if (output && outputTypes && output !== outputTypes) {
+			throw new Error("Invalid configuration: 'outputTypes' and deprecated 'output' cannot have different values.");
+		}
+
+		if (output && !warnedDeprecatedOutput) {
+			console.warn(
+				"[openapi-to-zod] Deprecation warning: 'output' is deprecated and will be removed in a future release. Use 'outputTypes' instead."
+			);
+			warnedDeprecatedOutput = true;
+		}
+
+		const { output: _deprecatedOutput, ...specWithoutDeprecatedOutput } = spec;
+
 		// Deep merge: spec options override defaults
 		const merged: OpenApiGeneratorOptions = {
 			// Apply defaults first
@@ -113,8 +153,9 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			showStats: defaults.showStats,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
 
-			// Override with spec-specific values (including required input/output)
-			...spec,
+			// Override with spec-specific values
+			...specWithoutDeprecatedOutput,
+			outputTypes: resolvedOutputTypes,
 		};
 		return merged;
 	});

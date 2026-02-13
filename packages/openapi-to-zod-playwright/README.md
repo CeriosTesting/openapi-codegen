@@ -131,7 +131,7 @@ This package generates up to three separate files:
 
 - Zod validation schemas for all request/response types
 - TypeScript type definitions via `z.infer`
-- Located in the main `output` file
+- Located in the main `outputTypes` file
 
 ```typescript
 // Generated schemas
@@ -383,6 +383,11 @@ npx openapi-to-zod-playwright init --help
 
 ## Configuration File
 
+> `outputTypes` is the preferred config key for schemas/types output.
+> Deprecated alias: `output` is still supported for backward compatibility.
+> You must provide one of `outputTypes` or `output` per spec.
+> If both are provided, they must have the same value.
+
 ### TypeScript Configuration (Recommended)
 
 **`openapi-to-zod-playwright.config.ts`**:
@@ -459,6 +464,8 @@ export default defineConfig({
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
+| `outputTypes` | `string` | Preferred output path for generated schemas/types (required unless deprecated `output` is set) | `undefined` |
+| `output` | `string` | Deprecated alias for `outputTypes`; allowed for backward compatibility | `undefined` |
 | `outputClient` | `string` | Optional path for client class file | `undefined` |
 | `outputService` | `string` | Optional path for service class file (requires `outputClient`) | `undefined` |
 | `validateServiceRequest` | `boolean` | Enable Zod validation for request bodies in service methods | `false` |
@@ -467,6 +474,8 @@ export default defineConfig({
 | `basePath` | `string` | Base path to prepend to all endpoints (e.g., `"/api/v1"`) | `undefined` |
 | `useOperationId` | `boolean` | Use operationId from spec for method names | `false` |
 | `operationFilters` | `object` | Filter operations (see below) | `undefined` |
+
+If `outputTypes` and `output` are both set with different values, configuration validation fails.
 
 #### Operation Filters
 

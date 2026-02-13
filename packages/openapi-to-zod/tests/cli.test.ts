@@ -85,15 +85,40 @@ describe("CLI", () => {
 	});
 
 	describe("config validation errors", () => {
+		it("should warn and still generate when deprecated output is used", () => {
+			const configPath = TestUtils.getTestConfigDir("openapi-to-zod.config.json");
+			const outputPath = TestUtils.getOutputPath("cli-config-deprecated-output.ts");
+
+			const legacyConfig = {
+				specs: [
+					{
+						input: TestUtils.getFixturePath("simple.yaml"),
+						output: outputPath,
+					},
+				],
+			};
+
+			writeFileSync(configPath, JSON.stringify(legacyConfig, null, 2), "utf-8");
+
+			const output = execSync(`node ${cliPath} --config ${configPath} 2>&1`, {
+				encoding: "utf-8",
+			});
+
+			expect(output).toContain("Deprecation warning");
+			expect(output).toContain("'output' is deprecated");
+			expect(existsSync(outputPath)).toBe(true);
+		});
+
 		it("should not duplicate error message for config validation errors", () => {
 			const configPath = TestUtils.getTestConfigDir("openapi-to-zod.config.json");
 
-			// Create config with old 'output' property instead of 'outputTypes'
+			// Create config with both output keys set to different values
 			const invalidConfig = {
 				specs: [
 					{
 						input: "openapi.yaml",
-						output: "schemas.ts", // Old property name
+						output: "legacy-schemas.ts",
+						outputTypes: "new-schemas.ts",
 					},
 				],
 			};
@@ -111,7 +136,8 @@ describe("CLI", () => {
 
 				// Should contain the error message
 				expect(stderr).toContain("Invalid configuration file");
-				expect(stderr).toContain("Did you mean 'outputTypes'");
+				expect(stderr).toContain("outputTypes");
+				expect(stderr).toContain("deprecated 'output'");
 
 				// Should NOT contain "Stack trace:" for config validation errors
 				expect(stderr).not.toContain("Stack trace:");

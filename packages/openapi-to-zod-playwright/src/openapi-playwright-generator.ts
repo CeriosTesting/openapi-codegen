@@ -28,6 +28,7 @@ import type { OpenApiPlaywrightGeneratorOptions } from "./types";
 export class OpenApiPlaywrightGenerator implements Generator {
 	private options: OpenApiPlaywrightGeneratorOptions & { schemaType: "all" };
 	private spec: OpenAPISpec | null = null;
+	private schemasStringCache: string | null = null;
 	private static specCache = new LRUCache<string, OpenAPISpec>(50); // Cache for parsed specs
 
 	constructor(options: OpenApiPlaywrightGeneratorOptions) {
@@ -125,6 +126,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 * @returns The generated Zod schemas TypeScript code
 	 */
 	generateSchemasString(): string {
+		if (this.schemasStringCache !== null) {
+			return this.schemasStringCache;
+		}
+
 		// Ensure spec is parsed
 		if (!this.spec) {
 			this.spec = this.parseSpec();
@@ -190,7 +195,8 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			}
 		}
 
-		return schemasString;
+		this.schemasStringCache = schemasString;
+		return this.schemasStringCache;
 	}
 
 	/**

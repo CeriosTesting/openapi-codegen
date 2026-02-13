@@ -252,8 +252,9 @@ export function generateAllOf(
 
 	// Detect conflicting properties and warn
 	const conflicts = detectConflictingProperties(schemas, context);
-	if (conflicts.length > 0) {
-		for (const conflict of conflicts) {
+	const uniqueConflicts = [...new Set(conflicts)];
+	if (uniqueConflicts.length > 0) {
+		for (const conflict of uniqueConflicts) {
 			console.warn(`[openapi-to-zod] Warning: allOf composition conflict - ${conflict}`);
 		}
 	}
@@ -305,5 +306,5 @@ export function generateAllOf(
 
 	// Apply nullable at the END, after all .extend() calls
 	// This is critical - .nullable() must come after .extend(), not before
-	return { schema: wrapNullable(result, isNullable), conflicts };
+	return { schema: wrapNullable(result, isNullable), conflicts: uniqueConflicts };
 }

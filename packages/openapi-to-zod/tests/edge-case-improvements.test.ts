@@ -125,6 +125,21 @@ describe("Edge Case Improvements", () => {
 			expect(countConflict).toBeDefined();
 		});
 
+		it("should emit duplicate allOf conflict messages only once", () => {
+			generateOutput();
+
+			const warnCalls = consoleWarnSpy.mock.calls
+				.map((call: unknown[]) => call[0])
+				.filter(
+					(msg: unknown) =>
+						typeof msg === "string" &&
+						msg.includes("allOf composition conflict") &&
+						msg.includes('Property "name" has conflicting definitions in BaseWithName and inline')
+				) as string[];
+
+			expect(warnCalls).toHaveLength(1);
+		});
+
 		it("should include allOf conflicts count in statistics", () => {
 			const output = generateOutput({ showStats: true });
 
