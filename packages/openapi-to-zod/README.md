@@ -69,7 +69,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'src/schemas.ts',
+      outputTypes: 'src/schemas.ts',
     },
   ],
 });
@@ -88,7 +88,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'src/schemas.ts',
+      outputTypes: 'src/schemas.ts',
     },
   ],
 });
@@ -108,12 +108,12 @@ export default defineConfig({
     {
       name: 'api-v1',
       input: 'specs/api-v1.yaml',
-      output: 'src/schemas/v1.ts',
+      outputTypes: 'src/schemas/v1.ts',
     },
     {
       name: 'api-v2',
       input: 'specs/api-v2.yaml',
-      output: 'src/schemas/v2.ts',
+      outputTypes: 'src/schemas/v2.ts',
       mode: 'normal', // Override default
       prefix: 'v2',
     },
@@ -135,7 +135,7 @@ export default defineConfig({
   "specs": [
     {
       "input": "openapi.yaml",
-      "output": "src/schemas.ts"
+      "outputTypes": "src/schemas.ts"
     }
   ]
 }
@@ -180,7 +180,7 @@ Examples:
 |-------------|------|-------------|
 | `name` | `string` | Optional identifier for logging |
 | `input` | `string` | Input OpenAPI YAML file path (required) |
-| `output` | `string` | Output TypeScript file path (required) |
+| `outputTypes` | `string` | Output TypeScript file path (required) |
 | `mode` | `"strict"` \| `"normal"` \| `"loose"` | Validation mode for top-level schemas (default: `"normal"`) |
 | `emptyObjectBehavior` | `"strict"` \| `"loose"` \| `"record"` | How to handle empty objects (default: `"loose"`) |
 | `includeDescriptions` | `boolean` | Include JSDoc comments |
@@ -216,7 +216,7 @@ Filter which operations to include/exclude during schema generation. Useful for 
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     operationFilters: {
       includeTags: ['public'],        // Only public endpoints
       excludeDeprecated: true,         // Skip deprecated operations
@@ -273,14 +273,20 @@ Failed specs:
 ## Programmatic Usage
 
 ```typescript
-import { generateZodSchemas } from '@cerios/openapi-to-zod';
+import { OpenApiGenerator } from '@cerios/openapi-to-zod';
 
-generateZodSchemas({
+const generator = new OpenApiGenerator({
   input: 'path/to/openapi.yaml',
-  output: 'path/to/schemas.ts',
+  outputTypes: 'path/to/schemas.ts',
   mode: 'normal', // 'strict' | 'normal' | 'loose'
   includeDescriptions: true,
 });
+
+// Generate and write to file
+generator.generate();
+
+// Or generate as string
+const code = generator.generateString();
 ```
 
 ## Validation Modes
@@ -466,7 +472,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'src/schemas.ts',
+      outputTypes: 'src/schemas.ts',
     },
   ],
 });
@@ -485,7 +491,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'src/schemas.ts',
+      outputTypes: 'src/schemas.ts',
     },
   ],
 });
@@ -522,7 +528,7 @@ Filter which operations are included in schema generation. This is useful when y
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'public-schemas.ts',
+    outputTypes: 'public-schemas.ts',
     operationFilters: {
       includeTags: ['public', 'users']  // Only include operations tagged with 'public' or 'users'
     }
@@ -535,7 +541,7 @@ export default defineConfig({
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'v1-schemas.ts',
+    outputTypes: 'v1-schemas.ts',
     operationFilters: {
       includePaths: ['/api/v1/**'],     // Only v1 endpoints
       excludePaths: ['/api/v1/admin/**'] // But exclude admin endpoints
@@ -549,7 +555,7 @@ export default defineConfig({
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'current-schemas.ts',
+    outputTypes: 'current-schemas.ts',
     operationFilters: {
       excludeDeprecated: true  // Skip all deprecated operations
     }
@@ -575,7 +581,7 @@ Generate separate schemas for requests and responses by filtering `readOnly` and
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'request-schemas.ts',
+    outputTypes: 'request-schemas.ts',
     schemaType: 'request'  // Excludes readOnly properties like 'id', 'createdAt'
   }]
 });
@@ -586,7 +592,7 @@ export default defineConfig({
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'response-schemas.ts',
+    outputTypes: 'response-schemas.ts',
     schemaType: 'response'  // Excludes writeOnly properties like 'password'
   }]
 });
@@ -597,7 +603,7 @@ export default defineConfig({
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     request: {
       mode: 'strict',           // Strict validation for incoming data
       includeDescriptions: false
@@ -674,7 +680,7 @@ However, many teams follow the industry de facto standard for OpenAPI 3.0.x wher
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     defaultNullable: true,  // Treat unspecified properties as nullable
   }]
 });
@@ -804,7 +810,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'schemas.ts',
+      outputTypes: 'schemas.ts',
       prefix: 'api',  // Output: apiUserSchema, apiProductSchema
       suffix: 'dto',  // Output: userDtoSchema, productDtoSchema
     },
@@ -896,7 +902,7 @@ export type Post = z.infer<typeof postSchema>;
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     stripSchemaPrefix: 'Company.Models.'  // Strip this exact prefix
   }]
 });
@@ -910,7 +916,7 @@ Use glob patterns to strip dynamic prefixes:
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     // Strip any namespace prefix with wildcard
     stripSchemaPrefix: '*.Models.'
   }]
@@ -994,7 +1000,7 @@ stripSchemaPrefix: '!(Internal)*.'                  // Matches any prefix except
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     stripSchemaPrefix: 'Company.Models.',  // Applied first
     prefix: 'api',                          // Applied second
     suffix: 'dto'                           // Applied third
@@ -1460,14 +1466,36 @@ These utilities are marked with `@shared` tags in the source code and are covere
 
 ## API Reference
 
-### `generateZodSchemas(options: OpenApiGeneratorOptions): void`
+### `OpenApiGenerator`
 
-Main function to generate schemas.
+Main class for generating Zod schemas from OpenAPI specifications.
+
+```typescript
+import { OpenApiGenerator } from '@cerios/openapi-to-zod';
+
+const generator = new OpenApiGenerator(options);
+
+// Generate and write to file
+generator.generate();
+
+// Or generate as string
+const code = generator.generateString();
+```
 
 #### Options
 
 ```typescript
 interface OpenApiGeneratorOptions {
+  /**
+   * Input OpenAPI YAML/JSON file path
+   */
+  input: string;
+
+  /**
+   * Output TypeScript file path
+   */
+  outputTypes: string;
+
   /**
    * Object validation mode
    * - 'strict': Uses z.strictObject() - no additional properties allowed
@@ -1477,20 +1505,52 @@ interface OpenApiGeneratorOptions {
   mode?: 'strict' | 'normal' | 'loose';
 
   /**
-   * Input OpenAPI YAML file path
-   */
-  input: string;
-
-  /**
-   * Output TypeScript file path
-   */
-  output: string;
-
-  /**
    * Whether to include descriptions as JSDoc comments
    */
   includeDescriptions?: boolean;
+
+  /**
+   * Add custom prefix to schema names
+   */
+  prefix?: string;
+
+  /**
+   * Add custom suffix to schema names
+   */
+  suffix?: string;
+
+  /**
+   * Strip prefix from schema names using glob patterns
+   */
+  stripSchemaPrefix?: string | string[];
+
+  /**
+   * Show generation statistics in output
+   */
+  showStats?: boolean;
+
+  /**
+   * Schema filtering mode
+   */
+  schemaType?: 'all' | 'request' | 'response';
+
+  /**
+   * Operation filters for including/excluding operations
+   */
+  operationFilters?: OperationFilters;
 }
+```
+
+### `defineConfig`
+
+Type-safe helper for creating configuration files.
+
+```typescript
+import { defineConfig } from '@cerios/openapi-to-zod';
+
+export default defineConfig({
+  specs: [{ input: 'api.yaml', outputTypes: 'schemas.ts' }],
+});
 ```
 
 ## Requirements

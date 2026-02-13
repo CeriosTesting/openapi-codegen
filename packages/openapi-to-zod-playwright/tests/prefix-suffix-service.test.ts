@@ -9,7 +9,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should generate schemas with correct prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -25,7 +25,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should reference prefixed schema names in service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -41,7 +41,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should generate schemas with correct suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});
@@ -57,7 +57,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should reference suffixed schema names in service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});
@@ -73,7 +73,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should generate schemas with both prefix and suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 				suffix: "Dto",
@@ -88,7 +88,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should reference prefixed+suffixed schema names in service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 				suffix: "Dto",
@@ -105,7 +105,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve multi-word prefix casing (apiV2)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "apiV2",
 			});
@@ -122,7 +122,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve multi-word prefix casing (myApi)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "myApi",
 			});
@@ -137,7 +137,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should lowercase first char of prefix for camelCase (ApiV2 -> apiV2)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "ApiV2",
 			});
@@ -155,7 +155,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve multi-word suffix casing (ResponseDto)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "ResponseDto",
 			});
@@ -170,7 +170,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve all-caps suffix (DTO)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "DTO",
 			});
@@ -185,7 +185,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve long multi-word suffix (DataTransferObject)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "DataTransferObject",
 			});
@@ -202,7 +202,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should preserve casing with both multi-word prefix and suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "apiV2",
 				suffix: "ResponseDto",
@@ -218,7 +218,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should handle prefix with suffix DTO", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "myApi",
 				suffix: "DTO",
@@ -236,7 +236,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should use original type name with prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -250,7 +250,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should use original type name with suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});
@@ -264,7 +264,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should use original type name with both prefix and suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "apiV2",
 				suffix: "ResponseDto",
@@ -281,7 +281,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should apply prefix to inline array schema references", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -297,7 +297,7 @@ describe("Prefix and Suffix in Service Generation", () => {
 		it("should apply suffix to inline array schema references", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});

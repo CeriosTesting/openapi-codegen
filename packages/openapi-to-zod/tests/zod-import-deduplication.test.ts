@@ -7,7 +7,7 @@ describe("Zod Import Deduplication", () => {
 	function generateOutput(fixture: string, options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath(fixture),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();

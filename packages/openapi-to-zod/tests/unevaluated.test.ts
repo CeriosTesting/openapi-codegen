@@ -10,7 +10,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should generate validation for unevaluatedProperties: false", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +26,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should reject objects with unevaluated properties when false", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -56,7 +56,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should allow typed unevaluated properties with schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -87,7 +87,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should work with oneOf composition", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -122,7 +122,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should handle anyOf with unevaluated properties", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -160,7 +160,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should generate validation for unevaluatedItems: false", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -175,7 +175,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should reject arrays with items beyond prefixItems when false", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -196,7 +196,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should allow typed unevaluated items with schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -217,7 +217,7 @@ describe("Unevaluated Properties and Items (OpenAPI 3.1)", () => {
 		it("should work with allOf composition", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("unevaluated.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

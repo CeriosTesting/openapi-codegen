@@ -18,25 +18,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: |
-          npm install -g npm@latest
-          npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm build
 
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
-          version: npx changeset version
-          publish: npx changeset publish --provenance
+          version: pnpm changeset version
+          publish: pnpm changeset publish --provenance
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:

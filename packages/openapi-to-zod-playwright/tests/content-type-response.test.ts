@@ -7,7 +7,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .json() for application/json responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -21,7 +21,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .json() for text/json responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("multi-response-content-types-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["text/json"],
@@ -36,7 +36,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .json() for application/vnd.api+json responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("content-types-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -54,7 +54,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .text() for text/plain responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -68,7 +68,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .text() for text/html responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -82,7 +82,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .text() for application/xml responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -98,7 +98,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .body() for image/* responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -112,7 +112,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .body() for application/pdf responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -126,7 +126,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .body() for application/zip responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -152,7 +152,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .text() by default for unknown content types (safest)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -166,7 +166,7 @@ describe("Content Type Response Handling", () => {
 		it("should emit warning for unknown content types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -181,7 +181,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .json() when fallbackContentTypeParsing is 'json'", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				fallbackContentTypeParsing: "json",
@@ -196,7 +196,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .body() when fallbackContentTypeParsing is 'body'", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("text-plain-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				fallbackContentTypeParsing: "body",
@@ -213,7 +213,7 @@ describe("Content Type Response Handling", () => {
 		it("should respect preferredContentTypes and use correct parse method", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("multi-response-content-types-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["text/plain"],
@@ -230,7 +230,7 @@ describe("Content Type Response Handling", () => {
 		it("should use .json() when preferring application/json", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("multi-response-content-types-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["application/json"],
@@ -247,7 +247,7 @@ describe("Content Type Response Handling", () => {
 describe("getResponseParseMethod utility", () => {
 	// Import the utility directly for unit testing
 	it("should categorize common content types correctly", async () => {
-		const { getResponseParseMethod } = await import("@cerios/openapi-to-zod/internal");
+		const { getResponseParseMethod } = await import("@cerios/openapi-core");
 
 		// JSON types
 		expect(getResponseParseMethod("application/json")).toEqual({ method: "json", isUnknown: false });
@@ -276,7 +276,7 @@ describe("getResponseParseMethod utility", () => {
 	});
 
 	it("should handle content types with charset parameters", async () => {
-		const { getResponseParseMethod } = await import("@cerios/openapi-to-zod/internal");
+		const { getResponseParseMethod } = await import("@cerios/openapi-core");
 
 		expect(getResponseParseMethod("application/json; charset=utf-8")).toEqual({ method: "json", isUnknown: false });
 		expect(getResponseParseMethod("text/plain; charset=iso-8859-1")).toEqual({ method: "text", isUnknown: false });
@@ -284,7 +284,7 @@ describe("getResponseParseMethod utility", () => {
 	});
 
 	it("should handle unknown content types with fallback", async () => {
-		const { getResponseParseMethod } = await import("@cerios/openapi-to-zod/internal");
+		const { getResponseParseMethod } = await import("@cerios/openapi-core");
 
 		// Default fallback is "text"
 		expect(getResponseParseMethod("application/x-custom")).toEqual({ method: "text", isUnknown: true });
@@ -294,7 +294,7 @@ describe("getResponseParseMethod utility", () => {
 	});
 
 	it("should handle missing/undefined content types", async () => {
-		const { getResponseParseMethod } = await import("@cerios/openapi-to-zod/internal");
+		const { getResponseParseMethod } = await import("@cerios/openapi-core");
 
 		expect(getResponseParseMethod(undefined)).toEqual({ method: "text", isUnknown: true });
 		expect(getResponseParseMethod("")).toEqual({ method: "text", isUnknown: true });

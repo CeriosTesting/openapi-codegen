@@ -1,130 +1,107 @@
 import {
-	OperationFiltersSchema as BaseOperationFiltersSchema,
-	createTypeScriptLoader,
-	formatConfigValidationError,
+	BaseDefaultsSchema,
+	BaseGeneratorOptionsSchema,
+	mergeCliWithConfig as coreMergeCliWithConfig,
+	createConfigLoader,
+	ExecutionModeSchema,
+	type FormatZodErrorsOptions,
+	OperationFiltersSchema,
+	RegexPatternSchema,
 	RequestResponseOptionsSchema,
-} from "@cerios/openapi-to-zod/internal";
-import { cosmiconfig } from "cosmiconfig";
+} from "@cerios/openapi-core";
 import { z } from "zod";
 import type { OpenApiPlaywrightGeneratorOptions, PlaywrightConfigFile } from "../types";
 
 /**
- * Zod schema for strict validation of Playwright config files
- * Extends base config schema but enforces schemaType: "all"
+ * Playwright operation filters schema - extends base with status code filtering
  */
-
-// Extend base operation filters with Playwright-specific status code filtering
-const OperationFiltersSchema = BaseOperationFiltersSchema.extend({
+const PlaywrightOperationFiltersSchema = OperationFiltersSchema.extend({
 	includeStatusCodes: z.array(z.string()).optional(),
 	excludeStatusCodes: z.array(z.string()).optional(),
 });
 
+/**
+ * Zod error format schema for Playwright-specific formatting
+ */
 const ZodErrorFormatSchema = z.enum(["standard", "prettify", "prettifyWithValues"]);
 
-const OpenApiPlaywrightGeneratorOptionsSchema = z.strictObject({
+/**
+ * Playwright-specific options schema (beyond base options)
+ * Note: schemaType is not included - always "all" for Playwright
+ */
+const PlaywrightSpecificOptionsSchema = z.strictObject({
 	mode: z.enum(["strict", "normal", "loose"]).optional(),
-	input: z.string(),
-	output: z.string(),
 	outputClient: z.string(),
 	outputService: z.string().optional(),
-	includeDescriptions: z.boolean().optional(),
 	validateServiceRequest: z.boolean().optional(),
 	ignoreHeaders: z.array(z.string()).optional(),
 	useDescribe: z.boolean().optional(),
-	defaultNullable: z.boolean().optional(),
 	emptyObjectBehavior: z.enum(["strict", "loose", "record"]).optional(),
-	prefix: z.string().optional(),
-	suffix: z.string().optional(),
-	stripSchemaPrefix: z.string().optional(),
-	showStats: z.boolean().optional(),
 	request: RequestResponseOptionsSchema.optional(),
 	response: RequestResponseOptionsSchema.optional(),
-	name: z.string().optional(),
 	basePath: z.string().optional(),
-	stripPathPrefix: z.string().optional(),
-	operationFilters: OperationFiltersSchema.optional(),
-	cacheSize: z.number().positive().optional(),
-	batchSize: z.number().positive().optional(),
+	operationFilters: PlaywrightOperationFiltersSchema.optional(),
 	useOperationId: z.boolean().optional(),
-	preferredContentTypes: z.array(z.string()).optional(),
 	fallbackContentTypeParsing: z.enum(["text", "json", "body"]).optional(),
 	zodErrorFormat: ZodErrorFormatSchema.optional(),
-	customDateTimeFormatRegex: z
-		.union([
-			z.string().refine(
-				pattern => {
-					try {
-						new RegExp(pattern);
-						return true;
-					} catch {
-						return false;
-					}
-				},
-				{ message: "Must be a valid regular expression pattern" }
-			),
-			z.instanceof(RegExp),
-		])
-		.optional(),
-	// schemaType is not included - always "all" for Playwright
+	customDateTimeFormatRegex: z.union([RegexPatternSchema, z.instanceof(RegExp)]).optional(),
 });
 
-const PlaywrightConfigFileSchema = z.strictObject({
-	defaults: z
-		.strictObject({
-			mode: z.enum(["strict", "normal", "loose"]).optional(),
-			includeDescriptions: z.boolean().optional(),
-			useDescribe: z.boolean().optional(),
-			defaultNullable: z.boolean().optional(),
-			emptyObjectBehavior: z.enum(["strict", "loose", "record"]).optional(),
-			prefix: z.string().optional(),
-			suffix: z.string().optional(),
-			stripSchemaPrefix: z.string().optional(),
-			showStats: z.boolean().optional(),
-			request: RequestResponseOptionsSchema.optional(),
-			response: RequestResponseOptionsSchema.optional(),
-			generateService: z.boolean().optional(),
-			validateServiceRequest: z.boolean().optional(),
-			ignoreHeaders: z.array(z.string()).optional(),
-			outputClient: z.string().optional(),
-			outputService: z.string().optional(),
-			basePath: z.string().optional(),
-			stripPathPrefix: z.string().optional(),
-			operationFilters: OperationFiltersSchema.optional(),
-			cacheSize: z.number().positive().optional(),
-			batchSize: z.number().positive().optional(),
-			useOperationId: z.boolean().optional(),
-			preferredContentTypes: z.array(z.string()).optional(),
-			fallbackContentTypeParsing: z.enum(["text", "json", "body"]).optional(),
-			zodErrorFormat: ZodErrorFormatSchema.optional(),
-			customDateTimeFormatRegex: z
-				.union([
-					z.string().refine(
-						pattern => {
-							try {
-								new RegExp(pattern);
-								return true;
-							} catch {
-								return false;
-							}
-						},
-						{ message: "Must be a valid regular expression pattern" }
-					),
-					z.instanceof(RegExp),
-				])
-				.optional(),
-		})
-		.optional(),
-	specs: z
-		.array(OpenApiPlaywrightGeneratorOptionsSchema)
-		.min(1, {
-			message:
-				"Configuration must include at least one specification. Each specification should have 'input' and 'output' paths.",
-		})
-		.refine(specs => specs.every(spec => spec.input && spec.output && spec.outputClient), {
-			message: "Each specification must have 'input', 'output', and 'outputClient' paths defined",
-		}),
-	executionMode: z.enum(["parallel", "sequential"]).optional(),
+/**
+ * Full Playwright generator options schema - base + Playwright-specific
+ * Uses .extend() instead of deprecated .merge() for Zod v4 compatibility
+ */
+const OpenApiPlaywrightGeneratorOptionsSchema = BaseGeneratorOptionsSchema.omit({
+	operationFilters: true, // Use Playwright-specific version
+}).extend({
+	...PlaywrightSpecificOptionsSchema.shape,
+	outputTypes: z.string(), // Make outputTypes required for Playwright generator
 });
+
+/**
+ * Playwright defaults schema - base defaults + Playwright-specific options
+ * Adds generateService which is a defaults-only option
+ * Uses .extend() instead of deprecated .merge() for Zod v4 compatibility
+ */
+const PlaywrightDefaultsSchema = BaseDefaultsSchema.omit({ operationFilters: true }).extend({
+	...PlaywrightSpecificOptionsSchema.omit({ outputClient: true }).shape,
+	generateService: z.boolean().optional(),
+	outputClient: z.string().optional(), // Optional in defaults
+});
+
+/**
+ * Playwright config file schema
+ */
+const PlaywrightConfigFileSchema = z.strictObject({
+	defaults: PlaywrightDefaultsSchema.optional(),
+	specs: z.array(OpenApiPlaywrightGeneratorOptionsSchema).min(1, {
+		message:
+			"Configuration must include at least one specification. Each specification should have 'input', 'outputTypes', and 'outputClient' paths.",
+	}),
+	executionMode: ExecutionModeSchema.optional(),
+});
+
+// Custom error messages for user-friendly validation errors
+const errorMessages: FormatZodErrorsOptions = {
+	missingFieldMessages: {
+		input: "Each spec must specify the path to your OpenAPI specification file.",
+		outputTypes: "Each spec must specify an output file path for generated Zod schemas.",
+		outputClient: "Each spec must specify an output file path for the generated Playwright API client.",
+	},
+	unrecognizedKeyMessages: {
+		output: "Did you mean 'outputTypes' or 'outputClient'? The 'output' field was renamed.",
+	},
+	requiredFieldsHelp: "All required fields are present (specs array with input/outputTypes/outputClient)",
+};
+
+// Create config loader using factory from core
+const configLoader = createConfigLoader<PlaywrightConfigFile>(
+	{
+		packageName: "openapi-to-zod-playwright",
+		errorMessages,
+	},
+	PlaywrightConfigFileSchema
+);
 
 /**
  * Load and validate Playwright configuration file
@@ -134,46 +111,9 @@ const PlaywrightConfigFileSchema = z.strictObject({
  * @returns Validated PlaywrightConfigFile object with schemaType enforced to "all"
  * @throws Error if config file not found, invalid, or contains unknown properties
  */
-export async function loadConfig(configPath?: string): Promise<PlaywrightConfigFile> {
-	const explorer = cosmiconfig("openapi-to-zod-playwright", {
-		searchPlaces: ["openapi-to-zod-playwright.config.ts", "openapi-to-zod-playwright.config.json", "package.json"],
-		loaders: {
-			".ts": createTypeScriptLoader(),
-		},
-	});
+export const loadConfig = configLoader.loadConfig;
 
-	let result: Awaited<ReturnType<typeof explorer.load>> | Awaited<ReturnType<typeof explorer.search>>;
-
-	if (configPath) {
-		// Load from explicit path (overrides auto-discovery)
-		result = await explorer.load(configPath);
-	} else {
-		// Auto-discover config file starting from cwd
-		result = await explorer.search();
-	}
-
-	if (!result || !result.config) {
-		throw new Error(
-			configPath
-				? `Config file not found at: ${configPath}`
-				: "No config file found. Searched for: openapi-to-zod-playwright.config.ts, openapi-to-zod-playwright.config.json, package.json (openapi-to-zod-playwright key)\nRun 'openapi-to-zod-playwright init' to create a new config file."
-		);
-	}
-
-	// Strict validation using Zod schema
-	try {
-		const validatedConfig = PlaywrightConfigFileSchema.parse(result.config);
-		return validatedConfig;
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			const errorMessage = formatConfigValidationError(error, result.filepath, configPath, [
-				"Note: schemaType is always 'all' for Playwright generator (both request/response schemas)",
-			]);
-			throw new Error(errorMessage);
-		}
-		throw error;
-	}
-} /**
+/**
  * Merge global defaults with per-spec configuration
  * CLI arguments have highest precedence and are merged separately in CLI layer
  * Automatically enforces schemaType: "all" for all specs
@@ -230,9 +170,9 @@ export function mergeCliWithConfig(
 	cliOptions: Partial<OpenApiPlaywrightGeneratorOptions>
 ): OpenApiPlaywrightGeneratorOptions {
 	// CLI options override everything, but schemaType is always "all"
+	const merged = coreMergeCliWithConfig(specConfig, cliOptions);
 	return {
-		...specConfig,
-		...Object.fromEntries(Object.entries(cliOptions).filter(([_, v]) => v !== undefined)),
+		...merged,
 		schemaType: "all", // Always enforce for Playwright
 	} as OpenApiPlaywrightGeneratorOptions;
 }

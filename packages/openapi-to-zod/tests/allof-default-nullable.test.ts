@@ -80,7 +80,7 @@ components:
 		it("should NOT have .nullable().extend() pattern when defaultNullable is true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -95,7 +95,7 @@ components:
 		it("should NOT have .nullable() on the final allOf result when not explicitly nullable", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -133,7 +133,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: nullableSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -196,7 +196,7 @@ components:
 		it("should not have any .nullable().extend() or .nullable().shape patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -252,7 +252,7 @@ components:
 		it("should handle nested allOf without .nullable().extend()", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -301,7 +301,7 @@ components:
 		it("should have .nullable() on primitive properties within the allOf inline object", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -346,7 +346,7 @@ components:
 		it("should NOT apply defaultNullable to single-item allOf (schema definition)", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -450,7 +450,7 @@ components:
 		it("should generate valid code without .nullable().extend() pattern", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -474,7 +474,7 @@ components:
 		it("should have .nullable() on property references within the inline objects", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -538,7 +538,7 @@ components:
 		it("should NOT have .nullable() on oneOf result without explicit nullable", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -553,7 +553,7 @@ components:
 		it("should NOT have .nullable() on individual union variants", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -602,7 +602,7 @@ components:
 		it("should NOT have .nullable() on anyOf result without explicit nullable", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -664,7 +664,7 @@ components:
 		it("should NOT have .nullable() on discriminatedUnion result without explicit nullable", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();

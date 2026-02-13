@@ -9,7 +9,7 @@ describe("Advanced Features", () => {
 		it("should generate service methods that extract parameters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -24,7 +24,7 @@ describe("Advanced Features", () => {
 		it("should generate client methods with raw Playwright options", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -42,7 +42,7 @@ describe("Advanced Features", () => {
 		it("should generate client-service by default", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -56,7 +56,7 @@ describe("Advanced Features", () => {
 		it("should always generate both client and service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -73,7 +73,7 @@ describe("Advanced Features", () => {
 		it("should handle outputClient option with relative imports", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -92,7 +92,7 @@ describe("Advanced Features", () => {
 		it("should handle outputService option with relative imports", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -118,7 +118,7 @@ describe("Advanced Features", () => {
 		it("should respect mode option", () => {
 			const strictGenerator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "strict",
 			});
@@ -130,7 +130,7 @@ describe("Advanced Features", () => {
 		it("should respect prefix and suffix options", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 				suffix: "Dto",
@@ -143,14 +143,14 @@ describe("Advanced Features", () => {
 		it("should respect includeDescriptions option", () => {
 			const withDescriptions = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 			});
 
 			const withoutDescriptions = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: false,
 			});
@@ -169,7 +169,7 @@ describe("Advanced Features", () => {
 		it("should respect useDescribe option", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useDescribe: true,
 			});
@@ -182,14 +182,14 @@ describe("Advanced Features", () => {
 		it("should respect showStats option", () => {
 			const withStats = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				showStats: true,
 			});
 
 			const withoutStats = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				showStats: false,
 			});

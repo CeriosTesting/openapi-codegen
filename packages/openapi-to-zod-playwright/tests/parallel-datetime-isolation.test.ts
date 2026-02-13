@@ -73,7 +73,7 @@ components:
 				(input, i) =>
 					new OpenApiPlaywrightGenerator({
 						input,
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						customDateTimeFormatRegex: patterns[i],
 					})
@@ -121,7 +121,7 @@ components:
 				({ input, pattern }, i) =>
 					new OpenApiPlaywrightGenerator({
 						input,
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						customDateTimeFormatRegex: pattern,
 					})
@@ -159,7 +159,7 @@ components:
 				(config, i) =>
 					new OpenApiPlaywrightGenerator({
 						input: specFiles[i],
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						...config,
 					})
@@ -182,19 +182,19 @@ components:
 			const generators = [
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out1.ts",
+					outputTypes: "out1.ts",
 					outputClient: "client1.ts",
 					customDateTimeFormatRegex: "^config-1$",
 				}),
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out2.ts",
+					outputTypes: "out2.ts",
 					outputClient: "client2.ts",
 					// No custom format
 				}),
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out3.ts",
+					outputTypes: "out3.ts",
 					outputClient: "client3.ts",
 					customDateTimeFormatRegex: "^config-3$",
 				}),

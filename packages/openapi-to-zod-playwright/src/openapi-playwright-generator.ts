@@ -1,11 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, normalize, relative } from "node:path";
+import type { Generator } from "@cerios/openapi-core";
+import {
+	ConfigurationError,
+	FileOperationError,
+	LRUCache,
+	loadOpenAPISpecCached,
+	toPascalCase,
+	validateIgnorePatterns,
+} from "@cerios/openapi-core";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { OpenApiGenerator } from "@cerios/openapi-to-zod";
-import type { Generator } from "@cerios/openapi-to-zod/internal";
-import { LRUCache, toPascalCase } from "@cerios/openapi-to-zod/internal";
-import { parse } from "yaml";
-import { ClientGenerationError, ConfigurationError, FileOperationError, SpecValidationError } from "./errors";
+import { ClientGenerationError } from "./errors";
 import { generateClientClass } from "./generators/client-generator";
 import { generateInlineRequestSchemas, generateInlineResponseSchemas } from "./generators/inline-schema-generator";
 import {
@@ -14,7 +20,6 @@ import {
 	generateServiceClass,
 } from "./generators/service-generator";
 import type { OpenApiPlaywrightGeneratorOptions } from "./types";
-import { validateIgnorePatterns } from "./utils/header-filters";
 
 /**
  * Main generator class for Playwright API clients
@@ -67,7 +72,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 */
 	generate(): void {
 		try {
-			const { output, outputClient, outputService } = this.options;
+			const { outputTypes: output, outputClient, outputService } = this.options;
 
 			// Ensure spec is parsed
 			if (!this.spec) {
@@ -127,7 +132,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 		// Validate ignoreHeaders patterns and warn about issues
 		if (this.options.ignoreHeaders) {
-			validateIgnorePatterns(this.options.ignoreHeaders, this.spec);
+			validateIgnorePatterns(this.options.ignoreHeaders, this.spec, "openapi-to-zod-playwright");
 		}
 
 		const schemaGenerator = new OpenApiGenerator(this.options);
@@ -198,7 +203,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			this.spec = this.parseSpec();
 		}
 
-		const clientClassName = this.deriveClassName(this.options.outputClient || this.options.output, "Client");
+		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
 		return generateClientClass(
 			this.spec,
 			clientClassName,
@@ -220,8 +225,8 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}
 
 		const schemaImports = new Set<string>();
-		const serviceClassName = this.deriveClassName(this.options.outputService || this.options.output, "Service");
-		const clientClassName = this.deriveClassName(this.options.outputClient || this.options.output, "Client");
+		const serviceClassName = this.deriveClassName(this.options.outputService || this.options.outputClient, "Service");
+		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
 		return generateServiceClass(
 			this.spec,
 			schemaImports,
@@ -246,81 +251,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 * Enhanced with error context for better debugging
 	 */
 	private parseSpec(): OpenAPISpec {
-		// Check cache first for performance
-		const cached = OpenApiPlaywrightGenerator.specCache.get(this.options.input);
-		if (cached) {
-			return cached;
-		}
-
-		const errorContext: { inputPath: string; fileSize?: string } = { inputPath: this.options.input };
-
-		try {
-			const content = readFileSync(this.options.input, "utf-8");
-			const fileSize = content.length;
-			Object.assign(errorContext, { fileSize: `${(fileSize / 1024).toFixed(2)} KB` });
-
-			// Try parsing as YAML first (works for both YAML and JSON)
-			let spec: OpenAPISpec;
-			let yamlError: Error | null = null;
-			let jsonError: Error | null = null;
-
-			try {
-				spec = parse(content) as OpenAPISpec;
-			} catch (error) {
-				yamlError = error instanceof Error ? error : new Error(String(error));
-
-				// If YAML parsing fails, try JSON
-				try {
-					spec = JSON.parse(content) as OpenAPISpec;
-				} catch (error) {
-					jsonError = error instanceof Error ? error : new Error(String(error));
-
-					// Both YAML and JSON parsing failed - provide detailed error
-					const errorLines = [
-						`Failed to parse OpenAPI specification from: ${this.options.input}`,
-						`File size: ${errorContext.fileSize}`,
-						"",
-						"YAML parsing error:",
-						`  ${yamlError.message}`,
-						"",
-						"JSON parsing error:",
-						`  ${jsonError.message}`,
-						"",
-						"Please ensure:",
-						"  - The file exists and is readable",
-						"  - The file contains valid YAML or JSON syntax",
-						"  - The file is a valid OpenAPI 3.x specification",
-					];
-
-					throw new SpecValidationError(errorLines.join("\n"), this.options.input, yamlError);
-				}
-			}
-
-			// Validate basic spec structure
-			if (!("openapi" in spec) && !("swagger" in spec)) {
-				throw new SpecValidationError(
-					`Invalid OpenAPI specification: Missing 'openapi' or 'swagger' version field\n` +
-						`File: ${this.options.input}\n` +
-						`Size: ${errorContext.fileSize}`,
-					this.options.input
-				);
-			}
-
-			// Cache the parsed spec for performance
-			OpenApiPlaywrightGenerator.specCache.set(this.options.input, spec);
-			return spec;
-		} catch (error) {
-			if (error instanceof SpecValidationError) {
-				throw error;
-			}
-			const errorMessage = [
-				`Failed to read OpenAPI specification file: ${this.options.input}`,
-				`Context: ${JSON.stringify(errorContext)}`,
-				`Error: ${error instanceof Error ? error.message : String(error)}`,
-			].join("\n");
-
-			throw new FileOperationError(errorMessage, this.options.input, error instanceof Error ? error : undefined);
-		}
+		// Use core utility with caching
+		const spec = loadOpenAPISpecCached(this.options.input, OpenApiPlaywrightGenerator.specCache) as OpenAPISpec;
+		return spec;
 	}
 
 	/**

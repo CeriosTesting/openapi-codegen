@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
+import { escapeJSDoc } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
 import { OpenApiGenerator } from "../src/openapi-generator";
-import { escapeJSDoc } from "../src/utils/string-utils";
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -70,7 +70,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -104,7 +104,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -135,7 +135,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -170,7 +170,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 				useDescribe: true,
 			});

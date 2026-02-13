@@ -1,4 +1,4 @@
-import { MissingDependencyError } from "../errors";
+import { MissingDependencyError } from "@cerios/openapi-core";
 
 const CORE_PACKAGE = "@cerios/openapi-to-zod";
 

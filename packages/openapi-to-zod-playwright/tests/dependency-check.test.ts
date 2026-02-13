@@ -1,5 +1,5 @@
+import { MissingDependencyError } from "@cerios/openapi-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MissingDependencyError } from "../src/errors";
 
 describe("Dependency Check", () => {
 	describe("MissingDependencyError", () => {

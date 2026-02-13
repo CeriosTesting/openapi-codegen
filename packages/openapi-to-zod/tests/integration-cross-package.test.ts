@@ -1,7 +1,12 @@
+// Import from @cerios/openapi-core for shared utilities
+import {
+	executeBatch,
+	formatConfigValidationError,
+	type Generator,
+	LRUCache,
+	toPascalCase,
+} from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-// Import from the local source (during development/testing)
-// In production, the Playwright package would import from "@cerios/openapi-to-zod/internal"
-import { executeBatch, formatConfigValidationError, type Generator, LRUCache, toPascalCase } from "../src/internal";
 
 /**
  * Integration tests for cross-package shared utilities
@@ -87,9 +92,9 @@ describe("Cross-Package Integration: Core → Playwright", () => {
 				],
 			};
 
-			const result = formatConfigValidationError(mockError as any, "config.ts", undefined, [
-				"Note: schemaType is always 'all' for Playwright generator",
-			]);
+			const result = formatConfigValidationError(mockError as any, "config.ts", undefined, {
+				additionalNotes: ["Note: schemaType is always 'all' for Playwright generator"],
+			});
 
 			expect(result).toContain("Invalid configuration file");
 			expect(result).toContain("specs.0.input: Required");

@@ -1,5 +1,4 @@
-import type { NamingOptions } from "../utils/name-utils";
-import { toCamelCase, toPascalCase } from "../utils/name-utils";
+import { type NamingOptions, toCamelCase, toPascalCase } from "@cerios/openapi-core";
 
 export interface EnumOpenApiGeneratorOptions extends NamingOptions {}
 

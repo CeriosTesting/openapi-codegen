@@ -7,7 +7,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should generate named schema for inline object request body", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -25,7 +25,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should use method name + Request pattern for schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -40,7 +40,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should place type immediately after its schema (not grouped at end)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -66,7 +66,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should not have separate types section header", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -81,7 +81,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should use named inline schema type for data parameter", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -94,7 +94,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should validate inline request body when validateServiceRequest is true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -110,7 +110,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should apply prefix to inline request schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -126,7 +126,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should apply suffix to inline request schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});
@@ -142,7 +142,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should mark data as required when request body is required", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -156,7 +156,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should mark data as optional when request body is optional", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("optional-inline-request-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -171,7 +171,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should exclude readOnly properties from request schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("readonly-inline-request-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -198,7 +198,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should generate both inline request and response schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -216,7 +216,7 @@ describe("Inline Request Schema Generation", () => {
 		it("should generate request schemas before response schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-request-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 

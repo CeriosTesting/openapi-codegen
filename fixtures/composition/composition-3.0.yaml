@@ -1,0 +1,128 @@
+openapi: 3.0.0
+info:
+  title: Composition Test API (OpenAPI 3.0)
+  version: 1.0.0
+components:
+  schemas:
+    BaseEntity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+
+    PersonBase:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - firstName
+        - lastName
+
+    Employee:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - $ref: "#/components/schemas/PersonBase"
+        - type: object
+          properties:
+            employeeId:
+              type: string
+            department:
+              type: string
+            salary:
+              type: number
+          required:
+            - employeeId
+            - department
+
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: boolean
+      required:
+        - meow
+
+    Dog:
+      type: object
+      properties:
+        bark:
+          type: boolean
+      required:
+        - bark
+
+    Pet:
+      oneOf:
+        - $ref: "#/components/schemas/Cat"
+        - $ref: "#/components/schemas/Dog"
+
+    PetWithDiscriminator:
+      oneOf:
+        - $ref: "#/components/schemas/CatWithType"
+        - $ref: "#/components/schemas/DogWithType"
+      discriminator:
+        propertyName: type
+        mapping:
+          cat: "#/components/schemas/CatWithType"
+          dog: "#/components/schemas/DogWithType"
+
+    CatWithType:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - cat
+        meow:
+          type: boolean
+      required:
+        - type
+        - meow
+
+    DogWithType:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - dog
+        bark:
+          type: boolean
+      required:
+        - type
+        - bark
+
+    NullableString:
+      anyOf:
+        - type: string
+        - type: "null"
+
+    OptionalAge:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 150
+        - type: "null"
+
+    ComplexUnion:
+      anyOf:
+        - $ref: "#/components/schemas/Employee"
+        - $ref: "#/components/schemas/Cat"
+        - type: object
+          properties:
+            custom:
+              type: string

@@ -24,6 +24,16 @@ export interface UnionOptions {
 }
 
 /**
+ * Result from generateAllOf containing the schema and any conflicts detected
+ */
+export interface AllOfResult {
+	/** The generated Zod schema string */
+	schema: string;
+	/** Array of conflict descriptions (property names are NOT escaped - consumer should escape for their use case) */
+	conflicts: string[];
+}
+
+/**
  * Check if discriminator property is required in all schemas
  */
 function isDiscriminatorRequired(
@@ -232,22 +242,20 @@ export function generateAllOf(
 	isNullable: boolean,
 	context: CompositionValidatorContext,
 	currentSchema?: string
-): string {
+): AllOfResult {
 	if (schemas.length === 1) {
 		// Single-item allOf is essentially an alias - suppress defaultNullable
 		// because this is a schema definition, not a property value
 		const singleSchema = context.generatePropertySchema(schemas[0], currentSchema, false, true);
-		return wrapNullable(singleSchema, isNullable);
+		return { schema: wrapNullable(singleSchema, isNullable), conflicts: [] };
 	}
 
 	// Detect conflicting properties and warn
 	const conflicts = detectConflictingProperties(schemas, context);
-	let conflictDescription = "";
 	if (conflicts.length > 0) {
 		for (const conflict of conflicts) {
 			console.warn(`[openapi-to-zod] Warning: allOf composition conflict - ${conflict}`);
 		}
-		conflictDescription = `allOf property conflicts detected: ${conflicts.join("; ")}`;
 	}
 
 	// Check if all schemas are objects (for .extend() support)
@@ -295,12 +303,7 @@ export function generateAllOf(
 		result = merged;
 	}
 
-	// Add description about conflicts if any
-	if (conflictDescription) {
-		result = `${result}.describe("${conflictDescription}")`;
-	}
-
 	// Apply nullable at the END, after all .extend() calls
 	// This is critical - .nullable() must come after .extend(), not before
-	return wrapNullable(result, isNullable);
+	return { schema: wrapNullable(result, isNullable), conflicts };
 }

@@ -10,7 +10,7 @@ describe("Inline Response Schemas", () => {
 		it("should generate inline response schemas with proper naming", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -42,7 +42,7 @@ describe("Inline Response Schemas", () => {
 		it("should apply prefix and suffix to schema variable names only", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				prefix: "Api",
@@ -62,7 +62,7 @@ describe("Inline Response Schemas", () => {
 		it("should generate valid Zod schemas for inline responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -86,7 +86,7 @@ describe("Inline Response Schemas", () => {
 		it("should use named inline schemas for response validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputService: "test-service.ts",
 				outputClient: "test-client.ts",
 				useOperationId: true,
@@ -109,7 +109,7 @@ describe("Inline Response Schemas", () => {
 		it("should return proper types for inline response schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputService: "test-service.ts",
 				outputClient: "test-client.ts",
 				useOperationId: true,
@@ -131,7 +131,7 @@ describe("Inline Response Schemas", () => {
 			const simpleApiPath = resolve(fixturesDir, "simple-api.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: simpleApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -146,7 +146,7 @@ describe("Inline Response Schemas", () => {
 		it("should generate schemas sorted alphabetically", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: inlineSchemaApiPath,
-				output: "test-output.ts",
+				outputTypes: "test-output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});

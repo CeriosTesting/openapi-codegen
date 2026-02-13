@@ -7,7 +7,7 @@ describe("Nested WriteOnly/ReadOnly Filtering", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath("nested-writeonly.yaml"),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();

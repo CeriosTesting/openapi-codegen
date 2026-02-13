@@ -10,7 +10,7 @@ describe("LRU Cache Performance", () => {
 		it("should cache regex patterns for reuse", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("constraints.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false, // Disable stats to avoid timestamp differences
 			});
 
@@ -26,7 +26,7 @@ describe("LRU Cache Performance", () => {
 		it("should handle schemas with many pattern constraints efficiently", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("constraints.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const startTime = Date.now();
@@ -47,7 +47,7 @@ describe("LRU Cache Performance", () => {
 			// Test that cache eviction works by generating schemas with many patterns
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			// Generate multiple times
@@ -64,7 +64,7 @@ describe("LRU Cache Performance", () => {
 		it("should cache generated property schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const startTime = Date.now();
@@ -83,7 +83,7 @@ describe("LRU Cache Performance", () => {
 		it("should handle schemas with repeated property types", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const output = generator.generateString();
@@ -99,7 +99,7 @@ describe("LRU Cache Performance", () => {
 			for (let i = 0; i < 50; i++) {
 				const generator = new OpenApiGenerator({
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: "output.ts",
+					outputTypes: "output.ts",
 				});
 				generator.generateString();
 			}
@@ -120,8 +120,8 @@ describe("LRU Cache Performance", () => {
 	describe("Cache Performance with Complex Schemas", () => {
 		it("should handle circular references efficiently", () => {
 			const generator = new OpenApiGenerator({
-				input: TestUtils.getFixturePath("circular.yaml"),
-				output: "output.ts",
+				input: TestUtils.getCoreFixturePath("references", "circular.yaml"),
+				outputTypes: "output.ts",
 			});
 
 			const startTime = Date.now();
@@ -135,7 +135,7 @@ describe("LRU Cache Performance", () => {
 		it("should handle large schemas without performance degradation", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const startTime = Date.now();
@@ -149,7 +149,7 @@ describe("LRU Cache Performance", () => {
 		it("should maintain performance across multiple calls", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const times: number[] = [];

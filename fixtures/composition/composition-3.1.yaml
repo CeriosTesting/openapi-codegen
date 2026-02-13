@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: Composition Test API (OpenAPI 3.1)
+  version: 1.0.0
+components:
+  schemas:
+    BaseEntity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+
+    PersonBase:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - firstName
+        - lastName
+
+    Employee:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - $ref: "#/components/schemas/PersonBase"
+        - type: object
+          properties:
+            employeeId:
+              type: string
+            department:
+              type: string
+            salary:
+              type: number
+          required:
+            - employeeId
+            - department
+
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: boolean
+      required:
+        - meow
+
+    Dog:
+      type: object
+      properties:
+        bark:
+          type: boolean
+      required:
+        - bark
+
+    Pet:
+      oneOf:
+        - $ref: "#/components/schemas/Cat"
+        - $ref: "#/components/schemas/Dog"
+
+    PetWithDiscriminator:
+      oneOf:
+        - $ref: "#/components/schemas/CatWithType"
+        - $ref: "#/components/schemas/DogWithType"
+      discriminator:
+        propertyName: type
+        mapping:
+          cat: "#/components/schemas/CatWithType"
+          dog: "#/components/schemas/DogWithType"
+
+    CatWithType:
+      type: object
+      properties:
+        type:
+          type: string
+          const: cat
+        meow:
+          type: boolean
+      required:
+        - type
+        - meow
+
+    DogWithType:
+      type: object
+      properties:
+        type:
+          type: string
+          const: dog
+        bark:
+          type: boolean
+      required:
+        - type
+        - bark
+
+    # OpenAPI 3.1 specific: type arrays for nullable
+    NullableString:
+      type:
+        - string
+        - "null"
+
+    OptionalAge:
+      type:
+        - integer
+        - "null"
+      minimum: 0
+      maximum: 150
+
+    # OpenAPI 3.1 specific: prefixItems for tuples
+    CoordinateTuple:
+      type: array
+      prefixItems:
+        - type: number
+          description: Latitude
+        - type: number
+          description: Longitude
+      minItems: 2
+      maxItems: 2
+
+    ComplexUnion:
+      anyOf:
+        - $ref: "#/components/schemas/Employee"
+        - $ref: "#/components/schemas/Cat"
+        - type: object
+          properties:
+            custom:
+              type: string

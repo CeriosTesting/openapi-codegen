@@ -1,6 +1,6 @@
 import { existsSync, unlinkSync } from "node:fs";
+import { executeBatch } from "@cerios/openapi-core";
 import { afterAll, describe, expect, it } from "vitest";
-import { executeBatch } from "../src/batch-executor";
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
 import { TestUtils } from "./utils/test-utils";
@@ -28,7 +28,7 @@ describe("Memory Management", () => {
 				outputFiles.push(outputPath);
 				return {
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: outputPath,
+					outputTypes: outputPath,
 				};
 			});
 
@@ -56,7 +56,7 @@ describe("Memory Management", () => {
 				outputFiles.push(outputPath);
 				return {
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: outputPath,
+					outputTypes: outputPath,
 				};
 			});
 
@@ -72,7 +72,7 @@ describe("Memory Management", () => {
 				outputFiles.push(outputPath);
 				return {
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: outputPath,
+					outputTypes: outputPath,
 				};
 			});
 
@@ -104,7 +104,7 @@ describe("Memory Management", () => {
 					outputFiles.push(outputPath);
 					return {
 						input: TestUtils.getFixturePath("simple.yaml"),
-						output: outputPath,
+						outputTypes: outputPath,
 					};
 				});
 
@@ -131,7 +131,7 @@ describe("Memory Management", () => {
 			for (let i = 0; i < 100; i++) {
 				const generator = new OpenApiGenerator({
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: "output.ts",
+					outputTypes: "output.ts",
 				});
 				generator.generateString();
 			}
@@ -153,7 +153,7 @@ describe("Memory Management", () => {
 			for (let i = 0; i < 10; i++) {
 				const generator = new OpenApiGenerator({
 					input: TestUtils.getFixturePath("complex.yaml"),
-					output: "output.ts",
+					outputTypes: "output.ts",
 				});
 				generator.generateString();
 			}

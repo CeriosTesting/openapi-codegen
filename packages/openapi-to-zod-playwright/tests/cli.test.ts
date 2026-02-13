@@ -50,7 +50,7 @@ describe("CLI - Playwright", () => {
 			specs: [
 				{
 					input: inputPath,
-					output: outputPath,
+					outputTypes: outputPath,
 					outputClient: outputClientPath,
 					showStats: false,
 				},
@@ -110,6 +110,45 @@ describe("CLI - Playwright", () => {
 			expect(stderr).toContain("Invalid configuration file");
 			expect(stderr).toContain("Validation errors:");
 			expect(stderr).toContain("specs");
+		}
+	});
+
+	it("should not duplicate error message for config validation errors", () => {
+		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
+
+		// Create config with old 'output' property instead of 'outputTypes'
+		const invalidConfig = {
+			specs: [
+				{
+					input: "openapi.yaml",
+					output: "schemas.ts", // Old property name
+					outputClient: "client.ts",
+				},
+			],
+		};
+
+		writeFileSync(configPath, JSON.stringify(invalidConfig, null, 2), "utf-8");
+
+		try {
+			execSync(`node ${CLI_PATH} --config ${configPath}`, {
+				encoding: "utf-8",
+				cwd: TEST_DIR,
+				stdio: "pipe",
+			});
+			expect.fail("Should have thrown an error");
+		} catch (error: any) {
+			const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
+
+			// Should contain the error message
+			expect(stderr).toContain("Invalid configuration file");
+			expect(stderr).toContain("Did you mean 'outputTypes'");
+
+			// Should NOT contain "Stack trace:" for config validation errors
+			expect(stderr).not.toContain("Stack trace:");
+
+			// Count occurrences of "Invalid configuration file" - should be 1
+			const matches = stderr.match(/Invalid configuration file/g);
+			expect(matches).toHaveLength(1);
 		}
 	});
 });

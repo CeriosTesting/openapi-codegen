@@ -9,7 +9,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();
@@ -25,7 +25,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();
@@ -39,7 +39,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();
@@ -56,7 +56,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();
@@ -73,7 +73,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();
@@ -88,7 +88,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateSchemasString();
@@ -106,7 +106,7 @@ describe("Query Parameter Types in Service Methods", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: schemaPath,
-			output: "test-service.ts",
+			outputTypes: "test-service.ts",
 			outputClient: "test-client.ts",
 		});
 		const output = generator.generateServiceString();

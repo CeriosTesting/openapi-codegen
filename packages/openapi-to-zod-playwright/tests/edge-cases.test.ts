@@ -1,5 +1,5 @@
+import { FileOperationError } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-import { FileOperationError } from "../src/errors";
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
 import { TestUtils } from "./utils/test-utils";
 
@@ -10,7 +10,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -27,7 +27,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -43,7 +43,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -57,7 +57,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -74,7 +74,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -90,7 +90,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 		});
 
@@ -108,7 +108,7 @@ describe("Edge Cases", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -122,7 +122,7 @@ describe("Edge Cases", () => {
 			new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: TestUtils.getFixturePath("non-existent.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 		}).toThrow(FileOperationError);
@@ -133,20 +133,20 @@ describe("Edge Cases", () => {
 			new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: "",
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 		}).toThrow(FileOperationError);
 	});
 
 	it("should handle invalid YAML gracefully", () => {
-		const fixtureFile = TestUtils.getFixturePath("invalid-yaml.yaml");
+		const fixtureFile = TestUtils.getZodFixturePath("invalid-yaml.yaml");
 
 		expect(() => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			generator.generateSchemasString();
@@ -163,7 +163,7 @@ describe("Performance", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -182,7 +182,7 @@ describe("Performance", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 
@@ -201,7 +201,7 @@ describe("Performance", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			showStats: false, // Disable stats to avoid timestamp differences
 		});

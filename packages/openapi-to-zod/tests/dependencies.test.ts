@@ -10,7 +10,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should generate validation for dependencies", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -27,7 +27,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate credit card dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -78,7 +78,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate billing address dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -116,7 +116,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate multiple dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

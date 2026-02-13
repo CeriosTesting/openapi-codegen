@@ -1,11 +1,6 @@
+import { LRUCache, toCamelCase, toPascalCase } from "@cerios/openapi-core";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
-import {
-	buildDateTimeValidation,
-	LRUCache,
-	PropertyGenerator,
-	type PropertyGeneratorContext,
-	toCamelCase,
-} from "@cerios/openapi-to-zod/internal";
+import { buildDateTimeValidation, PropertyGenerator, type PropertyGeneratorContext } from "@cerios/openapi-to-zod";
 
 /**
  * Information about an inline response schema
@@ -48,7 +43,7 @@ export interface InlineRequestSchemaInfo {
  */
 export interface InlineSchemaGeneratorOptions {
 	spec: OpenAPISpec;
-	stripSchemaPrefix?: string;
+	stripSchemaPrefix?: string | string[];
 	prefix?: string;
 	suffix?: string;
 	defaultNullable?: boolean;
@@ -111,8 +106,8 @@ function generateInlineSchema(
 
 		// Generate schema variable name with prefix/suffix
 		const schemaVarName = `${toCamelCase(schemaName, { prefix: options.prefix, suffix: options.suffix })}Schema`;
-		// Type name doesn't get prefix/suffix
-		const typeName = schemaName;
+		// Type name uses PascalCase for proper sanitization (handles path params like {companyId})
+		const typeName = toPascalCase(schemaName);
 
 		return {
 			schemaCode: `export const ${schemaVarName} = ${zodCode};`,

@@ -56,8 +56,8 @@ describe("Config Loading", () => {
 					showStats: false,
 				},
 				specs: [
-					{ input: "api.yaml", output: "api.ts" },
-					{ input: "api2.yaml", output: "api2.ts", mode: "normal" },
+					{ input: "api.yaml", outputTypes: "api.ts" },
+					{ input: "api2.yaml", outputTypes: "api2.ts", mode: "normal" },
 				],
 			};
 
@@ -75,7 +75,7 @@ describe("Config Loading", () => {
 
 		it("should handle config without defaults", () => {
 			const config: ConfigFile = {
-				specs: [{ input: "api.yaml", output: "api.ts", mode: "loose" }],
+				specs: [{ input: "api.yaml", outputTypes: "api.ts", mode: "loose" }],
 			};
 
 			const merged = mergeConfigWithDefaults(config);
@@ -95,7 +95,7 @@ describe("Config Loading", () => {
 				specs: [
 					{
 						input: "api.yaml",
-						output: "api.ts",
+						outputTypes: "api.ts",
 						prefix: "api",
 						mode: "normal",
 					},
@@ -115,8 +115,8 @@ describe("Config Loading", () => {
 					emptyObjectBehavior: "record",
 				},
 				specs: [
-					{ input: "api.yaml", output: "api.ts" },
-					{ input: "api2.yaml", output: "api2.ts", emptyObjectBehavior: "strict" },
+					{ input: "api.yaml", outputTypes: "api.ts" },
+					{ input: "api2.yaml", outputTypes: "api2.ts", emptyObjectBehavior: "strict" },
 				],
 			};
 
@@ -131,7 +131,7 @@ describe("Config Loading", () => {
 		it("should override config options with CLI options", () => {
 			const OpenApiGeneratorOptions: OpenApiGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				mode: "normal",
 				includeDescriptions: true,
 			};
@@ -152,7 +152,7 @@ describe("Config Loading", () => {
 		it("should ignore undefined CLI options", () => {
 			const OpenApiGeneratorOptions: OpenApiGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				mode: "normal",
 				showStats: true,
 			};
@@ -171,7 +171,7 @@ describe("Config Loading", () => {
 		it("should handle empty CLI options", () => {
 			const OpenApiGeneratorOptions: OpenApiGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				mode: "loose",
 			};
 
@@ -184,7 +184,7 @@ describe("Config Loading", () => {
 		it("should override emptyObjectBehavior via CLI", () => {
 			const specConfig: OpenApiGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				emptyObjectBehavior: "loose",
 			};
 
@@ -209,7 +209,7 @@ describe("Config Loading", () => {
 				specs: [
 					{
 						input: "api.yaml",
-						output: "api.ts",
+						outputTypes: "api.ts",
 						mode: "strict",
 						suffix: "model",
 					},

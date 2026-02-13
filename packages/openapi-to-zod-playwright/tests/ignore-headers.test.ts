@@ -9,7 +9,7 @@ describe("Ignore Headers Feature", () => {
 		it("should generate header parameter schemas when ignoreHeaders is not set", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -25,7 +25,7 @@ describe("Ignore Headers Feature", () => {
 		it("should not generate schemas for ignored headers with exact match", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization"],
@@ -46,7 +46,7 @@ describe("Ignore Headers Feature", () => {
 		it("should not generate any header schemas when ignoreHeaders is ['*']", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -62,7 +62,7 @@ describe("Ignore Headers Feature", () => {
 		it("should support glob patterns for ignoring headers", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-*"],
@@ -83,7 +83,7 @@ describe("Ignore Headers Feature", () => {
 		it("should be case-insensitive when matching header names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["authorization", "x-request-id"], // lowercase
@@ -105,7 +105,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle multiple patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization", "X-Request-*"],
@@ -127,7 +127,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle empty array (no filtering)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: [],
@@ -145,7 +145,7 @@ describe("Ignore Headers Feature", () => {
 		it("should include header parameters in service methods when not ignored", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -162,7 +162,7 @@ describe("Ignore Headers Feature", () => {
 		it("should exclude ignored headers from service method signatures", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -183,7 +183,7 @@ describe("Ignore Headers Feature", () => {
 		it("should not include any header parameters when all are ignored", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -200,7 +200,7 @@ describe("Ignore Headers Feature", () => {
 		it("should not import header schemas that are completely filtered out", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -217,7 +217,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle methods with mixed parameters correctly", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -239,14 +239,14 @@ describe("Ignore Headers Feature", () => {
 		it("should not be affected by ignoreHeaders option", () => {
 			const generator1 = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
 			const generator2 = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -270,7 +270,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["NonExistentHeader"],
@@ -289,7 +289,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -308,7 +308,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: simpleFixture,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization"],
@@ -326,7 +326,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-NonExistent"],
@@ -346,7 +346,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle operations with only ignored headers", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -364,7 +364,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle complex glob patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-*", "Auth*"],
@@ -382,7 +382,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle undefined ignoreHeaders gracefully", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: undefined,
@@ -398,7 +398,7 @@ describe("Ignore Headers Feature", () => {
 		it("should preserve other parameters when headers are filtered", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,

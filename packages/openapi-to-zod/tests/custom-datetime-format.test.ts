@@ -47,7 +47,7 @@ components:
 		try {
 			const generator = new OpenApiGenerator({
 				input: tempFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();

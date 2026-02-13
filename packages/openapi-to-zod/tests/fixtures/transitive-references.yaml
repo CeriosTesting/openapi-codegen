@@ -1,0 +1,348 @@
+openapi: 3.0.0
+info:
+  title: Transitive References Test API
+  version: 1.0.0
+  description: |
+    Test fixture for validating that transitive schema references are properly
+    expanded when operation filtering is applied. This tests that when an operation
+    references Schema A, which in turn references Schema B, which references Schema C,
+    all three schemas are included in the generated output.
+paths:
+  /orders:
+    get:
+      operationId: getOrders
+      summary: Get all orders
+      tags:
+        - orders
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    post:
+      operationId: createOrder
+      summary: Create an order
+      tags:
+        - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Created
+  /users:
+    get:
+      operationId: getUsers
+      summary: Get all users (different tag)
+      tags:
+        - users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /products:
+    get:
+      operationId: getProducts
+      summary: Get all products (different tag)
+      tags:
+        - products
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+components:
+  schemas:
+    # Level 1: Directly referenced by /orders endpoint
+    Order:
+      type: object
+      required:
+        - id
+        - customer
+        - items
+      properties:
+        id:
+          type: string
+          description: Order ID
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+
+    OrderCreate:
+      type: object
+      required:
+        - customerId
+        - items
+      properties:
+        customerId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemCreate'
+        shippingAddress:
+          $ref: '#/components/schemas/AddressCreate'
+
+    # Level 2: Referenced by Order
+    Customer:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        address:
+          $ref: '#/components/schemas/Address'
+        contactInfo:
+          $ref: '#/components/schemas/ContactInfo'
+
+    OrderItem:
+      type: object
+      required:
+        - product
+        - quantity
+      properties:
+        product:
+          $ref: '#/components/schemas/ProductSummary'
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          $ref: '#/components/schemas/Money'
+
+    OrderItemCreate:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+
+    OrderStatus:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+        timestamp:
+          type: string
+          format: date-time
+        reason:
+          $ref: '#/components/schemas/StatusReason'
+
+    # Level 3: Referenced by Customer/OrderItem
+    Address:
+      type: object
+      required:
+        - street
+        - city
+        - country
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        coordinates:
+          $ref: '#/components/schemas/GeoCoordinates'
+
+    AddressCreate:
+      type: object
+      required:
+        - street
+        - city
+        - country
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+
+    ContactInfo:
+      type: object
+      properties:
+        phone:
+          type: string
+        mobile:
+          type: string
+        fax:
+          type: string
+        preferredMethod:
+          $ref: '#/components/schemas/ContactMethod'
+
+    ProductSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        sku:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+
+    Money:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+        currency:
+          $ref: '#/components/schemas/Currency'
+
+    StatusReason:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    # Level 4: Referenced by Address/ContactInfo/ProductSummary/Money
+    GeoCoordinates:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    ContactMethod:
+      type: string
+      enum: [email, phone, mobile, fax]
+
+    Category:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        parentCategory:
+          $ref: '#/components/schemas/ParentCategory'
+
+    Currency:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: ISO 4217 currency code
+        symbol:
+          type: string
+
+    # Level 5: Referenced by Category
+    ParentCategory:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    # Schemas only used by /users endpoint (different tag)
+    User:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        avatar:
+          type: string
+          format: uri
+
+    # Schemas only used by /products endpoint (different tag)
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - price
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        manufacturer:
+          $ref: '#/components/schemas/Manufacturer'
+
+    Manufacturer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        country:
+          type: string

@@ -14,7 +14,7 @@ describe("Schema Composition", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -101,7 +101,7 @@ describe("Schema Composition", () => {
 		function generateFromComposition(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: compositionPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -110,7 +110,7 @@ describe("Schema Composition", () => {
 		function generateFromSimple(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: simplePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -209,7 +209,7 @@ describe("Schema Composition", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -274,7 +274,7 @@ describe("Schema Composition", () => {
 		function generateFromComposition(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: compositionPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -283,7 +283,7 @@ describe("Schema Composition", () => {
 		function generateFromSimple(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: simplePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -310,7 +310,7 @@ describe("Schema Composition", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -345,7 +345,7 @@ describe("Schema Composition", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();

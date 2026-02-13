@@ -1,26 +1,35 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, normalize } from "node:path";
+import {
+	analyzeSchemaUsage,
+	ConfigurationError,
+	createFilterStatistics,
+	detectCircularReferences,
+	expandTransitiveReferences,
+	extractSchemaRefs,
+	type FilterStatistics,
+	formatFilterStatistics,
+	generateMethodNameFromPath,
+	LRUCache,
+	loadOpenAPISpec,
+	mergeParameters,
+	resolveRefName,
+	type SchemaContext,
+	SchemaGenerationError,
+	SpecValidationError,
+	shouldIncludeOperation,
+	stripPathPrefix,
+	stripPrefix,
+	toCamelCase,
+	toPascalCase,
+	validateFilters,
+} from "@cerios/openapi-core";
 import { minimatch } from "minimatch";
-import { parse } from "yaml";
-import { ConfigurationError, FileOperationError, SchemaGenerationError, SpecValidationError } from "./errors";
 import { generateEnum } from "./generators/enum-generator";
 import { generateJSDoc } from "./generators/jsdoc-generator";
 import { PropertyGenerator } from "./generators/property-generator";
 import type { OpenAPISchema, OpenAPISpec, OpenApiGeneratorOptions, ResolvedOptions } from "./types";
-import { LRUCache } from "./utils/lru-cache";
-import { resolveRef, toCamelCase, toPascalCase } from "./utils/name-utils";
-import {
-	createFilterStatistics,
-	type FilterStatistics,
-	formatFilterStatistics,
-	shouldIncludeOperation,
-	validateFilters,
-} from "./utils/operation-filters";
-import { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
-import { mergeParameters } from "./utils/ref-resolver";
 import { buildDateTimeValidation } from "./validators/string-validator";
-
-type SchemaContext = "request" | "response" | "both";
 
 export class OpenApiGenerator {
 	private schemas: Map<string, string> = new Map();
@@ -38,6 +47,10 @@ export class OpenApiGenerator {
 	private patternCache: LRUCache<string, string>;
 	/** Instance-level date-time validation string for parallel-safe execution */
 	private dateTimeValidation: string;
+	/** Track total allOf conflicts detected across all schemas */
+	private allOfConflictCount = 0;
+	/** Track schemas involved in circular dependency chains */
+	private circularDependencies: Set<string> = new Set();
 
 	constructor(options: OpenApiGeneratorOptions) {
 		// Validate input path early
@@ -48,7 +61,7 @@ export class OpenApiGenerator {
 		this.options = {
 			mode: options.mode || "normal",
 			input: options.input,
-			output: options.output,
+			outputTypes: options.outputTypes,
 			includeDescriptions: options.includeDescriptions ?? true,
 			useDescribe: options.useDescribe ?? false,
 			defaultNullable: options.defaultNullable ?? false,
@@ -74,63 +87,8 @@ export class OpenApiGenerator {
 		// Build date-time validation string (parallel-safe, no global state)
 		this.dateTimeValidation = buildDateTimeValidation(this.options.customDateTimeFormatRegex);
 
-		// Validate input file exists
-		try {
-			const fs = require("node:fs");
-			if (!fs.existsSync(this.options.input)) {
-				throw new FileOperationError(`Input file not found: ${this.options.input}`, this.options.input);
-			}
-		} catch (error) {
-			if (error instanceof FileOperationError) {
-				throw error;
-			}
-			// If fs.existsSync fails for another reason, continue and let readFileSync throw
-		}
-
-		try {
-			const content = readFileSync(this.options.input, "utf-8");
-
-			// Try parsing as YAML first (works for both YAML and JSON)
-			try {
-				this.spec = parse(content);
-			} catch (yamlError) {
-				// If YAML parsing fails, try JSON
-				try {
-					this.spec = JSON.parse(content);
-				} catch {
-					if (yamlError instanceof Error) {
-						const errorMessage = [
-							`Failed to parse OpenAPI specification from: ${this.options.input}`,
-							"",
-							`Error: ${yamlError.message}`,
-							"",
-							"Please ensure:",
-							"  - The file exists and is readable",
-							"  - The file contains valid YAML or JSON syntax",
-							"  - The file is a valid OpenAPI 3.x specification",
-						].join("\n");
-						throw new SpecValidationError(errorMessage, {
-							filePath: this.options.input,
-							originalError: yamlError.message,
-						});
-					}
-					throw yamlError;
-				}
-			}
-		} catch (error) {
-			if (error instanceof SpecValidationError) {
-				throw error;
-			}
-			if (error instanceof Error) {
-				const errorMessage = [
-					`Failed to read OpenAPI specification from: ${this.options.input}`,
-					"",
-					`Error: ${error.message}`,
-				].join("\n");
-				throw new SpecValidationError(errorMessage, { filePath: this.options.input, originalError: error.message });
-			}
-			throw error;
-		}
+		// Load and parse the OpenAPI specification using core utility
+		this.spec = loadOpenAPISpec(this.options.input);
 
 		this.validateSpec();
 
@@ -139,7 +97,7 @@ export class OpenApiGenerator {
 		this.responseOptions = this.resolveOptionsForContext("response");
 
 		// Analyze schema usage to determine context (request/response/both)
-		this.analyzeSchemaUsage();
+		this.initializeSchemaUsage();
 
 		// Initialize property generator with context
 		// We'll update this dynamically based on schema context during generation
@@ -170,6 +128,13 @@ export class OpenApiGenerator {
 		if (!this.spec.components?.schemas) {
 			throw new SpecValidationError("No schemas found in OpenAPI spec", { filePath: this.options.input });
 		}
+
+		// Pre-analyze schemas to detect circular dependencies BEFORE generation
+		// This allows us to use z.lazy() for references to circular deps
+		this.analyzeCircularDependencies();
+
+		// Update property generator context with circular dependencies
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
 
 		// Generate schemas and track dependencies
 		for (const [name, schema] of Object.entries(this.spec.components.schemas)) {
@@ -252,7 +217,7 @@ export class OpenApiGenerator {
 	 */
 	generate(): void {
 		const output = this.generateString();
-		const normalizedOutput = normalize(this.options.output);
+		const normalizedOutput = normalize(this.options.outputTypes);
 		this.ensureDirectoryExists(normalizedOutput);
 		writeFileSync(normalizedOutput, output);
 		console.log(`  ✓ Generated ${normalizedOutput}`);
@@ -273,19 +238,19 @@ export class OpenApiGenerator {
 	}
 
 	/**
-	 * Analyze schema usage across the OpenAPI spec to determine if schemas
-	 * are used in request, response, or both contexts
+	 * Initialize schema usage map using core utilities with operation filtering
+	 * This is a wrapper around core's analyzeSchemaUsage that adds operation filtering
 	 */
-	private analyzeSchemaUsage(): void {
-		const requestSchemas = new Set<string>();
-		const responseSchemas = new Set<string>();
+	private initializeSchemaUsage(): void {
+		// If we have operation filters, we need to track stats and filter manually
+		if (this.options.operationFilters && this.spec.paths) {
+			const requestSchemas = new Set<string>();
+			const responseSchemas = new Set<string>();
 
-		// Analyze paths section if available
-		if (this.spec.paths) {
 			for (const [path, pathItem] of Object.entries(this.spec.paths)) {
 				const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
 				for (const method of methods) {
-					const operation = (pathItem as any)[method];
+					const operation = (pathItem as Record<string, unknown>)[method];
 					if (typeof operation !== "object" || !operation) continue;
 
 					// Track total operations
@@ -299,34 +264,36 @@ export class OpenApiGenerator {
 					// Count included operation
 					this.filterStats.includedOperations++;
 
+					const op = operation as Record<string, unknown>;
+
 					// Check request bodies
-					if (
-						"requestBody" in operation &&
-						operation.requestBody &&
-						typeof operation.requestBody === "object" &&
-						"content" in operation.requestBody &&
-						operation.requestBody.content
-					) {
-						for (const mediaType of Object.values(operation.requestBody.content)) {
-							if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
-								this.extractSchemaRefs(mediaType.schema, requestSchemas);
+					if (op.requestBody && typeof op.requestBody === "object") {
+						const reqBody = op.requestBody as Record<string, unknown>;
+						if (reqBody.content && typeof reqBody.content === "object") {
+							for (const mediaType of Object.values(reqBody.content)) {
+								if (mediaType && typeof mediaType === "object") {
+									const mt = mediaType as Record<string, unknown>;
+									if (mt.schema) {
+										extractSchemaRefs(mt.schema as OpenAPISchema, requestSchemas);
+									}
+								}
 							}
 						}
 					}
 
 					// Check responses
-					if ("responses" in operation && operation.responses && typeof operation.responses === "object") {
-						for (const response of Object.values(operation.responses)) {
-							if (
-								response &&
-								typeof response === "object" &&
-								"content" in response &&
-								response.content &&
-								typeof response.content === "object"
-							) {
-								for (const mediaType of Object.values(response.content)) {
-									if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
-										this.extractSchemaRefs(mediaType.schema, responseSchemas);
+					if (op.responses && typeof op.responses === "object") {
+						for (const response of Object.values(op.responses)) {
+							if (response && typeof response === "object") {
+								const resp = response as Record<string, unknown>;
+								if (resp.content && typeof resp.content === "object") {
+									for (const mediaType of Object.values(resp.content)) {
+										if (mediaType && typeof mediaType === "object") {
+											const mt = mediaType as Record<string, unknown>;
+											if (mt.schema) {
+												extractSchemaRefs(mt.schema as OpenAPISchema, responseSchemas);
+											}
+										}
 									}
 								}
 							}
@@ -334,186 +301,57 @@ export class OpenApiGenerator {
 					}
 
 					// Check parameters
-					if ("parameters" in operation && Array.isArray(operation.parameters)) {
-						for (const param of operation.parameters) {
-							if (param && typeof param === "object" && "schema" in param && param.schema) {
-								this.extractSchemaRefs(param.schema, requestSchemas);
+					if (op.parameters && Array.isArray(op.parameters)) {
+						for (const param of op.parameters) {
+							if (param && typeof param === "object") {
+								const p = param as Record<string, unknown>;
+								if (p.schema) {
+									extractSchemaRefs(p.schema as OpenAPISchema, requestSchemas);
+								}
 							}
 						}
 					}
 				}
 			}
 
-			// Expand to include all transitively referenced schemas
-			this.expandTransitiveReferences(requestSchemas);
-			this.expandTransitiveReferences(responseSchemas);
-		}
+			// Expand transitive references to include all indirectly referenced schemas
+			expandTransitiveReferences(requestSchemas, this.spec);
+			expandTransitiveReferences(responseSchemas, this.spec);
 
-		// Fallback: analyze readOnly/writeOnly properties if paths not available
-		if (!this.spec.paths || (requestSchemas.size === 0 && responseSchemas.size === 0)) {
-			for (const [name, schema] of Object.entries(this.spec.components?.schemas || {})) {
-				const hasReadOnly = this.hasReadOnlyProperties(schema);
-				const hasWriteOnly = this.hasWriteOnlyProperties(schema);
-
-				if (hasWriteOnly && !hasReadOnly) {
-					requestSchemas.add(name);
-				} else if (hasReadOnly && !hasWriteOnly) {
-					responseSchemas.add(name);
+			// Build usage map from filtered operations
+			for (const [name] of Object.entries(this.spec.components?.schemas || {})) {
+				if (requestSchemas.has(name) && responseSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "both");
+				} else if (requestSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "request");
+				} else if (responseSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "response");
 				}
 			}
-		}
 
-		// Build usage map with circular reference detection
-		for (const [name] of Object.entries(this.spec.components?.schemas || {})) {
-			if (requestSchemas.has(name) && responseSchemas.has(name)) {
+			// Detect circular references and mark as "both"
+			const circularSchemas = detectCircularReferences(this.spec);
+			for (const name of circularSchemas) {
 				this.schemaUsageMap.set(name, "both");
-			} else if (requestSchemas.has(name)) {
-				this.schemaUsageMap.set(name, "request");
-			} else if (responseSchemas.has(name)) {
-				this.schemaUsageMap.set(name, "response");
 			}
-			// Unreferenced schemas are not added to map (will use root typeMode)
-		}
+		} else {
+			// Use core's analyzeSchemaUsage when no operation filters
+			const analysis = analyzeSchemaUsage(this.spec);
+			this.schemaUsageMap = analysis.usageMap;
 
-		// Detect circular references and mark entire chain as "both"
-		this.detectCircularReferences();
-	}
-
-	/**
-	 * Expand a set of schemas to include all transitively referenced schemas
-	 */
-	private expandTransitiveReferences(schemas: Set<string>): void {
-		const toProcess = Array.from(schemas);
-		const processed = new Set<string>();
-
-		while (toProcess.length > 0) {
-			const schemaName = toProcess.pop();
-			if (!schemaName || processed.has(schemaName)) continue;
-
-			processed.add(schemaName);
-
-			const schema = this.spec.components?.schemas?.[schemaName];
-			if (schema) {
-				const refs = new Set<string>();
-				this.extractSchemaRefs(schema, refs);
-
-				for (const ref of refs) {
-					if (!schemas.has(ref)) {
-						schemas.add(ref);
-						toProcess.push(ref);
+			// Track operation stats when no filters
+			if (this.spec.paths) {
+				for (const pathItem of Object.values(this.spec.paths)) {
+					const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
+					for (const method of methods) {
+						const operation = (pathItem as Record<string, unknown>)[method];
+						if (typeof operation === "object" && operation) {
+							this.filterStats.totalOperations++;
+							this.filterStats.includedOperations++;
+						}
 					}
 				}
 			}
-		}
-	}
-
-	/**
-	 * Extract schema names from $ref and nested structures
-	 */
-	private extractSchemaRefs(schema: any, refs: Set<string>): void {
-		if (!schema) return;
-
-		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
-			refs.add(refName);
-		}
-
-		if (schema.allOf) {
-			for (const subSchema of schema.allOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.oneOf) {
-			for (const subSchema of schema.oneOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.anyOf) {
-			for (const subSchema of schema.anyOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.items) {
-			this.extractSchemaRefs(schema.items, refs);
-		}
-
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				this.extractSchemaRefs(prop, refs);
-			}
-		}
-	}
-
-	/**
-	 * Check if schema has readOnly properties
-	 */
-	private hasReadOnlyProperties(schema: OpenAPISchema): boolean {
-		if (schema.readOnly) return true;
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				if (this.hasReadOnlyProperties(prop)) return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Check if schema has writeOnly properties
-	 */
-	private hasWriteOnlyProperties(schema: OpenAPISchema): boolean {
-		if (schema.writeOnly) return true;
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				if (this.hasWriteOnlyProperties(prop)) return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Detect circular references and mark them as "both" context for safety
-	 */
-	private detectCircularReferences(): void {
-		const visited = new Set<string>();
-		const recursionStack = new Set<string>();
-
-		const detectCycle = (name: string): boolean => {
-			if (recursionStack.has(name)) {
-				// Found a cycle - mark all schemas in the cycle as "both"
-				return true;
-			}
-
-			if (visited.has(name)) {
-				return false;
-			}
-
-			visited.add(name);
-			recursionStack.add(name);
-
-			const schema = this.spec.components?.schemas?.[name];
-			if (schema) {
-				const refs = new Set<string>();
-				this.extractSchemaRefs(schema, refs);
-
-				for (const ref of refs) {
-					if (detectCycle(ref)) {
-						// Mark this schema as "both" since it's part of a circular chain
-						this.schemaUsageMap.set(name, "both");
-						recursionStack.delete(name);
-						return true;
-					}
-				}
-			}
-
-			recursionStack.delete(name);
-			return false;
-		};
-
-		for (const name of Object.keys(this.spec.components?.schemas || {})) {
-			detectCycle(name);
 		}
 	}
 
@@ -549,7 +387,7 @@ export class OpenApiGenerator {
 	 */
 	private validateSchemaRefs(schemaName: string, schema: OpenAPISchema, allSchemas: string[], path = ""): void {
 		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
+			const refName = resolveRefName(schema.$ref);
 			if (!allSchemas.includes(refName)) {
 				throw new SpecValidationError(
 					`Invalid reference${path ? ` at '${path}'` : ""}: ` +
@@ -629,11 +467,11 @@ export class OpenApiGenerator {
 		// Apply stripSchemaPrefix to get cleaner schema names
 		const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
 		const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
-		const jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
+		let jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
 
 		// For allOf with single $ref, track dependency manually since we simplify it
 		if (schema.allOf && schema.allOf.length === 1 && schema.allOf[0].$ref) {
-			const refName = resolveRef(schema.allOf[0].$ref);
+			const refName = resolveRefName(schema.allOf[0].$ref);
 			this.schemaDependencies.get(name)?.add(refName);
 		}
 
@@ -656,9 +494,31 @@ export class OpenApiGenerator {
 			patternCache: this.patternCache,
 		});
 
+		// Set circular dependencies for the new property generator instance
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
+
+		// Clear conflicts before generating to track per-schema conflicts
+		this.propertyGenerator.clearAllOfConflicts();
+
 		// Check if this is just a simple $ref (alias)
 		// Pass isTopLevel=true for top-level schema generation to prevent defaultNullable from applying
 		const zodSchema = this.propertyGenerator.generatePropertySchema(schema, name, true);
+
+		// Check for allOf conflicts and add JSDoc warning if any
+		const allOfConflicts = this.propertyGenerator.getAllOfConflicts();
+		if (allOfConflicts.length > 0) {
+			this.allOfConflictCount += allOfConflicts.length;
+			// Add warning JSDoc for conflicts
+			const conflictWarning = this.generateConflictJSDoc(allOfConflicts);
+			if (jsdoc) {
+				// Append to existing JSDoc - insert before closing */
+				jsdoc = jsdoc.replace(/ \*\/\n$/, `\n${conflictWarning} */\n`);
+			} else {
+				// Create new JSDoc block with just the warning
+				jsdoc = `/**\n${conflictWarning} */\n`;
+			}
+		}
+
 		const zodSchemaCode = `${jsdoc}export const ${schemaName} = ${zodSchema};`;
 
 		// Track dependencies from discriminated unions
@@ -727,7 +587,7 @@ export class OpenApiGenerator {
 					// Fallback: generate name from path + method
 					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
 					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
-					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
+					pascalOperationId = generateMethodNameFromPath(method, strippedPath);
 				}
 				const schemaName = `${pascalOperationId}QueryParams`; // Initialize dependencies for this schema
 				if (!this.schemaDependencies.has(schemaName)) {
@@ -776,7 +636,7 @@ export class OpenApiGenerator {
 
 					// Track dependencies from schema references
 					if (paramSchema.$ref) {
-						const refName = resolveRef(paramSchema.$ref);
+						const refName = resolveRefName(paramSchema.$ref);
 						this.schemaDependencies.get(schemaName)?.add(refName);
 					}
 				}
@@ -811,54 +671,6 @@ export class OpenApiGenerator {
 				this.needsZodImport = true;
 			}
 		}
-	}
-
-	/**
-	 * Generate a PascalCase method name from HTTP method and path
-	 * Used as fallback when operationId is not available
-	 * @internal
-	 */
-	private generateMethodNameFromPath(method: string, path: string): string {
-		// Convert path to PascalCase
-		// e.g., GET /users/{userId}/posts -> GetUsersByUserIdPosts
-		// e.g., GET /api/v0.1/users -> GetApiV01Users
-		const segments = path
-			.split("/")
-			.filter(Boolean)
-			.map(segment => {
-				if (segment.startsWith("{") && segment.endsWith("}")) {
-					// Path parameter - convert to "ByParamName"
-					const paramName = segment.slice(1, -1);
-					return `By${this.capitalizeSegment(paramName)}`;
-				}
-				// Regular segment - capitalize and handle special characters
-				return this.capitalizeSegment(segment);
-			})
-			.join("");
-
-		// Capitalize first letter of method
-		const capitalizedMethod = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-		return `${capitalizedMethod}${segments}`;
-	}
-
-	/**
-	 * Capitalizes a path segment, handling special characters like dashes, underscores, and dots
-	 * @internal
-	 */
-	private capitalizeSegment(str: string): string {
-		// Handle kebab-case, snake_case, and dots
-		if (str.includes("-") || str.includes("_") || str.includes(".")) {
-			return str
-				.split(/[-_.]/)
-				.map(part => {
-					if (!part) return "";
-					return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-				})
-				.join("");
-		}
-
-		// Regular word - just capitalize first letter
-		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/**
@@ -929,7 +741,7 @@ export class OpenApiGenerator {
 					// Fallback: generate name from path + method
 					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
 					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
-					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
+					pascalOperationId = generateMethodNameFromPath(method, strippedPath);
 				}
 				const schemaName = `${pascalOperationId}HeaderParams`;
 
@@ -964,7 +776,7 @@ export class OpenApiGenerator {
 
 					// Track dependencies from schema references (if any)
 					if (paramSchema.$ref) {
-						const refName = resolveRef(paramSchema.$ref);
+						const refName = resolveRefName(paramSchema.$ref);
 						this.schemaDependencies.get(schemaName)?.add(refName);
 					}
 				}
@@ -1009,7 +821,7 @@ export class OpenApiGenerator {
 	private generateQueryParamType(schema: OpenAPISchema, param: any): string {
 		// Handle references
 		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
+			const refName = resolveRefName(schema.$ref);
 			// Apply stripSchemaPrefix to referenced schema names
 			const strippedRefName = stripPrefix(refName, this.options.stripSchemaPrefix);
 			const schemaName = toCamelCase(strippedRefName, { prefix: this.options.prefix, suffix: this.options.suffix });
@@ -1154,10 +966,15 @@ export class OpenApiGenerator {
 
 			// Visit dependencies first for non-alias schemas
 			const deps = this.schemaDependencies.get(name);
+			let dependsOnCircular = false;
 			if (deps && deps.size > 0) {
 				for (const dep of deps) {
 					if (this.schemas.has(dep) || this.types.has(dep)) {
 						visit(dep);
+						// If this dependency is circular, we also need to be deferred
+						if (circularDeps.has(dep)) {
+							dependsOnCircular = true;
+						}
 					}
 				}
 			}
@@ -1165,9 +982,13 @@ export class OpenApiGenerator {
 			visiting.delete(name);
 			visited.add(name);
 
-			// Don't add circular dependencies yet - they need special handling
-			if (!circularDeps.has(name)) {
+			// Don't add circular dependencies or schemas that depend on them yet
+			// They need special handling and will be added at the end
+			if (!circularDeps.has(name) && !dependsOnCircular) {
 				sorted.push(name);
+			} else if (dependsOnCircular && !circularDeps.has(name)) {
+				// Mark schemas that depend on circular deps as needing to be deferred
+				circularDeps.add(name);
 			}
 		};
 
@@ -1179,10 +1000,11 @@ export class OpenApiGenerator {
 
 		// Add circular dependencies at the end (before aliases)
 		// This ensures they come after their non-circular dependencies
+		// Note: circular deps ARE in visited (they complete their visit cycle),
+		// but they were excluded from sorted. We need to add them now.
 		for (const name of circularDeps) {
-			if (!visited.has(name)) {
+			if (!sorted.includes(name)) {
 				sorted.push(name);
-				visited.add(name);
 			}
 		}
 
@@ -1216,6 +1038,7 @@ export class OpenApiGenerator {
 			`//   Circular references: ${stats.withCircularRefs}`,
 			`//   Discriminated unions: ${stats.withDiscriminators}`,
 			`//   With constraints: ${stats.withConstraints}`,
+			`//   AllOf conflicts: ${this.allOfConflictCount}`,
 		];
 
 		// Add filter statistics if filtering was used
@@ -1230,5 +1053,136 @@ export class OpenApiGenerator {
 		output.push(`//   Generated at: ${new Date().toISOString()}`);
 
 		return output;
+	}
+
+	/**
+	 * Pre-analyze schemas to detect circular dependencies before code generation.
+	 * This allows the property generator to use z.lazy() for forward references.
+	 */
+	private analyzeCircularDependencies(): void {
+		if (!this.spec.components?.schemas) return;
+
+		// First pass: collect all schema dependencies without generating code
+		const dependencies = new Map<string, Set<string>>();
+
+		const collectDependencies = (name: string, schema: OpenAPISchema, visited = new Set<string>()): Set<string> => {
+			if (visited.has(name)) return new Set();
+			visited.add(name);
+
+			const deps = new Set<string>();
+
+			// Handle $ref
+			if (schema.$ref) {
+				const refName = resolveRefName(schema.$ref);
+				deps.add(refName);
+			}
+
+			// Handle allOf
+			if (schema.allOf) {
+				for (const item of schema.allOf) {
+					const itemDeps = collectDependencies(`${name}_allOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle oneOf
+			if (schema.oneOf) {
+				for (const item of schema.oneOf) {
+					const itemDeps = collectDependencies(`${name}_oneOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle anyOf
+			if (schema.anyOf) {
+				for (const item of schema.anyOf) {
+					const itemDeps = collectDependencies(`${name}_anyOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle properties
+			if (schema.properties) {
+				for (const propSchema of Object.values(schema.properties)) {
+					const propDeps = collectDependencies(`${name}_prop`, propSchema, new Set(visited));
+					for (const dep of propDeps) deps.add(dep);
+				}
+			}
+
+			// Handle array items
+			if (schema.items) {
+				const itemDeps = collectDependencies(`${name}_items`, schema.items, new Set(visited));
+				for (const dep of itemDeps) deps.add(dep);
+			}
+
+			// Handle additionalProperties
+			if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+				const addDeps = collectDependencies(`${name}_additional`, schema.additionalProperties, new Set(visited));
+				for (const dep of addDeps) deps.add(dep);
+			}
+
+			return deps;
+		};
+
+		// Collect dependencies for all schemas
+		for (const [name, schema] of Object.entries(this.spec.components.schemas)) {
+			// Skip schemas not referenced by filtered operations when operation filters are active
+			if (this.options.operationFilters && this.schemaUsageMap.size > 0 && !this.schemaUsageMap.has(name)) {
+				continue;
+			}
+			dependencies.set(name, collectDependencies(name, schema));
+		}
+
+		// Second pass: detect circular dependencies using DFS
+		const visited = new Set<string>();
+		const visiting = new Set<string>();
+
+		const detectCircular = (name: string, path: string[] = []): void => {
+			if (visited.has(name)) return;
+
+			if (visiting.has(name)) {
+				// Found a cycle - mark all schemas in the cycle as circular
+				const cycleStart = path.indexOf(name);
+				if (cycleStart >= 0) {
+					for (let i = cycleStart; i < path.length; i++) {
+						this.circularDependencies.add(path[i]);
+					}
+				}
+				this.circularDependencies.add(name);
+				return;
+			}
+
+			visiting.add(name);
+			path.push(name);
+
+			const deps = dependencies.get(name);
+			if (deps) {
+				for (const dep of deps) {
+					if (dependencies.has(dep)) {
+						detectCircular(dep, [...path]);
+					}
+				}
+			}
+
+			visiting.delete(name);
+			visited.add(name);
+		};
+
+		for (const name of dependencies.keys()) {
+			detectCircular(name, []);
+		}
+	}
+
+	/**
+	 * Generate JSDoc warning for allOf conflicts
+	 * @param conflicts Array of conflict description strings
+	 * @returns JSDoc formatted warning string
+	 */
+	private generateConflictJSDoc(conflicts: string[]): string {
+		const lines = [" * @warning allOf property conflicts detected:"];
+		for (const conflict of conflicts) {
+			lines.push(` * - ${conflict}`);
+		}
+		return `${lines.join("\n")}\n`;
 	}
 }

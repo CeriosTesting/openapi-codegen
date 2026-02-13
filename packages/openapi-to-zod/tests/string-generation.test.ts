@@ -12,7 +12,7 @@ describe("String Generation Methods", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();
@@ -34,7 +34,7 @@ describe("String Generation Methods", () => {
 
 	it("should generate schemas with output path provided", () => {
 		const output = generateOutput({
-			output: TestUtils.getOutputPath("with-output.ts"),
+			outputTypes: TestUtils.getOutputPath("with-output.ts"),
 		});
 
 		expect(output).toBeTruthy();

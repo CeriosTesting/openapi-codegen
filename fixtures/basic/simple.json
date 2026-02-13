@@ -1,0 +1,26 @@
+{
+	"openapi": "3.0.0",
+	"info": {
+		"title": "Simple JSON API",
+		"version": "1.0.0"
+	},
+	"components": {
+		"schemas": {
+			"Pet": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"tag": {
+						"type": "string"
+					}
+				},
+				"required": ["id", "name"]
+			}
+		}
+	}
+}

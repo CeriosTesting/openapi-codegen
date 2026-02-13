@@ -5,8 +5,10 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src"),
+			"@cerios/openapi-core": path.resolve(__dirname, "../openapi-core/src"),
 			"@cerios/openapi-to-zod": path.resolve(__dirname, "../openapi-to-zod/src"),
 			"@cerios/openapi-to-zod-playwright": path.resolve(__dirname, "./src"),
+			"@fixtures": path.resolve(__dirname, "../../fixtures"),
 		},
 	},
 	test: {

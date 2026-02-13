@@ -1,19 +1,25 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { TestUtils } from "./utils/test-utils";
-
-const TEST_CONFIG_DIR = "tests/cli-config-test";
 
 describe("CLI", () => {
 	const cliPath = TestUtils.getDistPath("cli.js");
+	const TEST_CONFIG_DIR = TestUtils.getTestConfigDir();
 
 	beforeEach(() => {
 		// Clean up test config directory
 		if (existsSync(TEST_CONFIG_DIR)) {
-			rmSync(TEST_CONFIG_DIR, { recursive: true });
+			rmSync(TEST_CONFIG_DIR, { recursive: true, force: true });
 		}
 		mkdirSync(TEST_CONFIG_DIR, { recursive: true });
+	});
+
+	afterAll(() => {
+		// Final cleanup
+		if (existsSync(TEST_CONFIG_DIR)) {
+			rmSync(TEST_CONFIG_DIR, { recursive: true, force: true });
+		}
 	});
 
 	describe("--version", () => {
@@ -41,14 +47,14 @@ describe("CLI", () => {
 
 	describe("config mode", () => {
 		it("should generate schemas with config file", () => {
-			const configPath = `${TEST_CONFIG_DIR}/openapi-to-zod.config.json`;
+			const configPath = TestUtils.getTestConfigDir("openapi-to-zod.config.json");
 			const outputPath = TestUtils.getOutputPath("cli-config-test.ts");
 
 			const config = {
 				specs: [
 					{
 						input: TestUtils.getFixturePath("simple.yaml"),
-						output: outputPath,
+						outputTypes: outputPath,
 					},
 				],
 			};
@@ -74,6 +80,45 @@ describe("CLI", () => {
 				const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
 				expect(stderr).toContain("No config file found");
 				expect(stderr).toContain("init");
+			}
+		});
+	});
+
+	describe("config validation errors", () => {
+		it("should not duplicate error message for config validation errors", () => {
+			const configPath = TestUtils.getTestConfigDir("openapi-to-zod.config.json");
+
+			// Create config with old 'output' property instead of 'outputTypes'
+			const invalidConfig = {
+				specs: [
+					{
+						input: "openapi.yaml",
+						output: "schemas.ts", // Old property name
+					},
+				],
+			};
+
+			writeFileSync(configPath, JSON.stringify(invalidConfig, null, 2), "utf-8");
+
+			try {
+				execSync(`node ${cliPath} --config ${configPath}`, {
+					encoding: "utf-8",
+					stdio: "pipe",
+				});
+				expect.fail("Should have thrown error");
+			} catch (error: any) {
+				const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
+
+				// Should contain the error message
+				expect(stderr).toContain("Invalid configuration file");
+				expect(stderr).toContain("Did you mean 'outputTypes'");
+
+				// Should NOT contain "Stack trace:" for config validation errors
+				expect(stderr).not.toContain("Stack trace:");
+
+				// Count occurrences of "Invalid configuration file" - should be 1
+				const matches = stderr.match(/Invalid configuration file/g);
+				expect(matches).toHaveLength(1);
 			}
 		});
 	});

@@ -10,7 +10,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should generate validation for schema dependencies", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +26,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should validate when dependent property is not present", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -45,7 +45,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should validate when dependent property exists with all required fields", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -68,7 +68,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should fail when dependent property exists but required fields are missing", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -101,7 +101,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should handle both dependency types in the same schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

@@ -1,0 +1,158 @@
+openapi: 3.0.0
+info:
+  title: Types Test API
+  version: 1.0.0
+components:
+  schemas:
+    StringType:
+      type: string
+      description: A basic string type
+
+    NumberType:
+      type: number
+      description: A floating point number
+
+    IntegerType:
+      type: integer
+      description: An integer number
+
+    BooleanType:
+      type: boolean
+      description: A boolean value
+
+    ArrayType:
+      type: array
+      description: An array of strings
+      items:
+        type: string
+
+    ObjectType:
+      type: object
+      description: A basic object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+
+    NullableType:
+      type: string
+      nullable: true
+      description: A nullable string
+
+    UuidFormat:
+      type: string
+      format: uuid
+
+    DateFormat:
+      type: string
+      format: date
+
+    DateTimeFormat:
+      type: string
+      format: date-time
+
+    EmailFormat:
+      type: string
+      format: email
+
+    UriFormat:
+      type: string
+      format: uri
+
+    AllFormats:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        dateTime:
+          type: string
+          format: date-time
+        email:
+          type: string
+          format: email
+        uri:
+          type: string
+          format: uri
+        binary:
+          type: string
+          format: binary
+        byte:
+          type: string
+          format: byte
+        int32:
+          type: integer
+          format: int32
+        int64:
+          type: integer
+          format: int64
+        float:
+          type: number
+          format: float
+        double:
+          type: number
+          format: double
+
+    AdditionalPropsAny:
+      type: object
+      additionalProperties: true
+
+    AdditionalPropsTyped:
+      type: object
+      additionalProperties:
+        type: string
+
+    AdditionalPropsComplex:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          id:
+            type: string
+          value:
+            type: number
+
+    MixedProperties:
+      type: object
+      properties:
+        knownProp:
+          type: string
+      additionalProperties:
+        type: number
+
+    NestedObject:
+      type: object
+      properties:
+        level1:
+          type: object
+          properties:
+            level2:
+              type: object
+              properties:
+                level3:
+                  type: string
+
+    ArrayOfObjects:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        required:
+          - id
+
+    TupleArray:
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - type: number
+      minItems: 2
+      maxItems: 2

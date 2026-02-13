@@ -1,5 +1,5 @@
+import { resolveRefName, toCamelCase, toPascalCase } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-import { resolveRef, toCamelCase, toPascalCase } from "../../src/utils/name-utils";
 
 describe("Name Utilities", () => {
 	describe("toCamelCase", () => {
@@ -171,42 +171,42 @@ describe("Name Utilities", () => {
 		});
 	});
 
-	describe("resolveRef", () => {
+	describe("resolveRefName", () => {
 		it("should extract schema name from $ref", () => {
-			expect(resolveRef("#/components/schemas/User")).toBe("User");
+			expect(resolveRefName("#/components/schemas/User")).toBe("User");
 		});
 
 		it("should handle nested paths", () => {
-			expect(resolveRef("#/components/schemas/models/User")).toBe("User");
+			expect(resolveRefName("#/components/schemas/models/User")).toBe("User");
 		});
 
 		it("should handle parameters", () => {
-			expect(resolveRef("#/components/parameters/userId")).toBe("userId");
+			expect(resolveRefName("#/components/parameters/userId")).toBe("userId");
 		});
 
 		it("should handle responses", () => {
-			expect(resolveRef("#/components/responses/NotFound")).toBe("NotFound");
+			expect(resolveRefName("#/components/responses/NotFound")).toBe("NotFound");
 		});
 
 		it("should handle single segment", () => {
-			expect(resolveRef("User")).toBe("User");
+			expect(resolveRefName("User")).toBe("User");
 		});
 
 		it("should handle URL-style refs", () => {
-			expect(resolveRef("./schemas.yaml#/components/schemas/User")).toBe("User");
+			expect(resolveRefName("./schemas.yaml#/components/schemas/User")).toBe("User");
 		});
 
 		it("should handle empty string", () => {
-			expect(resolveRef("")).toBe("");
+			expect(resolveRefName("")).toBe("");
 		});
 
 		it("should handle refs with special characters", () => {
-			expect(resolveRef("#/components/schemas/User-Model")).toBe("User-Model");
+			expect(resolveRefName("#/components/schemas/User-Model")).toBe("User-Model");
 		});
 
 		it("should handle dotted schema names", () => {
-			expect(resolveRef("#/components/schemas/Company.Models.User")).toBe("Company.Models.User");
-			expect(resolveRef("#/components/schemas/Vendor.Api.Product")).toBe("Vendor.Api.Product");
+			expect(resolveRefName("#/components/schemas/Company.Models.User")).toBe("Company.Models.User");
+			expect(resolveRefName("#/components/schemas/Vendor.Api.Product")).toBe("Vendor.Api.Product");
 		});
 	});
 });

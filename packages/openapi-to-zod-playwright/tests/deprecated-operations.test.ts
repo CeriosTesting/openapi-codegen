@@ -9,7 +9,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -23,7 +23,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const service = generator.generateServiceString();
@@ -37,7 +37,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -51,7 +51,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -65,7 +65,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -80,7 +80,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -97,7 +97,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -120,7 +120,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const client = generator.generateClientString();
@@ -137,7 +137,7 @@ describe("Deprecated Operations", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const service = generator.generateServiceString();

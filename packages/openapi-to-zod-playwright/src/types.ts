@@ -51,12 +51,6 @@ export interface OpenApiPlaywrightGeneratorOptions
 	input: string;
 
 	/**
-	 * Output file path for schemas and types (always generated)
-	 * Contains Zod validation schemas and TypeScript type definitions
-	 */
-	output: string;
-
-	/**
 	 * Output file path for client class
 	 *
 	 * Generates a Playwright API passthrough client in a separate file:
@@ -246,10 +240,10 @@ export interface PlaywrightConfigFile {
  * File Splitting Examples:
  *
  * 1. Schemas + Client (minimum required):
- *    { input: 'api.yaml', output: 'schemas.ts', outputClient: 'client.ts' }
+ *    { input: 'api.yaml', outputTypes: 'schemas.ts', outputClient: 'client.ts' }
  *
  * 2. Schemas + Client + Service (full setup):
- *    { input: 'api.yaml', output: 'schemas.ts', outputClient: 'client.ts', outputService: 'service.ts' }
+ *    { input: 'api.yaml', outputTypes: 'schemas.ts', outputClient: 'client.ts', outputService: 'service.ts' }
  *
  * @example
  * ```typescript
@@ -262,12 +256,12 @@ export interface PlaywrightConfigFile {
  *   },
  *   specs: [
  *     // Schemas + Client (minimum required)
- *     { input: 'api-v1.yaml', output: 'tests/schemas.ts', outputClient: 'tests/client.ts' },
+ *     { input: 'api-v1.yaml', outputTypes: 'tests/schemas.ts', outputClient: 'tests/client.ts' },
  *
  *     // Schemas + Client + Service (full setup)
  *     {
  *       input: 'api-v2.yaml',
- *       output: 'tests/schemas.ts',
+ *       outputTypes: 'tests/schemas.ts',
  *       outputClient: 'tests/client.ts',
  *       outputService: 'tests/service.ts'
  *     }

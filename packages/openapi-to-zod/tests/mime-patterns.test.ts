@@ -8,7 +8,7 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 	function generateOutput(): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath("mime-patterns.yaml"),
-			output: outputPath,
+			outputTypes: outputPath,
 			mode: "normal",
 			showStats: false,
 		});
@@ -49,7 +49,7 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 		it("should validate MIME types correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("mime-patterns.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -73,7 +73,7 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 		it("should validate media file URLs correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("mime-patterns.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -109,7 +109,7 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 		it("should validate API endpoint paths correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("mime-patterns.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

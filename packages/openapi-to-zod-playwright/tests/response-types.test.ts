@@ -10,7 +10,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceOutput = generator.generateServiceString();
@@ -24,7 +24,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceOutput = generator.generateServiceString();
@@ -38,7 +38,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceOutput = generator.generateServiceString();
@@ -52,7 +52,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceOutput = generator.generateServiceString();
@@ -66,7 +66,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceOutput = generator.generateServiceString();
@@ -86,7 +86,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			return generator.generateSchemasString();
@@ -114,7 +114,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceString = generator.generateServiceString();
@@ -127,7 +127,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceString = generator.generateServiceString();
@@ -140,7 +140,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceString = generator.generateServiceString();
@@ -157,7 +157,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceString = generator.generateServiceString();
@@ -172,7 +172,7 @@ describe("Response Types", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 			const serviceString = generator.generateServiceString();

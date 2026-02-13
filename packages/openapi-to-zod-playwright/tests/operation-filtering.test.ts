@@ -3,13 +3,13 @@ import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator"
 import { TestUtils } from "./utils/test-utils";
 
 describe("Operation Filtering", () => {
-	const fixtureFile = TestUtils.getFixturePath("filtering-test.yaml");
+	const fixtureFile = TestUtils.getZodFixturePath("filtering-test.yaml");
 
 	describe("Tag Filtering", () => {
 		describe("should include only operations with specified tags", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -57,7 +57,7 @@ describe("Operation Filtering", () => {
 		describe("should exclude operations with specified tags", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -105,7 +105,7 @@ describe("Operation Filtering", () => {
 		describe("should handle multiple tag matching", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -140,7 +140,7 @@ describe("Operation Filtering", () => {
 		it("should include operations matching path patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -160,7 +160,7 @@ describe("Operation Filtering", () => {
 		it("should support glob patterns for versioned APIs", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -178,7 +178,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations matching path patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -202,7 +202,7 @@ describe("Operation Filtering", () => {
 		it("should include only specified HTTP methods", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -225,7 +225,7 @@ describe("Operation Filtering", () => {
 		it("should exclude specified HTTP methods", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -248,7 +248,7 @@ describe("Operation Filtering", () => {
 		it("should exclude deprecated operations when excludeDeprecated is true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -268,7 +268,7 @@ describe("Operation Filtering", () => {
 		it("should include deprecated operations by default", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -285,7 +285,7 @@ describe("Operation Filtering", () => {
 		it("should include operations matching operationId patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -307,7 +307,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations matching operationId patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -331,7 +331,7 @@ describe("Operation Filtering", () => {
 		it("should include operations with exact status codes", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -349,7 +349,7 @@ describe("Operation Filtering", () => {
 		it("should support status code range patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -367,7 +367,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations with specified status codes", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -384,7 +384,7 @@ describe("Operation Filtering", () => {
 		it("should combine exact and range status codes", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -403,7 +403,7 @@ describe("Operation Filtering", () => {
 		it("should apply multiple filters together", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -425,7 +425,7 @@ describe("Operation Filtering", () => {
 		it("should apply exclude after include (exclude wins)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -444,7 +444,7 @@ describe("Operation Filtering", () => {
 		it("should combine operation and status code filters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -465,7 +465,7 @@ describe("Operation Filtering", () => {
 		it("should treat empty arrays as no constraint", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -491,7 +491,7 @@ describe("Operation Filtering", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -511,7 +511,7 @@ describe("Operation Filtering", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 				operationFilters: {
@@ -531,7 +531,7 @@ describe("Operation Filtering", () => {
 		it("should include all operations when no filters are specified", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});

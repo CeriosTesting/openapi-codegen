@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
 import {
 	createTypeScriptLoader,
 	escapeJSDoc,
@@ -8,7 +7,8 @@ import {
 	type Generator,
 	LRUCache,
 	toPascalCase,
-} from "../src/internal";
+} from "@cerios/openapi-core";
+import { describe, expect, it } from "vitest";
 
 /**
  * @shared Tests for shared utility exports
@@ -156,9 +156,9 @@ describe("Shared Utilities", () => {
 				],
 			};
 
-			const result = formatConfigValidationError(mockError as any, "/path/to/config.ts", "/path/to/config.ts", [
-				"Note: schemaType is always 'all' for Playwright generator",
-			]);
+			const result = formatConfigValidationError(mockError as any, "/path/to/config.ts", "/path/to/config.ts", {
+				additionalNotes: ["Note: schemaType is always 'all' for Playwright generator"],
+			});
 
 			expect(result).toContain("Invalid configuration file");
 			expect(result).toContain("/path/to/config.ts");
@@ -193,10 +193,9 @@ describe("Shared Utilities", () => {
 				],
 			};
 
-			const result = formatConfigValidationError(mockError as any, "/path/to/config.ts", undefined, [
-				"Note 1",
-				"Note 2",
-			]);
+			const result = formatConfigValidationError(mockError as any, "/path/to/config.ts", undefined, {
+				additionalNotes: ["Note 1", "Note 2"],
+			});
 
 			expect(result).toContain("Note 1");
 			expect(result).toContain("Note 2");
@@ -220,7 +219,7 @@ describe("Shared Utilities", () => {
 			expect(result.specs).toBeDefined();
 			expect(result.specs).toHaveLength(2);
 			expect(result.specs[0].input).toBe("tests/fixtures/simple.yaml");
-			expect(result.specs[0].output).toBe("tests/output/simple-from-ts-config.ts");
+			expect(result.specs[0].outputTypes).toBe("tests/output/simple-from-ts-config.ts");
 			expect(result.specs[1].prefix).toBe("api");
 			expect(result.defaults?.mode).toBe("strict");
 			expect(result.executionMode).toBe("parallel");

@@ -1,5 +1,9 @@
+import {
+	extractPathParams,
+	generateHttpMethodName as generateMethodName,
+	sanitizeParamName,
+} from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-import { extractPathParams, generateMethodName, sanitizeParamName } from "../src/utils/method-naming";
 
 describe("Method Naming Utilities", () => {
 	describe("generateMethodName", () => {

@@ -8,7 +8,7 @@ describe("HTTP Methods", () => {
 	function generateOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 			useOperationId: false,
 		});
@@ -18,7 +18,7 @@ describe("HTTP Methods", () => {
 	function generateServiceOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 			useOperationId: false,
 		});

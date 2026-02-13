@@ -8,7 +8,7 @@ describe("Content-Type Handling", () => {
 	function generateOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 		});
 		return generator.generateClientString();
@@ -42,7 +42,7 @@ describe("Content-Type Handling", () => {
 		const clientOutput = generateOutput();
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 		});
 		const schemasOutput = generator.generateSchemasString();

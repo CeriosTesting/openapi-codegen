@@ -111,7 +111,7 @@ describe("Preferred Content Types", () => {
 		it("should use default preference (application/json) when not specified", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -129,7 +129,7 @@ describe("Preferred Content Types", () => {
 		it("should respect custom preferred content types with application/json first", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["application/json", "text/json"],
@@ -146,7 +146,7 @@ describe("Preferred Content Types", () => {
 		it("should use text/json when preferred over application/json", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["text/json", "application/json"],
@@ -162,7 +162,7 @@ describe("Preferred Content Types", () => {
 		it("should fall back to first content type when no preference matches", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["application/yaml"], // Not in any spec
@@ -178,7 +178,7 @@ describe("Preferred Content Types", () => {
 		it("should handle single content type responses correctly", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 				preferredContentTypes: ["application/json"],
@@ -194,7 +194,7 @@ describe("Preferred Content Types", () => {
 		it("should handle empty preferences array (fallback to first)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 				preferredContentTypes: [],
@@ -214,7 +214,7 @@ describe("Preferred Content Types", () => {
 			// Should not throw when preferredContentTypes is provided
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				preferredContentTypes: ["application/json", "text/json"],
 			});

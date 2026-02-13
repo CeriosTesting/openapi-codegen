@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: One-way Reference to Self-Referencing Schema Test
+  description: |
+    Tests that z.lazy() is only used when necessary.
+    DecisionTreeException references itself (innerException) - needs z.lazy for self-reference.
+    DecisionTree references DecisionTreeException array - does NOT need z.lazy since
+    DecisionTreeException is defined first and DecisionTree is not part of any circular chain.
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    ExceptionType:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+    InfoLineType:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+    DecisionTreeTag:
+      type: object
+      properties:
+        id:
+          type: string
+        value:
+          type: string
+    DecisionTreeQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionTreeTag'
+    DecisionTreeAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+        questionId:
+          type: string
+        text:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionTreeTag'
+    DecisionTreeInfoLine:
+      type: object
+      properties:
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/InfoLineType'
+    DecisionTreeException:
+      type: object
+      description: Exception with self-referencing innerException property
+      properties:
+        message:
+          type: string
+        exceptionType:
+          $ref: '#/components/schemas/ExceptionType'
+        innerException:
+          description: Self-reference for nested exceptions
+          $ref: '#/components/schemas/DecisionTreeException'
+    DecisionTree:
+      type: object
+      description: Main tree schema that references the self-referencing Exception
+      properties:
+        sessionId:
+          type: string
+        id:
+          type: string
+        description:
+          type: string
+        question:
+          $ref: '#/components/schemas/DecisionTreeQuestion'
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionTreeAnswer'
+        infoLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionTreeInfoLine'
+        exceptions:
+          description: Array of exceptions - one-way reference, no lazy needed
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionTreeException'
+        treeEnd:
+          type: boolean

@@ -10,7 +10,7 @@ describe("Pattern Properties", () => {
 		it("should generate validation for pattern properties", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +26,7 @@ describe("Pattern Properties", () => {
 		it("should validate objects with pattern properties", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -62,7 +62,7 @@ describe("Pattern Properties", () => {
 		it("should generate validation for property name patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -77,7 +77,7 @@ describe("Pattern Properties", () => {
 		it("should validate property names with pattern", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -104,7 +104,7 @@ describe("Pattern Properties", () => {
 		it("should validate property names with maxLength", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -130,7 +130,7 @@ describe("Pattern Properties", () => {
 		it("should validate property names with minLength", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -158,7 +158,7 @@ describe("Pattern Properties", () => {
 		it("should handle both pattern properties and property names", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

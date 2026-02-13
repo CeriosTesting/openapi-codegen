@@ -1,6 +1,6 @@
 import { existsSync, unlinkSync } from "node:fs";
+import { executeBatch, getBatchExitCode } from "@cerios/openapi-core";
 import { afterAll, describe, expect, it } from "vitest";
-import { executeBatch, getBatchExitCode } from "../src/batch-executor";
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
 import { TestUtils } from "./utils/test-utils";
@@ -19,41 +19,41 @@ describe("Batch Execution", () => {
 	});
 	describe("Parallel Execution", () => {
 		it("should process multiple specs in parallel", async () => {
-			const specs: (OpenApiGeneratorOptions & { output: string })[] = [
+			const specs: (OpenApiGeneratorOptions & { outputTypes: string })[] = [
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-parallel-simple.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-parallel-simple.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("composition.yaml"),
-					output: TestUtils.getOutputPath("batch-parallel-composition.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-parallel-composition.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output));
+			outputFiles.push(...specs.map(s => s.outputTypes));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
 
 			expect(summary.total).toBe(2);
 			expect(summary.successful).toBe(2);
 			expect(summary.failed).toBe(0);
-			expect(existsSync(specs[0].output)).toBe(true);
-			expect(existsSync(specs[1].output)).toBe(true);
+			expect(existsSync(specs[0].outputTypes)).toBe(true);
+			expect(existsSync(specs[1].outputTypes)).toBe(true);
 		});
 
 		it("should collect all errors in parallel mode", async () => {
-			const specs: (OpenApiGeneratorOptions & { output: string })[] = [
+			const specs: (OpenApiGeneratorOptions & { outputTypes: string })[] = [
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-parallel-invalid.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-parallel-invalid.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-parallel-valid.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-parallel-valid.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output));
+			outputFiles.push(...specs.map(s => s.outputTypes));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.successful).toBe(1);
@@ -64,65 +64,65 @@ describe("Batch Execution", () => {
 		});
 
 		it("should continue processing all specs even if some fail", async () => {
-			const specs: (OpenApiGeneratorOptions & { output: string })[] = [
+			const specs: (OpenApiGeneratorOptions & { outputTypes: string })[] = [
 				{
 					input: TestUtils.getFixturePath("non-existent.yaml"),
-					output: TestUtils.getOutputPath("batch-invalid-1.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-invalid-1.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-valid.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-valid.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-invalid-2.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-invalid-2.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output));
+			outputFiles.push(...specs.map(s => s.outputTypes));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.successful).toBe(1);
 			expect(summary.failed).toBe(2);
-			expect(existsSync(specs[1].output)).toBe(true);
+			expect(existsSync(specs[1].outputTypes)).toBe(true);
 		});
 	});
 
 	describe("Sequential Execution", () => {
 		it("should process multiple specs sequentially", async () => {
-			const specs: (OpenApiGeneratorOptions & { output: string })[] = [
+			const specs: (OpenApiGeneratorOptions & { outputTypes: string })[] = [
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-sequential-simple.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-sequential-simple.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("constraints.yaml"),
-					output: TestUtils.getOutputPath("batch-sequential-constraints.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-sequential-constraints.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output));
+			outputFiles.push(...specs.map(s => s.outputTypes));
 
 			const summary = await executeBatch(specs, "sequential", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.successful).toBe(2);
 			expect(summary.failed).toBe(0);
-			expect(existsSync(specs[0].output)).toBe(true);
-			expect(existsSync(specs[1].output)).toBe(true);
+			expect(existsSync(specs[0].outputTypes)).toBe(true);
+			expect(existsSync(specs[1].outputTypes)).toBe(true);
 		});
 
 		it("should collect all errors in sequential mode", async () => {
 			const specs: OpenApiGeneratorOptions[] = [
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-sequential-invalid.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-sequential-invalid.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-sequential-valid.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-sequential-valid.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "sequential", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.results[0].success).toBe(false);
@@ -134,19 +134,19 @@ describe("Batch Execution", () => {
 			const specs: OpenApiGeneratorOptions[] = [
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-seq-first.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-seq-first.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-seq-second.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-seq-second.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("composition.yaml"),
-					output: TestUtils.getOutputPath("batch-seq-third.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-seq-third.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "sequential", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.results[0].success).toBe(true);
@@ -160,32 +160,40 @@ describe("Batch Execution", () => {
 			const specs: OpenApiGeneratorOptions[] = [
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-exit-success.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-exit-success.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
-			expect(getBatchExitCode(summary)).toBe(0);
+			const exitCode = getBatchExitCode(summary);
+
+			expect(exitCode).toBe(0);
+			expect(summary.successful).toBe(1);
+			expect(summary.failed).toBe(0);
 		});
 
 		it("should return exit code 1 if any spec fails", async () => {
 			const specs: OpenApiGeneratorOptions[] = [
 				{
 					input: TestUtils.getFixturePath("simple.yaml"),
-					output: TestUtils.getOutputPath("batch-exit-mixed-1.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-exit-mixed-1.ts"),
 				},
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-exit-mixed-2.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-exit-mixed-2.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
-			expect(getBatchExitCode(summary)).toBe(1);
+			const exitCode = getBatchExitCode(summary);
+
+			expect(exitCode).toBe(1);
+			expect(summary.successful).toBe(1);
+			expect(summary.failed).toBe(1);
 		});
 	});
 
@@ -194,11 +202,11 @@ describe("Batch Execution", () => {
 			const specs: OpenApiGeneratorOptions[] = [
 				{
 					input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-					output: TestUtils.getOutputPath("batch-error-report.ts"),
+					outputTypes: TestUtils.getOutputPath("batch-error-report.ts"),
 				},
 			];
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.failed).toBe(1);
@@ -217,10 +225,10 @@ describe("Batch Execution", () => {
 		it("should handle large batch of specs", async () => {
 			const specs: OpenApiGeneratorOptions[] = Array.from({ length: 10 }, (_, i) => ({
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: TestUtils.getOutputPath(`batch-large-${i}.ts`),
+				outputTypes: TestUtils.getOutputPath(`batch-large-${i}.ts`),
 			}));
 
-			outputFiles.push(...specs.map(s => s.output).filter((o): o is string => o !== undefined));
+			outputFiles.push(...specs.map(s => s.outputTypes).filter((o): o is string => o !== undefined));
 
 			const summary = await executeBatch(specs, "parallel", spec => new OpenApiGenerator(spec), 10);
 			expect(summary.successful).toBe(10);

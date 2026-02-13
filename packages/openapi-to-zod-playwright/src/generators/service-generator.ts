@@ -1,19 +1,22 @@
-import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import {
+	extractPathParams,
 	type FallbackContentTypeParsing,
+	generateHttpMethodName as generateMethodName,
 	getResponseParseMethod,
 	mergeParameters,
 	resolveRequestBodyRef,
 	resolveResponseRef,
+	sanitizeOperationId,
+	sanitizeParamName,
+	shouldIgnoreHeader,
 	stripPathPrefix,
 	stripPrefix,
 	toCamelCase,
 	toPascalCase,
-} from "@cerios/openapi-to-zod/internal";
+} from "@cerios/openapi-core";
+import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import type { PlaywrightOperationFilters, ZodErrorFormat } from "../types";
 import { selectContentType } from "../utils/content-type-selector";
-import { shouldIgnoreHeader } from "../utils/header-filters";
-import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
 import { generateOperationJSDoc } from "../utils/operation-jsdoc";
 import { generateInlineRequestSchemaName } from "./inline-schema-generator";
@@ -155,7 +158,7 @@ export function generateServiceClass(
 	operationFilters?: PlaywrightOperationFilters,
 	ignoreHeaders?: string[],
 	stripPrefix?: string,
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	preferredContentTypes?: string[],
 	prefix?: string,
 	suffix?: string,
@@ -435,7 +438,7 @@ function generateSuccessMethods(
 	endpoint: EndpointInfo,
 	schemaImports: Set<string>,
 	ignoreHeaders?: string[],
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
@@ -503,7 +506,7 @@ function generateSuccessMethods(
  */
 function generateInlineSchemaCode(
 	inlineSchema: any,
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string
 ): { schemaCode: string; typeName: string } | null {
@@ -575,7 +578,7 @@ function generateServiceMethod(
 	schemaImports: Set<string>,
 	statusSuffix: string,
 	ignoreHeaders?: string[],
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,

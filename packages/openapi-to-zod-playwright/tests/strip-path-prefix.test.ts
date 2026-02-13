@@ -9,7 +9,7 @@ describe("stripPathPrefix feature", () => {
 		it("should strip exact literal string prefix from paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				useOperationId: true,
@@ -37,7 +37,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle prefix without leading slash", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "api/v1.0", // No leading slash
 			});
@@ -52,7 +52,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle prefix with trailing slash", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0/", // Trailing slash
 			});
@@ -67,7 +67,7 @@ describe("stripPathPrefix feature", () => {
 		it("should return original path when prefix doesn't match", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v3.0", // Doesn't match any paths
 			});
@@ -84,7 +84,7 @@ describe("stripPathPrefix feature", () => {
 		it("should strip using glob pattern with version number", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v*", // Matches /api/v1.0, /api/v2.5, etc.
 			});
@@ -105,7 +105,7 @@ describe("stripPathPrefix feature", () => {
 		it("should detect glob pattern with character classes", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v[0-9]*", // Uses character class
 			});
@@ -120,7 +120,7 @@ describe("stripPathPrefix feature", () => {
 		it("should use glob with wildcard for flexible matching", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v*.*", // Matches version patterns like v1.0, v2.5
 			});
@@ -137,7 +137,7 @@ describe("stripPathPrefix feature", () => {
 		it("should strip prefix then add basePath for actual HTTP calls", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				basePath: "/api/v1.0",
@@ -158,7 +158,7 @@ describe("stripPathPrefix feature", () => {
 		it("should work with different stripPrefix and basePath", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v*", // Strip any version with glob
 				basePath: "/api/v2.0", // But use v2.0 for actual calls
@@ -178,7 +178,7 @@ describe("stripPathPrefix feature", () => {
 		it("should apply filters to stripped paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				operationFilters: {
@@ -200,7 +200,7 @@ describe("stripPathPrefix feature", () => {
 		it("should exclude paths based on stripped paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				operationFilters: {
@@ -222,7 +222,7 @@ describe("stripPathPrefix feature", () => {
 		it("should generate service methods with stripped paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				stripPathPrefix: "/api/v1.0",
@@ -246,7 +246,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle empty string prefix (no stripping)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "",
 			});
@@ -260,7 +260,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle undefined prefix (no stripping)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: undefined,
 			});
@@ -274,7 +274,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle path that becomes empty after stripping", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1",
 			});
@@ -288,7 +288,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle path params in stripped paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				useOperationId: true,
@@ -305,7 +305,7 @@ describe("stripPathPrefix feature", () => {
 		it("should handle invalid glob pattern gracefully", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v[", // Invalid glob - unclosed bracket
 			});
@@ -322,7 +322,7 @@ describe("stripPathPrefix feature", () => {
 		it("should generate cleaner method names from stripped paths", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				useOperationId: false, // Use generated names
@@ -340,7 +340,7 @@ describe("stripPathPrefix feature", () => {
 		it("should respect useOperationId when present", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 				useOperationId: true,
@@ -359,7 +359,7 @@ describe("stripPathPrefix feature", () => {
 		it("should only strip the exact matching prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripPathPrefix: "/api/v1.0",
 			});

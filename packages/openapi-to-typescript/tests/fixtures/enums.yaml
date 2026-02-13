@@ -1,0 +1,73 @@
+openapi: 3.0.0
+info:
+  title: Enum Test API
+  version: 1.0.0
+components:
+  schemas:
+    StringEnum:
+      type: string
+      description: A string-based enumeration
+      enum:
+        - active
+        - inactive
+        - pending
+
+    NumericEnum:
+      type: integer
+      description: A numeric enumeration
+      enum:
+        - 0
+        - 1
+        - 2
+
+    BooleanEnum:
+      type: boolean
+      description: A boolean enumeration
+      enum:
+        - true
+        - false
+
+    MixedEnum:
+      description: An enum with mixed types (will be treated as union)
+      enum:
+        - "string_value"
+        - 42
+        - true
+        - null
+
+    StatusWithDefault:
+      type: string
+      enum:
+        - active
+        - inactive
+      default: active
+
+    Priority:
+      type: string
+      description: Task priority levels
+      enum:
+        - low
+        - medium
+        - high
+        - critical
+
+    HttpMethod:
+      type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+
+    ModelWithEnums:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/StringEnum"
+        priority:
+          $ref: "#/components/schemas/Priority"
+        method:
+          $ref: "#/components/schemas/HttpMethod"
+      required:
+        - status

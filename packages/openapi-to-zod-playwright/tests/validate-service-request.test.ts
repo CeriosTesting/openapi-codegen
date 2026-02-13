@@ -9,7 +9,7 @@ describe("validateServiceRequest option", () => {
 		it("should NOT generate request validation code", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 			});
 			const output = generator.generateServiceString();
@@ -33,7 +33,7 @@ describe("validateServiceRequest option", () => {
 		it("should still validate responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 			});
 			const output = generator.generateServiceString();
@@ -48,7 +48,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for query parameters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -63,7 +63,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for header parameters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -78,7 +78,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for required request body", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -98,7 +98,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for optional request body with if check", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -112,7 +112,7 @@ describe("validateServiceRequest option", () => {
 		it("should NOT generate validation for inline schemas (no $ref)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -128,7 +128,7 @@ describe("validateServiceRequest option", () => {
 		it("should validate all inputs for endpoint with path, query, header, and body", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
@@ -158,7 +158,7 @@ describe("validateServiceRequest option", () => {
 		it("should add schema imports for validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "test-client.ts",
 				outputService: "test-service.ts",
 				validateServiceRequest: true,
@@ -185,7 +185,7 @@ describe("validateServiceRequest option", () => {
 		it("should use correct schema names with prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				prefix: "api",
@@ -200,7 +200,7 @@ describe("validateServiceRequest option", () => {
 		it("should use correct schema names with suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				suffix: "Model",
@@ -219,7 +219,7 @@ describe("validateServiceRequest option", () => {
 			// For now, test that the option is passed through correctly
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				stripSchemaPrefix: "Api",
@@ -235,7 +235,7 @@ describe("validateServiceRequest option", () => {
 		it("should validate inputs before making the API call", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});

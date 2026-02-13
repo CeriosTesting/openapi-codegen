@@ -71,7 +71,7 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'tests/schemas.ts',
+      outputTypes: 'tests/schemas.ts',
       outputClient: 'tests/client.ts',
     },
   ],
@@ -208,7 +208,7 @@ The `stripPathPrefix` option removes common prefixes from API paths before gener
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     outputClient: 'client.ts',
     stripPathPrefix: '/api/v1.0',  // Strip this prefix from all paths
     basePath: '/api/v1.0'          // Add it back for HTTP requests
@@ -255,7 +255,7 @@ Use glob patterns to strip dynamic prefixes (e.g., version numbers):
 export default defineConfig({
   specs: [{
     input: 'openapi.yaml',
-    output: 'schemas.ts',
+    outputTypes: 'schemas.ts',
     outputClient: 'client.ts',
     // Strip any versioned API prefix using wildcards
     stripPathPrefix: '/api/v*'
@@ -400,11 +400,12 @@ export default defineConfig({
   specs: [
     {
       input: 'specs/api-v1.yaml',
-      output: 'src/generated/api-v1.ts'
+      outputTypes: 'src/generated/api-v1.ts',
+      outputClient: 'src/generated/api-v1-client.ts'
     },
     {
       input: 'specs/api-v2.yaml',
-      output: 'src/generated/api-v2.ts',
+      outputTypes: 'src/generated/api-v2.ts',
       outputClient: 'src/generated/api-v2-client.ts',
       outputService: 'src/generated/api-v2-service.ts',
       stripPathPrefix: '/api/v2', // Strip prefix from paths for cleaner method names
@@ -437,11 +438,13 @@ export default defineConfig({
   "specs": [
     {
       "input": "specs/api-v1.yaml",
-      "output": "src/generated/api-v1.ts"
+      "outputTypes": "src/generated/api-v1.ts",
+      "outputClient": "src/generated/api-v1-client.ts"
     },
     {
       "input": "specs/api-v2.yaml",
-      "output": "src/generated/api-v2.ts",
+      "outputTypes": "src/generated/api-v2.ts",
+      "outputClient": "src/generated/api-v2-client.ts",
       "mode": "normal",
       "prefix": "v2"
     }
@@ -477,7 +480,7 @@ export default defineConfig({
 | `excludeMethods` | `string[]` | Exclude these HTTP methods |
 | `includeOperationIds` | `string[]` | Include only these operationIds |
 | `excludeOperationIds` | `string[]` | Exclude these operationIds |
-| `includeDeprecated` | `boolean` | Include deprecated operations |
+| `excludeDeprecated` | `boolean` | Exclude deprecated operations |
 | `includeStatusCodes` | `string[]` | Include only these status codes (e.g., `["2xx", "404"]`) |
 | `excludeStatusCodes` | `string[]` | Exclude these status codes (e.g., `["5xx"]`) |
 
@@ -508,7 +511,8 @@ export default defineConfig({
   specs: [
     {
       input: 'openapi.yaml',
-      output: 'src/schemas.ts',
+      outputTypes: 'src/schemas.ts',
+      outputClient: 'src/client.ts',
     },
   ],
 });
@@ -522,7 +526,7 @@ export default defineConfig({
     // TypeScript config - RegExp literal (single escaping)
     customDateTimeFormatRegex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
   },
-  specs: [{ input: 'openapi.yaml', output: 'src/schemas.ts', outputClient: 'src/client.ts' }],
+  specs: [{ input: 'openapi.yaml', outputTypes: 'src/schemas.ts', outputClient: 'src/client.ts' }],
 });
 ```
 
@@ -655,6 +659,45 @@ test('send invalid data', async ({ request }) => {
   expect(response.status()).toBe(400);
 });
 ```
+
+## API Reference
+
+### Main Exports
+
+- `OpenApiPlaywrightGenerator` - Main generator class for creating Playwright API clients
+- `defineConfig` - Type-safe helper for creating configuration files
+
+### Types
+
+- `OpenApiPlaywrightGeneratorOptions` - Options interface for the generator
+- `PlaywrightConfigFile` - Config file schema type
+- `PlaywrightOperationFilters` - Playwright-specific operation filters (extends base filters with status code filtering)
+- `ZodErrorFormat` - Zod error formatting options: `"standard"` | `"prettify"` | `"prettifyWithValues"`
+
+### Runtime Utilities
+
+These utilities are exported for use in generated code:
+
+- `serializeParams()` - Serialize query/path parameters for HTTP requests
+- `formatZodErrorPath()` - Format Zod validation error path for readable messages
+- `formatZodErrorWithValues()` - Format Zod errors including the actual values that failed
+- `parseWithPrettifyError()` - Parse with Zod and throw prettified errors on failure
+- `parseWithPrettifyErrorWithValues()` - Parse with Zod including failed values in error messages
+
+### Runtime Types
+
+- `ApiRequestContextOptions` - Options for Playwright API request context
+- `HttpHeaders` - Type for HTTP header objects
+- `MultipartFormData` - Type for multipart form data
+- `MultipartFormValue` - Type for multipart form values
+- `QueryParams` - Type for query string parameters
+- `RequestBody` - Type for request body data
+- `UrlEncodedFormData` - Type for URL-encoded form data
+
+### Error Classes
+
+- `ClientGenerationError` - Error thrown during client generation
+- Re-exports from `@cerios/openapi-core`: `CircularReferenceError`, `CliOptionsError`, `ConfigValidationError`, `FileOperationError`, `GeneratorError`, `SchemaGenerationError`, `SpecValidationError`
 
 ## Requirements
 

@@ -1,17 +1,17 @@
 {
 	"private": true,
-	"workspaces": ["packages/*"],
+	"packageManager": "pnpm@9.15.0",
 	"scripts": {
-		"build": "npm run build --workspaces --if-present",
-		"test": "npm run test --workspaces --if-present",
+		"build": "pnpm -r build",
+		"test": "pnpm -r test",
 		"check": "biome check --write",
 		"check-versions": "tsx scripts/check-dependency-versions.ts",
 		"lint": "biome lint",
-		"compile": "npm run compile --workspaces --if-present",
-		"dev": "npm run dev --workspaces --if-present",
-		"update-deps": "npx npm-check-updates -u --workspaces && npm install && npm run check-versions",
+		"compile": "pnpm -r compile",
+		"update-deps": "pnpm update -r --latest && pnpm check-versions",
 		"changeset": "changeset",
-		"pack": "npm run pack --workspaces --if-present"
+		"pack": "pnpm --filter \"*\" exec pnpm pack --pack-destination ../..",
+		"version-packages": "changeset version"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.2",
@@ -20,6 +20,7 @@
 		"@types/node": "^25.0.2",
 		"husky": "^9.1.7",
 		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.15"
 	},

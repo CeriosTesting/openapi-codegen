@@ -22,7 +22,7 @@ describe("Integration Tests for Cerios Company", () => {
 		beforeAll(() => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemasFile,
+				outputTypes: schemasFile,
 				outputClient: clientFile,
 				outputService: serviceFile,
 				stripSchemaPrefix: "Messier.Libraries.Cerios.Entities.",

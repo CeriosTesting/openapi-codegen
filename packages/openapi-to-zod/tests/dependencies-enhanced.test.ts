@@ -14,7 +14,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 		it("handles basic property dependencies correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -64,7 +64,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const schemaOutputPath = TestUtils.getOutputPath("schema-dependencies-enhanced.ts");
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: schemaOutputPath,
+				outputTypes: schemaOutputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -112,7 +112,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 		it("handles multiple dependent properties", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -178,7 +178,7 @@ components:
 			try {
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: specialOutputPath,
+					outputTypes: specialOutputPath,
 					mode: "normal",
 					showStats: false,
 				});
@@ -247,7 +247,7 @@ components:
 			try {
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: edgeOutputPath,
+					outputTypes: edgeOutputPath,
 					mode: "normal",
 					showStats: false,
 				});
@@ -297,7 +297,7 @@ components:
 				const startTime = Date.now();
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: perfOutputPath,
+					outputTypes: perfOutputPath,
 					mode: "normal",
 					showStats: false,
 				});

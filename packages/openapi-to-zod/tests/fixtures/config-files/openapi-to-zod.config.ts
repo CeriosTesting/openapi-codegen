@@ -12,12 +12,12 @@ export default {
 		{
 			name: "simple-api",
 			input: "tests/fixtures/simple.yaml",
-			output: "tests/output/simple-from-ts-config.ts",
+			outputTypes: "tests/output/simple-from-ts-config.ts",
 		},
 		{
 			name: "complex-api",
 			input: "tests/fixtures/complex.yaml",
-			output: "tests/output/complex-from-ts-config.ts",
+			outputTypes: "tests/output/complex-from-ts-config.ts",
 			mode: "normal",
 			prefix: "api",
 		},

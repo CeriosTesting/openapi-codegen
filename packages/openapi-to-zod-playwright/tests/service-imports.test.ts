@@ -8,7 +8,7 @@ describe("Service Imports", () => {
 		it("should use named inline response schemas instead of inline z calls", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -33,7 +33,7 @@ describe("Service Imports", () => {
 		it("should NOT import z from zod when only named schemas are used", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("no-inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -56,7 +56,7 @@ describe("Service Imports", () => {
 		it("should use named schemas for array inline schemas instead of z.array", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -80,7 +80,7 @@ describe("Service Imports", () => {
 		it("should import RequestBody when used in service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("request-body-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -100,7 +100,7 @@ describe("Service Imports", () => {
 		it("should NOT import QueryParams when not used", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -119,7 +119,7 @@ describe("Service Imports", () => {
 			// Use the simple-api which has query parameters
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -141,7 +141,7 @@ describe("Service Imports", () => {
 		it("should only import types that are actually used", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -166,7 +166,7 @@ describe("Service Imports", () => {
 		it("should not match QueryParams substring in type names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -189,7 +189,7 @@ describe("Service Imports", () => {
 		it("should not falsely detect z. in unrelated text", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("no-inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -211,7 +211,7 @@ describe("Service Imports", () => {
 			// Use simple-api which has various realistic scenarios
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});
@@ -237,7 +237,7 @@ describe("Service Imports", () => {
 		it("should handle API with no inline schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("no-inline-schema-api.yaml"),
-				output: TestUtils.getOutputPath("test-schemas.ts"),
+				outputTypes: TestUtils.getOutputPath("test-schemas.ts"),
 				outputClient: TestUtils.getOutputPath("test-client.ts"),
 				outputService: TestUtils.getOutputPath("test-service.ts"),
 			});

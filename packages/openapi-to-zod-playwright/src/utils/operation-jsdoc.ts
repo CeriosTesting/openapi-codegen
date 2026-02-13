@@ -1,4 +1,4 @@
-import { escapeJSDoc } from "@cerios/openapi-to-zod/internal";
+import { escapeJSDoc } from "@cerios/openapi-core";
 
 /**
  * Generate JSDoc comment for an operation (endpoint)

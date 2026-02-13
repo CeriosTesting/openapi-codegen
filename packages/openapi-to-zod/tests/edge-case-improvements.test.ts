@@ -15,7 +15,7 @@ describe("Edge Case Improvements", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();
@@ -92,12 +92,13 @@ describe("Edge Case Improvements", () => {
 			expect(conflictWarning).toBeDefined();
 		});
 
-		it("should add .describe() with conflict information", () => {
+		it("should add JSDoc warning with conflict information", () => {
 			const output = generateOutput();
 
-			// ConflictingAllOf should have a describe mentioning the conflict
+			// ConflictingAllOf should have a JSDoc @warning mentioning the conflict
 			expect(output).toContain("conflictingAllOfSchema");
-			expect(output).toMatch(/conflictingAllOfSchema.*\.describe\(.*conflict/is);
+			expect(output).toMatch(/@warning allOf property conflicts detected/);
+			expect(output).toMatch(/Property "name" has conflicting definitions/);
 		});
 
 		it("should not warn for non-conflicting allOf", () => {
@@ -122,6 +123,20 @@ describe("Edge Case Improvements", () => {
 				(msg: unknown) => typeof msg === "string" && msg.includes("allOf composition conflict") && msg.includes("count")
 			);
 			expect(countConflict).toBeDefined();
+		});
+
+		it("should include allOf conflicts count in statistics", () => {
+			const output = generateOutput({ showStats: true });
+
+			// Statistics should include allOf conflicts count
+			expect(output).toMatch(/AllOf conflicts:\s*\d+/);
+		});
+
+		it("should not have .describe() calls for conflicts (use JSDoc instead)", () => {
+			const output = generateOutput();
+
+			// Should not have .describe() with conflict text - conflicts are now in JSDoc
+			expect(output).not.toMatch(/\.describe\("allOf property conflicts/);
 		});
 	});
 

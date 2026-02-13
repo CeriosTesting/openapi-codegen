@@ -10,7 +10,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for json-pointer format", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -25,7 +25,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate JSON Pointer format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -53,7 +53,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for relative-json-pointer format", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -68,7 +68,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate relative JSON Pointer format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -96,7 +96,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for duration format with full ISO 8601 support", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -111,7 +111,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate ISO 8601 duration format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -142,7 +142,7 @@ describe("JSON Schema Formats", () => {
 		it("should handle all new formats in one schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

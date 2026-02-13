@@ -14,7 +14,7 @@ describe("Inline Schema Options", () => {
 			it("should NOT add .nullable() to request inline schema properties", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					defaultNullable: false,
 				});
@@ -29,7 +29,7 @@ describe("Inline Schema Options", () => {
 			it("should NOT add .nullable() to response inline schema properties", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					defaultNullable: false,
 				});
@@ -46,7 +46,7 @@ describe("Inline Schema Options", () => {
 			it("should add .nullable() to request inline schema properties", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					defaultNullable: true,
 				});
@@ -60,7 +60,7 @@ describe("Inline Schema Options", () => {
 			it("should add .nullable() to response inline schema properties", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					defaultNullable: true,
 				});
@@ -74,7 +74,7 @@ describe("Inline Schema Options", () => {
 			it("should add .nullable() to both request and response inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					defaultNullable: true,
 				});
@@ -96,7 +96,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.looseObject({}) for empty objects in request inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "loose",
 				});
@@ -111,7 +111,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.looseObject({}) for empty objects in response inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "loose",
 				});
@@ -128,7 +128,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.strictObject({}) for empty objects in request inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "strict",
 				});
@@ -142,7 +142,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.strictObject({}) for empty objects in response inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "strict",
 				});
@@ -158,7 +158,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.record() for empty objects in request inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "record",
 				});
@@ -172,7 +172,7 @@ describe("Inline Schema Options", () => {
 			it("should use z.record() for empty objects in response inline schemas", () => {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: fixtureFile,
-					output: "output.ts",
+					outputTypes: "output.ts",
 					outputClient: "client.ts",
 					emptyObjectBehavior: "record",
 				});
@@ -189,7 +189,7 @@ describe("Inline Schema Options", () => {
 		it("should apply 'strict' mode to inline schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "strict",
 			});
@@ -203,7 +203,7 @@ describe("Inline Schema Options", () => {
 		it("should apply 'loose' mode to inline schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "loose",
 			});
@@ -217,7 +217,7 @@ describe("Inline Schema Options", () => {
 		it("should apply 'normal' mode to inline schemas (default)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "normal",
 			});
@@ -236,7 +236,7 @@ describe("Inline Schema Options", () => {
 		it("should apply prefix to inline schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "Api",
 			});
@@ -251,7 +251,7 @@ describe("Inline Schema Options", () => {
 		it("should apply suffix to inline schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});
@@ -265,7 +265,7 @@ describe("Inline Schema Options", () => {
 		it("should apply both prefix and suffix to schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "Api",
 				suffix: "Dto",
@@ -282,7 +282,7 @@ describe("Inline Schema Options", () => {
 		it("should strip prefix from schema names when stripSchemaPrefix is set", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				stripSchemaPrefix: "Prefixed",
 			});
@@ -297,7 +297,7 @@ describe("Inline Schema Options", () => {
 		it("should not strip prefix when stripSchemaPrefix is not set", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -312,7 +312,7 @@ describe("Inline Schema Options", () => {
 		it("should include JSDoc comments when includeDescriptions is true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 				useDescribe: false,
@@ -328,7 +328,7 @@ describe("Inline Schema Options", () => {
 		it("should not include JSDoc comments when includeDescriptions is false", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: false,
 				useDescribe: false,
@@ -345,7 +345,7 @@ describe("Inline Schema Options", () => {
 		it("should have fewer JSDoc comments when includeDescriptions is false vs true", () => {
 			const generatorWithDescriptions = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 				useDescribe: false,
@@ -353,7 +353,7 @@ describe("Inline Schema Options", () => {
 
 			const generatorWithoutDescriptions = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: false,
 				useDescribe: false,
@@ -374,7 +374,7 @@ describe("Inline Schema Options", () => {
 		it("should use .describe() when useDescribe is true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 				useDescribe: true,
@@ -389,7 +389,7 @@ describe("Inline Schema Options", () => {
 		it("should not use .describe() when useDescribe is false", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 				useDescribe: false,
@@ -406,7 +406,7 @@ describe("Inline Schema Options", () => {
 		it("should apply defaultNullable and emptyObjectBehavior together for request schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 				emptyObjectBehavior: "strict",
@@ -422,7 +422,7 @@ describe("Inline Schema Options", () => {
 		it("should apply defaultNullable and emptyObjectBehavior together for response schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 				emptyObjectBehavior: "strict",
@@ -438,7 +438,7 @@ describe("Inline Schema Options", () => {
 		it("should apply all options together", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 				emptyObjectBehavior: "record",

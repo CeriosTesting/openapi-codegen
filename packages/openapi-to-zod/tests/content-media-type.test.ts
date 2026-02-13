@@ -10,7 +10,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate JSON content", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -36,7 +36,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate XML content", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -62,7 +62,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate YAML content", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -88,7 +88,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate HTML content", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -114,7 +114,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate plain text content", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -133,7 +133,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate base64-encoded XML", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -154,7 +154,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate base64-encoded JSON", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -177,7 +177,7 @@ describe("Content Media Type Expansion", () => {
 		it("should generate schema with multiple media type validations", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -195,7 +195,7 @@ describe("Content Media Type Expansion", () => {
 		it("should validate document with mixed content types", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("content-media-type.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
