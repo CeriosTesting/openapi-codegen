@@ -117,7 +117,7 @@ describe("Headers", () => {
 			expect(serviceOutput).not.toContain("GetUsersHeaderParams.parse");
 			expect(serviceOutput).not.toContain("SecureEndpointHeaderParams.parse");
 			expect(serviceOutput).not.toContain("getUsersHeaderParamsSchema.parse");
-			expect(serviceOutput).not.toContain("secureEndpointHeaderParamsSchema.parse");
+			expect(serviceOutput).not.toContain("SecureEndpointHeaderParamsSchema.parse");
 		});
 	});
 });

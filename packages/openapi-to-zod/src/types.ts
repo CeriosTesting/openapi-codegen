@@ -190,6 +190,80 @@ export interface OpenApiGeneratorOptions extends BaseGeneratorOptions {
 	 * @default "z.iso.datetime()" (requires Z suffix per ISO 8601)
 	 */
 	customDateTimeFormatRegex?: string | RegExp;
+
+	/**
+	 * Output path for Zod schemas when using separate type/schema files.
+	 *
+	 * When specified:
+	 * - TypeScript types are generated to `outputTypes` (using @cerios/openapi-to-typescript)
+	 * - Zod schemas are generated to `outputZodSchemas` with explicit type annotations
+	 *
+	 * This approach solves "Type instantiation is excessively deep" errors that occur
+	 * with very large or deeply nested schemas when using `z.infer<typeof schema>`.
+	 *
+	 * Instead of generating:
+	 * ```typescript
+	 * export const userSchema = z.object({ ... });
+	 * export type User = z.infer<typeof userSchema>; // Can cause TS errors
+	 * ```
+	 *
+	 * Generates two files:
+	 * ```typescript
+	 * // types.ts
+	 * export type User = { ... };
+	 *
+	 * // schemas.ts
+	 * import type { User } from './types';
+	 * export const userSchema: z.ZodType<User> = z.object({ ... });
+	 * ```
+	 *
+	 * @example
+	 * ```typescript
+	 * {
+	 *   input: 'openapi.yaml',
+	 *   outputTypes: 'src/generated/types.ts',
+	 *   outputZodSchemas: 'src/generated/schemas.ts'
+	 * }
+	 * ```
+	 */
+	outputZodSchemas?: string;
+
+	/**
+	 * Format for generating enums in TypeScript types (when using outputZodSchemas)
+	 * - 'union': Generate union of string literals
+	 * - 'const-object': Generate const object with derived type (default)
+	 *
+	 * This option is passed to @cerios/openapi-to-typescript when generating types.
+	 *
+	 * @default 'const-object'
+	 */
+	enumFormat?: "union" | "const-object";
+
+	/**
+	 * Complexity threshold for switching from type annotation (`:`) to double assertion (`as unknown as`)
+	 * in generated z.ZodType<T> declarations (only applies when outputZodSchemas is used).
+	 *
+	 * - When not set or 0: Always use annotation syntax `: z.ZodType<T>`
+	 * - When set to a positive number: Use double assertion `as unknown as z.ZodType<T>` for schemas
+	 *   with complexity >= threshold, annotation syntax for simpler schemas
+	 *
+	 * Type annotation (`:`) provides full TypeScript type checking but can cause
+	 * "Type instantiation is excessively deep" errors on very large/complex schemas.
+	 * Double assertion via `unknown` completely bypasses TypeScript's structural checking,
+	 * ensuring compilation even for extremely large schemas.
+	 *
+	 * Complexity is calculated as: properties + (nested levels * 10) + (array/union members * 2)
+	 *
+	 * @example
+	 * // Always use annotation (default, safest)
+	 * typeAssertionThreshold: 0
+	 *
+	 * // Use double assertion for complex schemas (when experiencing TS depth errors)
+	 * typeAssertionThreshold: 100
+	 *
+	 * @default 0 (always use annotation)
+	 */
+	typeAssertionThreshold?: number;
 }
 
 /**
@@ -200,13 +274,14 @@ export interface ConfigFile {
 	 * Global default options applied to all specifications
 	 * Can be overridden by individual specification configurations
 	 */
-	defaults?: Partial<Omit<OpenApiGeneratorOptions, "input" | "outputTypes">>;
+	defaults?: Partial<Omit<OpenApiGeneratorOptions, "input" | "outputTypes" | "outputZodSchemas">>;
 
 	/**
 	 * Array of OpenAPI specifications to process
 	 * Each specification must provide `input` and at least one of:
-	 * - `outputTypes` (preferred)
-	 * - `output` (deprecated alias)
+	 * - `outputTypes` (preferred) - generates combined types+schemas OR just types (when outputZodSchemas is used)
+	 * - `output` (deprecated alias for outputTypes)
+	 * - `outputZodSchemas` (optional) - when specified, schemas go here with z.ZodType<TypeAlias> syntax
 	 */
 	specs: (Omit<OpenApiGeneratorOptions, "outputTypes"> & {
 		outputTypes?: string;

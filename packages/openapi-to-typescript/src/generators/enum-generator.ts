@@ -11,6 +11,7 @@ export interface EnumGeneratorOptions {
 	format: EnumFormat;
 	prefix?: string;
 	suffix?: string;
+	nullable?: boolean;
 }
 
 export interface EnumGeneratorResult {
@@ -26,19 +27,60 @@ export function generateEnum(
 	values: (string | number | boolean)[],
 	options: EnumGeneratorOptions
 ): EnumGeneratorResult {
-	const { format, prefix, suffix } = options;
+	const { format, prefix, suffix, nullable } = options;
 	const typeName = applyFormatting(name, prefix, suffix);
 
+	let result: EnumGeneratorResult;
 	switch (format) {
 		case "enum":
-			return generateTsEnum(typeName, values);
+			result = generateTsEnum(typeName, values);
+			break;
 		case "union":
-			return generateUnion(typeName, values);
+			result = generateUnion(typeName, values);
+			break;
 		case "const-object":
-			return generateConstObject(typeName, values);
+			result = generateConstObject(typeName, values);
+			break;
 		default:
-			return generateUnion(typeName, values);
+			result = generateUnion(typeName, values);
 	}
+
+	// Add | null to the type if nullable
+	if (nullable) {
+		result.code = addNullableToTypeCode(result.code, typeName);
+	}
+
+	return result;
+}
+
+/**
+ * Add | null to the type declaration in the generated code
+ */
+function addNullableToTypeCode(code: string, typeName: string): string {
+	// Handle union types: export type TypeName = "a" | "b";
+	// -> export type TypeName = "a" | "b" | null;
+	const unionPattern = new RegExp(`(export type ${typeName} = )([^;]+)(;)`);
+	if (unionPattern.test(code)) {
+		return code.replace(unionPattern, `$1$2 | null$3`);
+	}
+
+	// Handle const-object: export type TypeName = (typeof TypeName)[keyof typeof TypeName];
+	// -> export type TypeName = (typeof TypeName)[keyof typeof TypeName] | null;
+	const constObjectTypePattern = new RegExp(
+		`(export type ${typeName} = \\(typeof ${typeName}\\)\\[keyof typeof ${typeName}\\])(;)`
+	);
+	if (constObjectTypePattern.test(code)) {
+		return code.replace(constObjectTypePattern, `$1 | null$2`);
+	}
+
+	// Handle TS enum - enums can't directly include null in their declaration,
+	// so we add a nullable type alias that users can use for nullable type annotations
+	const enumPattern = /^export enum /;
+	if (enumPattern.test(code)) {
+		return `${code}\n/** Nullable version of ${typeName} enum */\nexport type ${typeName}Nullable = ${typeName} | null;`;
+	}
+
+	return code;
 }
 
 /**

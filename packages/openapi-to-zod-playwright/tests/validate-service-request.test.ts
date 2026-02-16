@@ -9,6 +9,7 @@ describe("validateServiceRequest option", () => {
 		it("should NOT generate request validation code", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 			});
@@ -33,6 +34,7 @@ describe("validateServiceRequest option", () => {
 		it("should still validate responses", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 			});
@@ -48,6 +50,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for query parameters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -63,6 +66,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for header parameters", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -78,6 +82,7 @@ describe("validateServiceRequest option", () => {
 		it("should generate validation code for required request body", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -88,16 +93,17 @@ describe("validateServiceRequest option", () => {
 			expect(output).toContain("// Validate request body");
 			expect(output).toContain("createUserRequestSchema.parseAsync(options.data)");
 
-			// Check the postApiUsers method specifically - required body should not have if check
-			const postApiUsersMethod = output.match(/async postApiUsers[\s\S]*?^\t\}/m)?.[0] || "";
-			expect(postApiUsersMethod).toContain("createUserRequestSchema.parseAsync(options.data)");
+			// Check the createUser method specifically - required body should not have if check
+			const createUserMethod = output.match(/async createUser[\s\S]*?^\t\}/m)?.[0] || "";
+			expect(createUserMethod).toContain("createUserRequestSchema.parseAsync(options.data)");
 			// The validation should be direct, not wrapped in if
-			expect(postApiUsersMethod).not.toMatch(/if \(options\?\.data[\s\S]*createUserRequestSchema\.parseAsync/);
+			expect(createUserMethod).not.toMatch(/if \(options\?\.data[\s\S]*createUserRequestSchema\.parseAsync/);
 		});
 
 		it("should generate validation code for optional request body with if check", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -112,14 +118,15 @@ describe("validateServiceRequest option", () => {
 		it("should NOT generate validation for inline schemas (no $ref)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
 			const output = generator.generateServiceString();
 
-			// postApiNoSchemaBody uses inline schema - should not have request body validation
-			const noSchemaBodyMethod = output.match(/async postApiNoSchemaBody[\s\S]*?^\t\}/m)?.[0] || "";
+			// noSchemaBody uses inline schema - should not have request body validation
+			const noSchemaBodyMethod = output.match(/async noSchemaBody[\s\S]*?^\t\}/m)?.[0] || "";
 
 			// Should NOT have body validation since there's no $ref schema
 			expect(noSchemaBodyMethod).not.toContain("Schema.parse(options.data)");
@@ -128,14 +135,15 @@ describe("validateServiceRequest option", () => {
 		it("should validate all inputs for endpoint with path, query, header, and body", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
 			const output = generator.generateServiceString();
 
-			// putApiUsersByUserId has all types of inputs
-			const updateUserMethod = output.match(/async putApiUsersByUserId[\s\S]*?^\t\}/m)?.[0] || "";
+			// updateUser has all types of inputs
+			const updateUserMethod = output.match(/async updateUser[\s\S]*?^\t\}/m)?.[0] || "";
 
 			// Should have query param validation
 			expect(updateUserMethod).toContain("// Validate query parameters");
@@ -151,13 +159,14 @@ describe("validateServiceRequest option", () => {
 
 			// Validation should come BEFORE the client call
 			const validationIndex = updateUserMethod.indexOf("// Validate query parameters");
-			const clientCallIndex = updateUserMethod.indexOf("await this._client.putApiUsersByUserId");
+			const clientCallIndex = updateUserMethod.indexOf("await this._client.updateUser");
 			expect(validationIndex).toBeLessThan(clientCallIndex);
 		});
 
 		it("should add schema imports for validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "test-client.ts",
 				outputService: "test-service.ts",
@@ -185,6 +194,7 @@ describe("validateServiceRequest option", () => {
 		it("should use correct schema names with prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -200,6 +210,7 @@ describe("validateServiceRequest option", () => {
 		it("should use correct schema names with suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -219,6 +230,7 @@ describe("validateServiceRequest option", () => {
 			// For now, test that the option is passed through correctly
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
@@ -235,18 +247,19 @@ describe("validateServiceRequest option", () => {
 		it("should validate inputs before making the API call", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: schemaPath,
+				useOperationId: true,
 				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 			});
 			const output = generator.generateServiceString();
 
-			// Get the postApiUsers method (create user)
-			const postApiUsersMethod = output.match(/async postApiUsers[\s\S]*?^\t\}/m)?.[0] || "";
+			// Get the createUser method
+			const createUserMethod = output.match(/async createUser[\s\S]*?^\t\}/m)?.[0] || "";
 
 			// Find positions of validation and client call
-			const bodyValidationPos = postApiUsersMethod.indexOf("createUserRequestSchema.parse");
-			const clientCallPos = postApiUsersMethod.indexOf("await this._client.postApiUsers");
+			const bodyValidationPos = createUserMethod.indexOf("createUserRequestSchema.parse");
+			const clientCallPos = createUserMethod.indexOf("await this._client.createUser");
 
 			// Validation should come before client call
 			expect(bodyValidationPos).toBeGreaterThan(-1);

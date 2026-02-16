@@ -39,7 +39,9 @@ export interface PlaywrightOperationFilters extends OperationFilters {
  * Generator options for Playwright client generation
  *
  * File Splitting Architecture:
- * - Schemas (output): Always generated, contains Zod schemas and TypeScript types
+ * - Types (outputTypes): TypeScript type definitions
+ * - Schemas (outputZodSchemas): Optional, Zod schemas with z.ZodType<TypeAlias> syntax (when specified)
+ * - Combined (outputTypes without outputZodSchemas): Zod schemas + inferred TypeScript types
  * - Client (outputClient): Playwright API passthrough wrapper
  * - Service (outputService): Optional, type-safe validation layer
  */
@@ -216,17 +218,21 @@ export interface PlaywrightConfigFile {
 	/**
 	 * Global default options applied to all specs
 	 * Can be overridden by individual spec configurations
-	 * Note: File paths (input, outputTypes/output, outputClient, outputService) must be specified per-spec
+	 * Note: File paths (input, outputTypes/output, outputZodSchemas, outputClient, outputService) must be specified per-spec
 	 */
 	defaults?: Partial<
-		Omit<OpenApiPlaywrightGeneratorOptions, "input" | "outputTypes" | "outputClient" | "outputService">
+		Omit<
+			OpenApiPlaywrightGeneratorOptions,
+			"input" | "outputTypes" | "outputZodSchemas" | "outputClient" | "outputService"
+		>
 	>;
 
 	/**
 	 * Array of OpenAPI specifications to process
 	 * Each spec must have input, outputClient, and at least one of:
-	 * - `outputTypes` (preferred)
-	 * - `output` (deprecated alias)
+	 * - `outputTypes` (preferred) - generates types (and schemas when outputZodSchemas not set)
+	 * - `output` (deprecated alias for outputTypes)
+	 * - `outputZodSchemas` (optional) - when specified, schemas go here with z.ZodType<TypeAlias> syntax
 	 */
 	specs: (Omit<OpenApiPlaywrightGeneratorOptions, "outputTypes"> & {
 		outputTypes?: string;

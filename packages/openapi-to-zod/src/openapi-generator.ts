@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, normalize } from "node:path";
+import { dirname, normalize, relative } from "node:path";
 import {
 	analyzeSchemaUsage,
 	ConfigurationError,
@@ -24,6 +24,7 @@ import {
 	toPascalCase,
 	validateFilters,
 } from "@cerios/openapi-core";
+import { TypeScriptGenerator } from "@cerios/openapi-to-typescript";
 import { minimatch } from "minimatch";
 import { generateEnum } from "./generators/enum-generator";
 import { generateJSDoc } from "./generators/jsdoc-generator";
@@ -51,6 +52,8 @@ export class OpenApiGenerator {
 	private allOfConflictCount = 0;
 	/** Track schemas involved in circular dependency chains */
 	private circularDependencies: Set<string> = new Set();
+	/** Separate schemas mode - when outputZodSchemas is specified */
+	private separateSchemasMode: boolean;
 
 	constructor(options: OpenApiGeneratorOptions) {
 		// Validate input path early
@@ -58,10 +61,16 @@ export class OpenApiGenerator {
 			throw new ConfigurationError("Input path is required", { providedOptions: options });
 		}
 
+		// Determine if we're in separate schemas mode
+		this.separateSchemasMode = Boolean(options.outputZodSchemas);
+
 		this.options = {
 			mode: options.mode || "normal",
 			input: options.input,
 			outputTypes: options.outputTypes,
+			outputZodSchemas: options.outputZodSchemas,
+			enumFormat: options.enumFormat,
+			typeAssertionThreshold: options.typeAssertionThreshold ?? 0,
 			includeDescriptions: options.includeDescriptions ?? true,
 			useDescribe: options.useDescribe ?? false,
 			defaultNullable: options.defaultNullable ?? false,
@@ -123,11 +132,17 @@ export class OpenApiGenerator {
 
 	/**
 	 * Generate schemas as a string (without writing to file)
+	 * When separateSchemasMode is active, generates Zod schemas with explicit type annotations
 	 * @returns The generated TypeScript code as a string
 	 */
 	generateString(): string {
 		if (!this.spec.components?.schemas) {
 			throw new SpecValidationError("No schemas found in OpenAPI spec", { filePath: this.options.input });
+		}
+
+		// When outputZodSchemas is specified, generate Zod schemas with explicit type annotations
+		if (this.separateSchemasMode) {
+			return this.generateSeparateSchemasString();
 		}
 
 		// Pre-analyze schemas to detect circular dependencies BEFORE generation
@@ -214,14 +229,294 @@ export class OpenApiGenerator {
 	}
 
 	/**
-	 * Generate the complete output file
+	 * Generate the complete output file(s)
+	 * When separateSchemasMode is active, generates both types and schemas files
 	 */
 	generate(): void {
-		const output = this.generateString();
-		const normalizedOutput = normalize(this.options.outputTypes);
-		this.ensureDirectoryExists(normalizedOutput);
-		writeFileSync(normalizedOutput, output);
-		console.log(`  ✓ Generated ${normalizedOutput}`);
+		if (this.separateSchemasMode) {
+			// Generate both types and schemas files
+			const typesContent = this.generateTypesString();
+			const schemasContent = this.generateString();
+
+			// Write types file
+			const normalizedTypes = normalize(this.options.outputTypes);
+			this.ensureDirectoryExists(normalizedTypes);
+			writeFileSync(normalizedTypes, typesContent, "utf-8");
+			console.log(`  ✓ Generated ${normalizedTypes}`);
+
+			// Write schemas file (outputZodSchemas is guaranteed by separateSchemasMode check)
+			const outputZodSchemas = this.options.outputZodSchemas as string;
+			const normalizedSchemas = normalize(outputZodSchemas);
+			this.ensureDirectoryExists(normalizedSchemas);
+			writeFileSync(normalizedSchemas, schemasContent, "utf-8");
+			console.log(`  ✓ Generated ${normalizedSchemas}`);
+		} else {
+			// Original behavior - single file with z.infer
+			const output = this.generateString();
+			const normalizedOutput = normalize(this.options.outputTypes);
+			this.ensureDirectoryExists(normalizedOutput);
+			writeFileSync(normalizedOutput, output);
+			console.log(`  ✓ Generated ${normalizedOutput}`);
+		}
+	}
+
+	/**
+	 * Generate Zod schemas with explicit type annotations (for outputZodSchemas mode)
+	 * Generates schemas like: `export const userSchema: z.ZodType<User> = z.object({...})`
+	 * @returns The generated Zod schemas TypeScript code
+	 */
+	private generateSeparateSchemasString(): string {
+		// Guard: schemas must exist (checked in generateString before calling this)
+		const schemas = this.spec.components?.schemas;
+		if (!schemas) {
+			return "";
+		}
+
+		// Guard: outputZodSchemas must exist (we're in separateSchemasMode)
+		const outputZodSchemas = this.options.outputZodSchemas as string;
+
+		// Pre-analyze schemas to detect circular dependencies
+		this.analyzeCircularDependencies();
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
+
+		// Generate schemas and track dependencies
+		for (const [name, schema] of Object.entries(schemas)) {
+			if (this.options.operationFilters && this.schemaUsageMap.size > 0 && !this.schemaUsageMap.has(name)) {
+				continue;
+			}
+			this.generateComponentSchema(name, schema);
+		}
+
+		// Generate query and header parameter schemas
+		this.generateQueryParameterSchemas();
+		this.generateHeaderParameterSchemas();
+
+		// Validate filters
+		validateFilters(this.filterStats, this.options.operationFilters);
+
+		// Sort schemas
+		const orderedSchemaNames = this.topologicalSort();
+
+		// Build output
+		const output: string[] = ["// Auto-generated by @cerios/openapi-to-zod", "// Do not edit this file manually", ""];
+
+		// Add statistics
+		if (this.options.showStats === true) {
+			output.push(...this.generateStats());
+			output.push("");
+		}
+
+		// Add Zod import
+		output.push('import { z } from "zod";');
+
+		// Calculate relative import path for types
+		const typesImportPath = this.calculateRelativeImportPath(outputZodSchemas, this.options.outputTypes);
+
+		// Collect all type names that need to be imported
+		const typeNames: string[] = [];
+		for (const name of orderedSchemaNames) {
+			const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+			const typeName = toPascalCase(strippedName);
+			typeNames.push(typeName);
+		}
+
+		// Add type imports
+		if (typeNames.length > 0) {
+			output.push(`import type { ${typeNames.join(", ")} } from "${typesImportPath}";`);
+		}
+		output.push("");
+
+		// Add schemas with explicit type annotations
+		output.push("// Schemas");
+		for (const name of orderedSchemaNames) {
+			const schemaCode = this.schemas.get(name);
+			if (schemaCode) {
+				const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+				const typeName = toPascalCase(strippedName);
+				const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
+
+				// Pass schema definition for complexity calculation (may be undefined for query/header schemas)
+				const schemaDefinition = schemas[name] as Record<string, unknown> | undefined;
+				const transformedCode = this.addExplicitTypeAnnotation(schemaCode, schemaName, typeName, schemaDefinition);
+				output.push(transformedCode);
+				output.push("");
+			}
+		}
+
+		return output.join("\n");
+	}
+
+	/**
+	 * Generate TypeScript types as a string (for outputZodSchemas mode)
+	 * Uses @cerios/openapi-to-typescript internally
+	 * @returns The generated TypeScript types code
+	 */
+	generateTypesString(): string {
+		const tsGenerator = new TypeScriptGenerator({
+			input: this.options.input,
+			outputTypes: this.options.outputTypes,
+			includeDescriptions: this.options.includeDescriptions,
+			defaultNullable: this.options.defaultNullable,
+			prefix: this.options.prefix,
+			suffix: this.options.suffix,
+			stripSchemaPrefix: this.options.stripSchemaPrefix,
+			stripPathPrefix: this.options.stripPathPrefix,
+			operationFilters: this.options.operationFilters,
+			showStats: this.options.showStats,
+			enumFormat: this.options.enumFormat ?? "const-object",
+		});
+
+		return tsGenerator.generateString();
+	}
+
+	/**
+	 * Add explicit type annotation to a schema declaration
+	 * Transforms: `export const userSchema = z.object({...})`
+	 * To: `export const userSchema: z.ZodType<User> = z.object({...})` (annotation)
+	 * Or: `export const userSchema = z.object({...}) as unknown as z.ZodType<User>` (double assertion)
+	 *
+	 * Uses double assertion via `unknown` when typeAssertionThreshold is set and schema complexity
+	 * meets or exceeds the threshold. This completely bypasses TypeScript's structural checking
+	 * to avoid "Type instantiation is excessively deep" errors on very large schemas.
+	 *
+	 * Also removes any `export type X = z.infer<...>` lines since types
+	 * are imported from the separate types file.
+	 */
+	private addExplicitTypeAnnotation(
+		schemaCode: string,
+		schemaName: string,
+		typeName: string,
+		schemaDefinition?: Record<string, unknown>
+	): string {
+		// Remove any z.infer type exports since types come from the types file
+		const code = schemaCode.replace(/\nexport type \w+ = z\.infer<typeof \w+>;/g, "");
+
+		// Handle JSDoc comments - they should come before the export
+		const jsdocMatch = code.match(/^(\/\*\*[\s\S]*?\*\/\n)?/);
+		const jsdoc = jsdocMatch?.[1] || "";
+		const codeWithoutJsdoc = code.slice(jsdoc.length);
+
+		// Determine if we should use assertion syntax based on complexity threshold
+		const threshold = this.options.typeAssertionThreshold ?? 0;
+		const useAssertion =
+			threshold > 0 && schemaDefinition && this.calculateSchemaComplexity(schemaDefinition) >= threshold;
+
+		// Standard pattern - replace export with typed version
+		// This works for both regular schemas and enum schemas
+		const pattern = new RegExp(`export const ${schemaName} = `);
+		if (pattern.test(codeWithoutJsdoc)) {
+			let schemaBody = codeWithoutJsdoc.replace(pattern, "");
+			if (useAssertion) {
+				// Remove trailing semicolon for assertion syntax
+				schemaBody = schemaBody.replace(/;$/, "");
+				// Double assertion via unknown: completely bypasses TypeScript's structural checking
+				// This avoids "Type instantiation is excessively deep" even for very large schemas
+				return `${jsdoc}export const ${schemaName} = ${schemaBody} as unknown as z.ZodType<${typeName}>;`;
+			}
+			// Annotation syntax: export const xSchema: z.ZodType<X> = z.object({...})
+			return `${jsdoc}export const ${schemaName}: z.ZodType<${typeName}> = ${schemaBody}`;
+		}
+
+		return code;
+	}
+
+	/**
+	 * Calculate the complexity of a schema for threshold comparison
+	 * Complexity formula: properties + (nested levels * 10) + (array/union members * 2)
+	 */
+	private calculateSchemaComplexity(schema: Record<string, unknown>, depth = 0): number {
+		if (!schema || typeof schema !== "object") {
+			return 0;
+		}
+
+		let complexity = depth * 10; // Base cost for nesting
+
+		// Handle $ref
+		if (schema.$ref) {
+			// Referenced schemas contribute fixed complexity (avoid infinite recursion)
+			return complexity + 5;
+		}
+
+		// Count properties
+		const properties = schema.properties as Record<string, unknown> | undefined;
+		if (properties && typeof properties === "object") {
+			const propCount = Object.keys(properties).length;
+			complexity += propCount;
+
+			// Recursively calculate nested property complexity
+			for (const prop of Object.values(properties)) {
+				if (prop && typeof prop === "object") {
+					complexity += this.calculateSchemaComplexity(prop as Record<string, unknown>, depth + 1);
+				}
+			}
+		}
+
+		// Handle allOf
+		const allOf = schema.allOf as unknown[] | undefined;
+		if (Array.isArray(allOf)) {
+			complexity += allOf.length * 2;
+			for (const subSchema of allOf) {
+				if (subSchema && typeof subSchema === "object") {
+					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				}
+			}
+		}
+
+		// Handle oneOf
+		const oneOf = schema.oneOf as unknown[] | undefined;
+		if (Array.isArray(oneOf)) {
+			complexity += oneOf.length * 2;
+			for (const subSchema of oneOf) {
+				if (subSchema && typeof subSchema === "object") {
+					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				}
+			}
+		}
+
+		// Handle anyOf
+		const anyOf = schema.anyOf as unknown[] | undefined;
+		if (Array.isArray(anyOf)) {
+			complexity += anyOf.length * 2;
+			for (const subSchema of anyOf) {
+				if (subSchema && typeof subSchema === "object") {
+					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				}
+			}
+		}
+
+		// Handle array items
+		const items = schema.items as Record<string, unknown> | undefined;
+		if (items && typeof items === "object") {
+			complexity += 2; // Array cost
+			complexity += this.calculateSchemaComplexity(items, depth + 1);
+		}
+
+		// Handle additionalProperties
+		const additionalProps = schema.additionalProperties as Record<string, unknown> | undefined;
+		if (additionalProps && typeof additionalProps === "object") {
+			complexity += 2; // Record cost
+			complexity += this.calculateSchemaComplexity(additionalProps, depth + 1);
+		}
+
+		return complexity;
+	}
+
+	/**
+	 * Calculate relative import path from schema file to types file
+	 */
+	private calculateRelativeImportPath(fromPath: string, toPath: string): string {
+		const fromDir = dirname(normalize(fromPath));
+		const toFile = normalize(toPath).replace(/\.[tj]s$/, ""); // Remove extension
+
+		let relativePath = relative(fromDir, toFile);
+
+		// Ensure path starts with ./ or ../
+		if (!relativePath.startsWith(".") && !relativePath.startsWith("..")) {
+			relativePath = `./${relativePath}`;
+		}
+
+		// Normalize path separators for cross-platform compatibility
+		return relativePath.replace(/\\/g, "/");
 	}
 
 	/**

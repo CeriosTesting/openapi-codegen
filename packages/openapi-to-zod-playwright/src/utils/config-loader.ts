@@ -45,6 +45,9 @@ const PlaywrightSpecificOptionsSchema = z.strictObject({
 	fallbackContentTypeParsing: z.enum(["text", "json", "body"]).optional(),
 	zodErrorFormat: ZodErrorFormatSchema.optional(),
 	customDateTimeFormatRegex: z.union([RegexPatternSchema, z.instanceof(RegExp)]).optional(),
+	outputZodSchemas: z.string().optional(),
+	enumFormat: z.enum(["union", "const-object"]).optional(),
+	typeAssertionThreshold: z.number().int().gte(0).optional(),
 });
 
 /**
@@ -62,10 +65,21 @@ const OpenApiPlaywrightGeneratorOptionsSchema = BaseGeneratorOptionsSchema.omit(
 	.superRefine((spec, ctx) => {
 		const hasOutputTypes = Boolean(spec.outputTypes);
 		const hasOutput = Boolean(spec.output);
+		const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
 
-		if (!hasOutputTypes && !hasOutput) {
+		// When outputZodSchemas is specified, outputTypes is required for TypeScript types
+		if (hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: "custom",
+				path: ["outputTypes"],
+				message: "When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions.",
+			});
+		}
+
+		// Standard validation when outputZodSchemas is not used
+		if (!hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
+			ctx.addIssue({
+				code: "custom",
 				path: ["outputTypes"],
 				message: "Each spec must specify an output file path using 'outputTypes' (preferred) or deprecated 'output'.",
 			});
@@ -73,7 +87,7 @@ const OpenApiPlaywrightGeneratorOptionsSchema = BaseGeneratorOptionsSchema.omit(
 
 		if (hasOutputTypes && hasOutput && spec.outputTypes !== spec.output) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: "custom",
 				path: ["output"],
 				message: "Invalid configuration: 'outputTypes' and deprecated 'output' are both set but have different values.",
 			});
@@ -153,8 +167,17 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 		const output = spec.output;
 		const outputTypes = spec.outputTypes;
 		const resolvedOutputTypes = outputTypes ?? output;
+		const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
 
-		if (resolvedOutputTypes === undefined) {
+		// When outputZodSchemas is specified, outputTypes is required
+		if (hasOutputZodSchemas && resolvedOutputTypes === undefined) {
+			throw new Error(
+				"When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions."
+			);
+		}
+
+		// Standard validation when outputZodSchemas is not used
+		if (!hasOutputZodSchemas && resolvedOutputTypes === undefined) {
 			throw new Error("Each spec must define 'outputTypes' (preferred) or deprecated 'output'.");
 		}
 
@@ -188,12 +211,14 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			preferredContentTypes: defaults.preferredContentTypes,
 			fallbackContentTypeParsing: defaults.fallbackContentTypeParsing,
 			zodErrorFormat: defaults.zodErrorFormat,
+			enumFormat: defaults.enumFormat,
 			// outputClient and outputService are intentionally NOT inherited from defaults
 			// Each spec should define its own file paths
 
 			// Override with spec-specific values
 			...specWithoutDeprecatedOutput,
-			outputTypes: resolvedOutputTypes,
+			// resolvedOutputTypes is guaranteed to be defined by the validation checks above
+			outputTypes: resolvedOutputTypes as string,
 		};
 		return merged;
 	});

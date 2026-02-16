@@ -241,6 +241,7 @@ export class TypeScriptGenerator {
 				format: this.options.enumFormat ?? "union",
 				prefix: this.options.prefix,
 				suffix: this.options.suffix,
+				nullable: schema.nullable === true,
 			});
 
 			// Add JSDoc if descriptions are enabled
@@ -344,7 +345,12 @@ export class TypeScriptGenerator {
 		// Handle array types
 		if (schema.type === "array" && schema.items) {
 			const itemType = this.schemaToTypeString(schema.items, deps);
-			const code = `export type ${typeName} = ${itemType}[];`;
+			let arrayType = `${itemType}[]`;
+			// Handle nullable array type alias
+			if (schema.nullable) {
+				arrayType = `${arrayType} | null`;
+			}
+			const code = `export type ${typeName} = ${arrayType};`;
 
 			if (this.options.includeDescriptions && schema.description) {
 				return `/**\n * ${schema.description}\n */\n${code}`;
@@ -354,7 +360,11 @@ export class TypeScriptGenerator {
 		}
 
 		// Handle primitive type aliases
-		const typeStr = this.primitiveToTypeString(schema);
+		let typeStr = this.primitiveToTypeString(schema);
+		// Handle nullable primitive type alias
+		if (schema.nullable) {
+			typeStr = `${typeStr} | null`;
+		}
 		const code = `export type ${typeName} = ${typeStr};`;
 
 		if (this.options.includeDescriptions && schema.description) {
@@ -378,13 +388,10 @@ export class TypeScriptGenerator {
 
 		for (const [propName, propSchema] of Object.entries(schema.properties)) {
 			const isRequired = required.has(propName);
+			// schemaToTypeString now handles nullable internally
 			const typeStr = this.schemaToTypeString(propSchema, deps);
 
-			// Handle nullable
-			const isNullable = propSchema.nullable ?? this.options.defaultNullable;
-			const finalType = isNullable ? `${typeStr} | null` : typeStr;
-
-			const prop = formatTypeProperty(propName, finalType, isRequired);
+			const prop = formatTypeProperty(propName, typeStr, isRequired);
 
 			// Add JSDoc for property description
 			if (this.options.includeDescriptions && propSchema.description) {
@@ -401,66 +408,128 @@ export class TypeScriptGenerator {
 	 * Convert a schema to a TypeScript type string
 	 */
 	private schemaToTypeString(schema: OpenAPISchema, deps: Set<string>): string {
+		// Handle OpenAPI 3.1 type arrays like type: [string, null]
+		if (Array.isArray(schema.type)) {
+			const types = schema.type as string[];
+			const hasNull = types.includes("null");
+			const nonNullTypes = types.filter((t: string) => t !== "null");
+
+			if (nonNullTypes.length === 0) {
+				return "null";
+			}
+
+			// Generate type for each non-null type
+			const typeStrings = nonNullTypes.map((t: string) => {
+				const tempSchema = { ...schema, type: t };
+				return this.schemaToTypeString(tempSchema, deps);
+			});
+
+			const baseType = typeStrings.join(" | ");
+			return hasNull ? `${baseType} | null` : baseType;
+		}
+
 		// Handle $ref
 		if (schema.$ref) {
 			const refName = resolveRefName(schema.$ref);
 			deps.add(refName);
 			const strippedRef = stripSchemaPrefix(refName, this.options.stripSchemaPrefix);
-			return applyFormatting(strippedRef, this.options.prefix, this.options.suffix);
+			const typeName = applyFormatting(strippedRef, this.options.prefix, this.options.suffix);
+			// Handle nullable $ref (e.g., { $ref: '#/...', nullable: true })
+			if (schema.nullable) {
+				return `${typeName} | null`;
+			}
+			return typeName;
 		}
 
 		// Handle enum
 		if (schema.enum && Array.isArray(schema.enum)) {
-			return schema.enum.map(v => (typeof v === "string" ? `"${v}"` : String(v))).join(" | ");
+			const enumType = schema.enum.map(v => (typeof v === "string" ? `"${v}"` : String(v))).join(" | ");
+			// Handle nullable enum
+			if (schema.nullable) {
+				return `${enumType} | null`;
+			}
+			return enumType;
 		}
 
 		// Handle array
 		if (schema.type === "array" && schema.items) {
 			const itemType = this.schemaToTypeString(schema.items, deps);
-			return `${itemType}[]`;
+			const arrayType = `${itemType}[]`;
+			// Handle nullable array
+			if (schema.nullable) {
+				return `${arrayType} | null`;
+			}
+			return arrayType;
 		}
 
 		// Handle object
 		if (schema.type === "object" || schema.properties) {
+			let objectType: string;
 			if (schema.properties) {
 				const props: string[] = [];
 				const required = new Set(schema.required || []);
 				for (const [propName, propSchema] of Object.entries(schema.properties)) {
 					const isRequired = required.has(propName);
+					// schemaToTypeString handles nullable internally via recursion
 					const typeStr = this.schemaToTypeString(propSchema, deps);
 					props.push(formatTypeProperty(propName, typeStr, isRequired));
 				}
-				return `{ ${props.join("; ")} }`;
-			}
-			// Empty object or additionalProperties
-			if (schema.additionalProperties) {
+				objectType = `{ ${props.join("; ")} }`;
+			} else if (schema.additionalProperties) {
+				// additionalProperties
 				if (typeof schema.additionalProperties === "boolean") {
-					return "Record<string, unknown>";
+					objectType = "Record<string, unknown>";
+				} else {
+					const valueType = this.schemaToTypeString(schema.additionalProperties, deps);
+					objectType = `Record<string, ${valueType}>`;
 				}
-				const valueType = this.schemaToTypeString(schema.additionalProperties, deps);
-				return `Record<string, ${valueType}>`;
+			} else {
+				objectType = "Record<string, unknown>";
 			}
-			return "Record<string, unknown>";
+			// Handle nullable object
+			if (schema.nullable) {
+				return `${objectType} | null`;
+			}
+			return objectType;
 		}
 
 		// Handle allOf
 		if (schema.allOf && Array.isArray(schema.allOf)) {
 			const parts = schema.allOf.map(s => this.schemaToTypeString(s, deps));
-			return parts.join(" & ");
+			const baseType = parts.join(" & ");
+			// Handle nullable on allOf
+			if (schema.nullable) {
+				return `${baseType} | null`;
+			}
+			return baseType;
 		}
 
 		// Handle oneOf/anyOf
 		if (schema.oneOf && Array.isArray(schema.oneOf)) {
 			const parts = schema.oneOf.map(s => this.schemaToTypeString(s, deps));
-			return parts.join(" | ");
+			const baseType = parts.join(" | ");
+			// Handle nullable on oneOf
+			if (schema.nullable) {
+				return `${baseType} | null`;
+			}
+			return baseType;
 		}
 		if (schema.anyOf && Array.isArray(schema.anyOf)) {
 			const parts = schema.anyOf.map(s => this.schemaToTypeString(s, deps));
-			return parts.join(" | ");
+			const baseType = parts.join(" | ");
+			// Handle nullable on anyOf
+			if (schema.nullable) {
+				return `${baseType} | null`;
+			}
+			return baseType;
 		}
 
-		// Handle primitives
-		return this.primitiveToTypeString(schema);
+		// Handle primitives with nullable
+		const primitiveType = this.primitiveToTypeString(schema);
+		if (schema.nullable) {
+			return `${primitiveType} | null`;
+		}
+		return primitiveType;
 	}
 
 	/**
@@ -725,8 +794,12 @@ export class TypeScriptGenerator {
 				}
 
 				const responses = operation.responses;
-				const statusCodes = Object.keys(responses).filter(code => code !== "default");
-				const hasMultipleStatuses = statusCodes.length > 1;
+				// Only count success status codes (2xx) for hasMultipleStatuses determination
+				const successStatusCodes = Object.keys(responses).filter(code => {
+					const codeNum = Number.parseInt(code, 10);
+					return codeNum >= 200 && codeNum < 300;
+				});
+				const hasMultipleStatuses = successStatusCodes.length > 1;
 
 				for (const [statusCode, response] of Object.entries(responses)) {
 					const resp = response as { content?: Record<string, { schema?: OpenAPISchema }> };

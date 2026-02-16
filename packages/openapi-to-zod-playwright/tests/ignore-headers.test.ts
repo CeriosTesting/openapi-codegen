@@ -17,9 +17,10 @@ describe("Ignore Headers Feature", () => {
 			const output = generator.generateSchemasString();
 
 			// Should contain header parameter schemas
+			// With useOperationId: false, names are derived from path: /users GET -> GetUsers, /secure POST -> PostSecure
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("export const getUsersHeaderParamsSchema");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should not generate schemas for ignored headers with exact match", () => {
@@ -38,8 +39,8 @@ describe("Ignore Headers Feature", () => {
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).not.toContain("Authorization");
 
-			// SecureEndpoint has Content-Type remaining, so schema should be generated
-			expect(output).toContain("SecureEndpointHeaderParams");
+			// SecureEndpoint (POST /secure with useOperationId=false -> PostSecure) has Content-Type remaining
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
@@ -77,7 +78,7 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint has Authorization and Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should be case-insensitive when matching header names", () => {
@@ -98,7 +99,7 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint should have only Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
@@ -120,7 +121,7 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint should have Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
@@ -137,7 +138,7 @@ describe("Ignore Headers Feature", () => {
 
 			// Should generate all header schemas
 			expect(output).toContain("GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 	});
 
@@ -156,7 +157,7 @@ describe("Ignore Headers Feature", () => {
 			// Should import and use header parameter types
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("headers?: GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should exclude ignored headers from service method signatures", () => {
@@ -175,9 +176,9 @@ describe("Ignore Headers Feature", () => {
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("headers?: GetUsersHeaderParams");
 
-			// Should still have SecureEndpointHeaderParams (has Content-Type)
-			expect(output).toContain("SecureEndpointHeaderParams");
-			expect(output).toContain("headers?: SecureEndpointHeaderParams");
+			// Should still have PostSecureHeaderParams (has Content-Type)
+			expect(output).toContain("PostSecureHeaderParams");
+			expect(output).toContain("headers?: PostSecureHeaderParams");
 		});
 
 		it("should not include any header parameters when all are ignored", () => {
@@ -357,8 +358,8 @@ describe("Ignore Headers Feature", () => {
 
 			// postSecure has Content-Type remaining after filtering Authorization
 			expect(output).toContain("async postSecure(");
-			// Content-Type remains, so SecureEndpointHeaderParams should still be generated
-			expect(output).toContain("SecureEndpointHeaderParams");
+			// Content-Type remains, so PostSecureHeaderParams should still be generated
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should handle complex glob patterns", () => {
@@ -374,7 +375,7 @@ describe("Ignore Headers Feature", () => {
 
 			// GetUsers: All headers filtered (Authorization, X-API-Key, X-Request-ID)
 			// SecureEndpoint: Authorization filtered, but Content-Type remains
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 			expect(output).not.toContain("GetUsersHeaderParams");
 		});
@@ -392,7 +393,7 @@ describe("Ignore Headers Feature", () => {
 
 			// Should generate all headers normally
 			expect(output).toContain("GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should preserve other parameters when headers are filtered", () => {

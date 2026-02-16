@@ -242,4 +242,110 @@ describe("Enum Generator", () => {
 			});
 		});
 	});
+
+	describe("nullable option", () => {
+		describe("with union format", () => {
+			it("should add | null to union type", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "union",
+					nullable: true,
+				});
+				expect(result.code).toBe('export type Status = "active" | "inactive" | null;');
+			});
+
+			it("should not add | null when nullable is false", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "union",
+					nullable: false,
+				});
+				expect(result.code).toBe('export type Status = "active" | "inactive";');
+				expect(result.code).not.toContain("| null");
+			});
+
+			it("should handle single value union with nullable", () => {
+				const result = generateEnum("Single", ["only"], {
+					format: "union",
+					nullable: true,
+				});
+				expect(result.code).toBe('export type Single = "only" | null;');
+			});
+		});
+
+		describe("with const-object format", () => {
+			it("should add | null to const-object type extraction", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "const-object",
+					nullable: true,
+				});
+				expect(result.code).toContain("export const Status = {");
+				expect(result.code).toContain('Active: "active"');
+				expect(result.code).toContain("export type Status = (typeof Status)[keyof typeof Status] | null;");
+			});
+
+			it("should not add | null when nullable is false", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "const-object",
+					nullable: false,
+				});
+				expect(result.code).toContain("export type Status = (typeof Status)[keyof typeof Status];");
+				expect(result.code).not.toContain("| null");
+			});
+		});
+
+		describe("with enum format", () => {
+			it("should add a nullable type alias for TypeScript enums", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "enum",
+					nullable: true,
+				});
+				// TypeScript enums can't include null directly, so we add a type alias
+				expect(result.code).toContain("export enum Status {");
+				expect(result.code).toContain('Active = "active"');
+				expect(result.code).toContain("export type StatusNullable = Status | null;");
+			});
+
+			it("should not add nullable type alias when nullable is false", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "enum",
+					nullable: false,
+				});
+				expect(result.code).toContain("export enum Status {");
+				expect(result.code).not.toContain("StatusNullable");
+				expect(result.code).not.toContain("| null");
+			});
+
+			it("should handle nullable enum with prefix and suffix", () => {
+				const result = generateEnum("Status", ["active", "inactive"], {
+					format: "enum",
+					nullable: true,
+					prefix: "Api",
+					suffix: "Enum",
+				});
+				expect(result.code).toContain("export enum ApiStatusEnum {");
+				expect(result.code).toContain("export type ApiStatusEnumNullable = ApiStatusEnum | null;");
+			});
+
+			it("should include JSDoc comment for nullable type alias", () => {
+				const result = generateEnum("Status", ["active"], {
+					format: "enum",
+					nullable: true,
+				});
+				expect(result.code).toContain("/** Nullable version of Status enum */");
+			});
+		});
+
+		describe("with boolean enums (fallback to union)", () => {
+			it("should handle nullable boolean enum", () => {
+				const result = generateEnum("BooleanEnum", [true, false], {
+					format: "enum",
+					nullable: true,
+				});
+				// Boolean enums fall back to union format
+				expect(result.code).toContain("export type BooleanEnum =");
+				expect(result.code).toContain("true");
+				expect(result.code).toContain("false");
+				expect(result.code).toContain("| null");
+			});
+		});
+	});
 });

@@ -60,6 +60,7 @@
 	},
 	"dependencies": {
 		"@cerios/openapi-core": "workspace:*",
+		"@cerios/openapi-to-typescript": "workspace:*",
 		"@cerios/openapi-to-zod": "workspace:*",
 		"commander": "^14.0.2",
 		"cosmiconfig": "^9.0.0",

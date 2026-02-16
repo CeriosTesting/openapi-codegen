@@ -51,6 +51,8 @@ export interface InlineSchemaGeneratorOptions {
 	includeDescriptions?: boolean;
 	useDescribe?: boolean;
 	emptyObjectBehavior?: "strict" | "loose" | "record";
+	/** When true, skip generating z.infer type exports (used in separate schemas mode) */
+	skipTypeInference?: boolean;
 }
 
 /**
@@ -111,7 +113,8 @@ function generateInlineSchema(
 
 		return {
 			schemaCode: `export const ${schemaVarName} = ${zodCode};`,
-			typeCode: `export type ${typeName} = z.infer<typeof ${schemaVarName}>;`,
+			// Skip type inference when in separate schemas mode (types come from separate file)
+			typeCode: options.skipTypeInference ? "" : `export type ${typeName} = z.infer<typeof ${schemaVarName}>;`,
 			schemaVarName,
 		};
 	} catch (error) {
@@ -170,7 +173,10 @@ export function generateInlineResponseSchemas(
 		if (result) {
 			// Output schema immediately followed by its type (matching component generation pattern)
 			outputBlocks.push(result.schemaCode);
-			outputBlocks.push(result.typeCode);
+			// Only add type code if not in separate schemas mode
+			if (result.typeCode) {
+				outputBlocks.push(result.typeCode);
+			}
 			outputBlocks.push(""); // Empty line between schema/type pairs
 		}
 	}
@@ -217,7 +223,10 @@ export function generateInlineRequestSchemas(
 		if (result) {
 			// Output schema immediately followed by its type (matching component generation pattern)
 			outputBlocks.push(result.schemaCode);
-			outputBlocks.push(result.typeCode);
+			// Only add type code if not in separate schemas mode
+			if (result.typeCode) {
+				outputBlocks.push(result.typeCode);
+			}
 			outputBlocks.push(""); // Empty line between schema/type pairs
 		}
 	}

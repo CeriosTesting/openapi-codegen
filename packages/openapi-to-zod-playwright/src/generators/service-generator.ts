@@ -2,6 +2,7 @@ import {
 	extractPathParams,
 	type FallbackContentTypeParsing,
 	generateHttpMethodName as generateMethodName,
+	getOperationName,
 	getResponseParseMethod,
 	mergeParameters,
 	resolveRequestBodyRef,
@@ -342,19 +343,9 @@ function extractEndpoints(
 			const hasQueryParams = allParams.some((param: any) => param && typeof param === "object" && param.in === "query");
 			if (hasQueryParams) {
 				// Generate schema name matching the base generator pattern
-				// The base generator uses operationId if present, path+method fallback otherwise
-				// We must use the same logic to reference the correct schema
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
-					const methodName = generateMethodName(method, path);
-					pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-				}
+				// Use getOperationName for consistent naming with @cerios/openapi-to-zod
+				const strippedPath = stripPathPrefix(path, stripPrefix);
+				const pascalOperationId = getOperationName(operation.operationId, method, strippedPath, useOperationId);
 				queryParamSchemaName = `${pascalOperationId}QueryParams`;
 			}
 
@@ -366,20 +357,15 @@ function extractEndpoints(
 			);
 			if (hasHeaderParams) {
 				// Generate schema name matching the base generator pattern
-				// The base generator uses operationId if present, path+method fallback otherwise
-				// We must use the same logic to reference the correct schema
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
-					const methodName = generateMethodName(method, path);
-					pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-				}
-				headerParamSchemaName = `${pascalOperationId}HeaderParams`;
+				// Use getOperationName for consistent naming with @cerios/openapi-to-zod
+				const strippedPathForHeaders = stripPathPrefix(path, stripPrefix);
+				const pascalOperationIdForHeaders = getOperationName(
+					operation.operationId,
+					method,
+					strippedPathForHeaders,
+					useOperationId
+				);
+				headerParamSchemaName = `${pascalOperationIdForHeaders}HeaderParams`;
 			}
 
 			// Resolve requestBody $ref if present (e.g., $ref: '#/components/requestBodies/UserBody')
@@ -400,12 +386,20 @@ function extractEndpoints(
 			const hasMultipleStatuses = successResponses.length > 1;
 
 			// Generate inline schema names for responses that have inline schemas
+			// Use getOperationName for consistent naming with types/schemas files
 			for (const response of responses) {
 				if (response.inlineSchema && response.hasBody && !response.schemaName) {
 					// Generate name like "GetUsersResponse" or "GetUsers200Response"
-					const pascalMethodName = methodName.charAt(0).toUpperCase() + methodName.slice(1);
+					// Use getOperationName to match the naming in schemas/types files
+					const strippedPathForResponse = stripPathPrefix(path, stripPrefix);
+					const pascalOperationName = getOperationName(
+						operation.operationId,
+						method,
+						strippedPathForResponse,
+						useOperationId
+					);
 					const statusSuffix = hasMultipleStatuses ? response.statusCode : "";
-					response.inlineSchemaName = `${pascalMethodName}${statusSuffix}Response`;
+					response.inlineSchemaName = `${pascalOperationName}${statusSuffix}Response`;
 				}
 			}
 

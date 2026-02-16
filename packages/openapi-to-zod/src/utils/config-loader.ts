@@ -22,6 +22,9 @@ const ZodSpecificOptionsSchema = z.strictObject({
 	request: RequestResponseOptionsSchema.optional(),
 	response: RequestResponseOptionsSchema.optional(),
 	customDateTimeFormatRegex: RegexPatternSchema.optional(),
+	outputZodSchemas: z.string().optional(),
+	enumFormat: z.enum(["union", "const-object"]).optional(),
+	typeAssertionThreshold: z.number().int().gte(0).optional(),
 });
 
 /**
@@ -35,8 +38,19 @@ const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
 }).superRefine((spec, ctx) => {
 	const hasOutputTypes = Boolean(spec.outputTypes);
 	const hasOutput = Boolean(spec.output);
+	const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
 
-	if (!hasOutputTypes && !hasOutput) {
+	// When outputZodSchemas is specified, outputTypes is required for TypeScript types
+	if (hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["outputTypes"],
+			message: "When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions.",
+		});
+	}
+
+	// Standard validation when outputZodSchemas is not used
+	if (!hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			path: ["outputTypes"],
@@ -121,8 +135,17 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 		const output = spec.output;
 		const outputTypes = spec.outputTypes;
 		const resolvedOutputTypes = outputTypes ?? output;
+		const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
 
-		if (resolvedOutputTypes === undefined) {
+		// When outputZodSchemas is specified, outputTypes is required
+		if (hasOutputZodSchemas && resolvedOutputTypes === undefined) {
+			throw new Error(
+				"When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions."
+			);
+		}
+
+		// Standard validation when outputZodSchemas is not used
+		if (!hasOutputZodSchemas && resolvedOutputTypes === undefined) {
 			throw new Error("Each spec must define 'outputTypes' (preferred) or deprecated 'output'.");
 		}
 
@@ -153,10 +176,12 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
+			enumFormat: defaults.enumFormat,
 
 			// Override with spec-specific values
 			...specWithoutDeprecatedOutput,
-			outputTypes: resolvedOutputTypes,
+			// resolvedOutputTypes is guaranteed to be defined by the validation checks above
+			outputTypes: resolvedOutputTypes as string,
 		};
 		return merged;
 	});

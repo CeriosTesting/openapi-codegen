@@ -55,6 +55,7 @@
 	},
 	"dependencies": {
 		"@cerios/openapi-core": "workspace:*",
+		"@cerios/openapi-to-typescript": "workspace:*",
 		"commander": "^14.0.2",
 		"cosmiconfig": "^9.0.0",
 		"minimatch": "^10.1.1",
