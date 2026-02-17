@@ -1173,7 +1173,7 @@ export class OpenApiGenerator {
 	/**
 	 * Generate Zod type for a query parameter schema
 	 */
-	private generateQueryParamType(schema: OpenAPISchema, param: any): string {
+	private generateQueryParamType(schema: OpenAPISchema, param: ResolvedParameter): string {
 		// Handle references
 		if (schema.$ref) {
 			const refName = resolveRefName(schema.$ref);
@@ -1186,13 +1186,13 @@ export class OpenApiGenerator {
 		// Handle enums
 		if (schema.enum) {
 			// Check if all values are booleans
-			const allBooleans = schema.enum.every((v: any) => typeof v === "boolean");
+			const allBooleans = schema.enum.every((v: unknown) => typeof v === "boolean");
 			if (allBooleans) {
 				return "z.boolean()";
 			}
 
 			// Check if all values are strings
-			const allStrings = schema.enum.every((v: any) => typeof v === "string");
+			const allStrings = schema.enum.every((v: unknown) => typeof v === "string");
 			if (allStrings) {
 				const enumValues = schema.enum.map(v => `"${v}"`).join(", ");
 				return `z.enum([${enumValues}])`;
@@ -1200,11 +1200,11 @@ export class OpenApiGenerator {
 
 			// For numeric or mixed enums, use z.union with z.literal
 			const literalValues = schema.enum
-				.map((v: any) => {
+				.map((v: unknown) => {
 					if (typeof v === "string") {
 						return `z.literal("${v}")`;
 					}
-					return `z.literal(${v})`;
+					return `z.literal(${String(v)})`;
 				})
 				.join(", ");
 			return `z.union([${literalValues}])`;
