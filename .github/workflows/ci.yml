@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: pnpm check
+        run: pnpm format:check
 
       - name: Check dependency versions
         run: pnpm check-versions
