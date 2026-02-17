@@ -1,3 +1,7 @@
+// oxlint-disable typescript/no-unsafe-argument
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -37,17 +41,19 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const creditCardSchema = module.creditCardSchema;
 
 			// Valid: no credit card
-			expect(() => creditCardSchema.parse({ name: "John" })).not.toThrow();
+			expect(() => {
+				creditCardSchema.parse({ name: "John" });
+			}).not.toThrow();
 
 			// Valid: credit card with all dependencies
-			expect(() =>
+			expect(() => {
 				creditCardSchema.parse({
 					name: "John",
 					creditCard: "1234",
 					securityCode: "123",
 					billingZip: "12345",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: credit card without dependencies
 			try {
@@ -85,18 +91,20 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const paymentWithAddressSchema = module.paymentWithAddressSchema;
 
 			// Valid: no credit card
-			expect(() => paymentWithAddressSchema.parse({ name: "John" })).not.toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse({ name: "John" });
+			}).not.toThrow();
 
 			// Valid: credit card with all dependency fields
-			expect(() =>
+			expect(() => {
 				paymentWithAddressSchema.parse({
 					name: "John",
 					creditCard: "1234",
 					billingAddress: "123 Main St",
 					city: "Springfield",
 					zipCode: "62701",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: credit card without required dependency fields
 			try {
@@ -137,12 +145,12 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			}
 
 			// Valid: email with verification
-			expect(() =>
+			expect(() => {
 				multipleDependenciesSchema.parse({
 					email: "test@example.com",
 					emailVerified: true,
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: email without verification
 			try {
@@ -204,12 +212,12 @@ components:
 				}
 
 				// Valid: email with verification
-				expect(() =>
+				expect(() => {
 					specialPropsSchema.parse({
 						"user-email": "test@example.com",
 						"email-verified": true,
-					})
-				).not.toThrow();
+					});
+				}).not.toThrow();
 
 				// Invalid: email without verification
 				try {
@@ -255,7 +263,9 @@ components:
 					showStats: false,
 				});
 
-				expect(() => generator.generate()).not.toThrow();
+				expect(() => {
+					generator.generate();
+				}).not.toThrow();
 
 				const output = readFileSync(edgeOutputPath, "utf-8");
 				expect(output).toContain("edgeCaseSchema");

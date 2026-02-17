@@ -71,7 +71,11 @@ components:
 			);
 
 			// Run all generators in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(
+				generators.map(async gen => {
+					return Promise.resolve(gen.generateString());
+				})
+			);
 
 			// Verify each output has its expected format
 			// Pattern 0: custom regex
@@ -118,7 +122,7 @@ components:
 			);
 
 			// Run all in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Verify isolation
 			for (let i = 0; i < numGenerators; i++) {
@@ -165,7 +169,7 @@ components:
 				new OpenApiGenerator({ input: specWithPattern, outputTypes: "out3.ts", cacheSize: 1000 }),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// All outputs should have the same pattern escaped correctly
 			for (const output of outputs) {
@@ -193,7 +197,7 @@ components:
 					})
 			);
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Verify each generator used its own configuration
 			expect(outputs[0]).toContain("z.string().regex(/^pattern-A$/");
@@ -225,7 +229,7 @@ components:
 				}),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Each should have its own format
 			expect(outputs[0]).toContain("z.string().regex(/^config-1$/");
@@ -240,7 +244,7 @@ components:
 	});
 
 	describe("Interleaved creation and generation", () => {
-		it("should maintain isolation even when generators are created before any generation", async () => {
+		it("should maintain isolation even when generators are created before any generation", () => {
 			// Create all generators first (before any generation happens)
 			const generatorWithCustom = new OpenApiGenerator({
 				input: specFiles[0],

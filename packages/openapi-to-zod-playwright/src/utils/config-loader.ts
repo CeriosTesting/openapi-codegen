@@ -165,6 +165,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 	let warnedDeprecatedOutput = false;
 
 	return config.specs.map(spec => {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const output = spec.output;
 		const outputTypes = spec.outputTypes;
 		const resolvedOutputTypes = outputTypes ?? output;
@@ -186,6 +187,11 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			throw new Error("Invalid configuration: 'outputTypes' and deprecated 'output' cannot have different values.");
 		}
 
+		// Type guard: resolvedOutputTypes is guaranteed non-undefined by validation checks above
+		if (!resolvedOutputTypes) {
+			throw new Error("Internal error: outputTypes should be defined after validation");
+		}
+
 		if (output && !warnedDeprecatedOutput) {
 			console.warn(
 				"[openapi-to-zod-playwright] Deprecation warning: 'output' is deprecated and will be removed in a future release. Use 'outputTypes' instead."
@@ -193,6 +199,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			warnedDeprecatedOutput = true;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { output: _deprecatedOutput, ...specWithoutDeprecatedOutput } = spec;
 
 		// Deep merge: spec options override defaults
@@ -218,8 +225,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 
 			// Override with spec-specific values
 			...specWithoutDeprecatedOutput,
-			// resolvedOutputTypes is guaranteed to be defined by the validation checks above
-			outputTypes: resolvedOutputTypes as string,
+			outputTypes: resolvedOutputTypes,
 		};
 		return merged;
 	});

@@ -53,6 +53,93 @@ function stripSchemaPrefix(name: string, prefixes?: string | string[]): string {
 	return result;
 }
 
+type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options";
+
+const HTTP_METHODS: HttpMethod[] = ["get", "post", "put", "patch", "delete", "head", "options"];
+
+interface ParameterLike {
+	in?: string;
+	name?: string;
+	description?: string;
+	required?: boolean;
+	schema?: OpenAPISchema;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function getOperation(pathItem: unknown, method: HttpMethod): Record<string, unknown> | undefined {
+	if (!isRecord(pathItem)) {
+		return undefined;
+	}
+	const operation = pathItem[method];
+	return isRecord(operation) ? operation : undefined;
+}
+
+function getParameters(value: unknown): unknown[] | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	const parameters = value.parameters;
+	return Array.isArray(parameters) ? parameters : undefined;
+}
+
+function getOperationId(operation: Record<string, unknown>): string | undefined {
+	const operationId = operation.operationId;
+	return typeof operationId === "string" ? operationId : undefined;
+}
+
+function toParameterLike(value: unknown): ParameterLike | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+
+	const param: ParameterLike = {};
+	if (typeof value.in === "string") {
+		param.in = value.in;
+	}
+	if (typeof value.name === "string") {
+		param.name = value.name;
+	}
+	if (typeof value.description === "string") {
+		param.description = value.description;
+	}
+	if (typeof value.required === "boolean") {
+		param.required = value.required;
+	}
+	if (isRecord(value.schema)) {
+		param.schema = value.schema as OpenAPISchema;
+	}
+
+	return param;
+}
+
+function getRequestBodyContent(operation: Record<string, unknown>): Record<string, unknown> | undefined {
+	const requestBody = operation.requestBody;
+	if (!isRecord(requestBody)) {
+		return undefined;
+	}
+	const content = requestBody.content;
+	return isRecord(content) ? content : undefined;
+}
+
+function getResponseContent(response: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(response)) {
+		return undefined;
+	}
+	const content = response.content;
+	return isRecord(content) ? content : undefined;
+}
+
+function getMediaSchema(mediaType: unknown): OpenAPISchema | undefined {
+	if (!isRecord(mediaType)) {
+		return undefined;
+	}
+	const schema = mediaType.schema;
+	return isRecord(schema) ? (schema as OpenAPISchema) : undefined;
+}
+
 export class TypeScriptGenerator {
 	private generatedTypes: Map<string, string> = new Map();
 	private schemaDependencies: Map<string, Set<string>> = new Map();
@@ -134,10 +221,9 @@ export class TypeScriptGenerator {
 		const responseSchemas = new Set<string>();
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-			for (const method of methods) {
-				const operation = (pathItem as Record<string, unknown>)[method];
-				if (typeof operation !== "object" || !operation) continue;
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
+				if (!operation) continue;
 
 				this.filterStats.totalOperations++;
 
@@ -146,36 +232,27 @@ export class TypeScriptGenerator {
 				}
 
 				this.filterStats.includedOperations++;
-				const op = operation as Record<string, unknown>;
+				const op = operation;
 
 				// Extract request schemas
-				if (op.requestBody && typeof op.requestBody === "object") {
-					const reqBody = op.requestBody as Record<string, unknown>;
-					if (reqBody.content && typeof reqBody.content === "object") {
+				if (op.requestBody && isRecord(op.requestBody)) {
+					const reqBody = op.requestBody;
+					if (isRecord(reqBody.content)) {
 						for (const mediaType of Object.values(reqBody.content)) {
-							if (mediaType && typeof mediaType === "object") {
-								const mt = mediaType as Record<string, unknown>;
-								if (mt.schema) {
-									extractSchemaRefs(mt.schema as OpenAPISchema, requestSchemas);
-								}
+							if (isRecord(mediaType) && mediaType.schema) {
+								extractSchemaRefs(mediaType.schema as OpenAPISchema, requestSchemas);
 							}
 						}
 					}
 				}
 
 				// Extract response schemas
-				if (op.responses && typeof op.responses === "object") {
+				if (isRecord(op.responses)) {
 					for (const response of Object.values(op.responses)) {
-						if (response && typeof response === "object") {
-							const resp = response as Record<string, unknown>;
-							if (resp.content && typeof resp.content === "object") {
-								for (const mediaType of Object.values(resp.content)) {
-									if (mediaType && typeof mediaType === "object") {
-										const mt = mediaType as Record<string, unknown>;
-										if (mt.schema) {
-											extractSchemaRefs(mt.schema as OpenAPISchema, responseSchemas);
-										}
-									}
+						if (isRecord(response) && isRecord(response.content)) {
+							for (const mediaType of Object.values(response.content)) {
+								if (isRecord(mediaType) && mediaType.schema) {
+									extractSchemaRefs(mediaType.schema as OpenAPISchema, responseSchemas);
 								}
 							}
 						}
@@ -185,11 +262,8 @@ export class TypeScriptGenerator {
 				// Extract parameter schemas
 				if (op.parameters && Array.isArray(op.parameters)) {
 					for (const param of op.parameters) {
-						if (param && typeof param === "object") {
-							const p = param as Record<string, unknown>;
-							if (p.schema) {
-								extractSchemaRefs(p.schema as OpenAPISchema, requestSchemas);
-							}
+						if (isRecord(param) && param.schema) {
+							extractSchemaRefs(param.schema as OpenAPISchema, requestSchemas);
 						}
 					}
 				}
@@ -412,7 +486,7 @@ export class TypeScriptGenerator {
 	private schemaToTypeString(schema: OpenAPISchema, deps: Set<string>): string {
 		// Handle OpenAPI 3.1 type arrays like type: [string, null]
 		if (Array.isArray(schema.type)) {
-			const types = schema.type as string[];
+			const types = schema.type;
 			const hasNull = types.includes("null");
 			const nonNullTypes = types.filter((t: string) => t !== "null");
 
@@ -538,19 +612,19 @@ export class TypeScriptGenerator {
 	 * Convert a primitive schema to a TypeScript type string
 	 */
 	private primitiveToTypeString(schema: OpenAPISchema): string {
-		switch (schema.type) {
-			case "string":
-				return "string";
-			case "integer":
-			case "number":
-				return "number";
-			case "boolean":
-				return "boolean";
-			case "null":
-				return "null";
-			default:
-				return "unknown";
+		if (schema.type === "string") {
+			return "string";
 		}
+		if (schema.type === "integer" || schema.type === "number") {
+			return "number";
+		}
+		if (schema.type === "boolean") {
+			return "boolean";
+		}
+		if (schema.type === "null") {
+			return "null";
+		}
+		return "unknown";
 	}
 
 	/**
@@ -594,10 +668,8 @@ export class TypeScriptGenerator {
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
 			if (!pathItem || typeof pathItem !== "object") continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
 				if (!operation) continue;
 
 				// Apply operation filters
@@ -606,19 +678,19 @@ export class TypeScriptGenerator {
 				}
 
 				// Merge path-level and operation-level parameters
-				const allParams = mergeParameters(pathItem.parameters, operation.parameters, this.spec);
+				const allParams = mergeParameters(getParameters(pathItem), getParameters(operation), this.spec);
 
 				// Filter for query parameters only
-				const queryParams = allParams.filter(
-					(param: any) => param && typeof param === "object" && param.in === "query"
-				);
+				const queryParams = allParams
+					.map(param => toParameterLike(param))
+					.filter((param): param is ParameterLike => param !== undefined && param.in === "query");
 
 				if (queryParams.length === 0) continue;
 
 				// Get operation name (with stripPathPrefix applied)
 				const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
 				const operationName = getOperationName(
-					operation.operationId,
+					getOperationId(operation),
 					method,
 					strippedPath,
 					this.options.useOperationId
@@ -629,7 +701,7 @@ export class TypeScriptGenerator {
 				const props: string[] = [];
 				for (const param of queryParams) {
 					const paramSchema = param.schema;
-					if (!paramSchema) continue;
+					if (!paramSchema || !param.name) continue;
 
 					const deps = new Set<string>();
 					const typeStr = this.schemaToTypeString(paramSchema, deps);
@@ -648,7 +720,7 @@ export class TypeScriptGenerator {
 				});
 
 				// Add JSDoc
-				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+				const jsdocOperationName = getOperationId(operation) || `${method.toUpperCase()} ${path}`;
 				const jsdoc = `/**\n * Query parameters for ${jsdocOperationName}\n */\n`;
 				this.generatedTypes.set(`QueryParams:${typeName}`, `${jsdoc}${code}`);
 			}
@@ -664,10 +736,8 @@ export class TypeScriptGenerator {
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
 			if (!pathItem || typeof pathItem !== "object") continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
 				if (!operation) continue;
 
 				// Apply operation filters
@@ -676,19 +746,19 @@ export class TypeScriptGenerator {
 				}
 
 				// Merge path-level and operation-level parameters
-				const allParams = mergeParameters(pathItem.parameters, operation.parameters, this.spec);
+				const allParams = mergeParameters(getParameters(pathItem), getParameters(operation), this.spec);
 
 				// Filter for header parameters only
-				const headerParams = allParams.filter(
-					(param: any) => param && typeof param === "object" && param.in === "header"
-				);
+				const headerParams = allParams
+					.map(param => toParameterLike(param))
+					.filter((param): param is ParameterLike => param !== undefined && param.in === "header");
 
 				if (headerParams.length === 0) continue;
 
 				// Get operation name (with stripPathPrefix applied)
 				const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
 				const operationName = getOperationName(
-					operation.operationId,
+					getOperationId(operation),
 					method,
 					strippedPath,
 					this.options.useOperationId
@@ -698,6 +768,7 @@ export class TypeScriptGenerator {
 				// Generate properties (headers are always strings)
 				const props: string[] = [];
 				for (const param of headerParams) {
+					if (!param.name) continue;
 					let propDef = formatTypeProperty(param.name, "string", false); // Headers always optional
 					if (this.options.includeDescriptions && param.description) {
 						propDef = `/** ${param.description} */\n  ${propDef}`;
@@ -711,7 +782,7 @@ export class TypeScriptGenerator {
 				});
 
 				// Add JSDoc
-				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+				const jsdocOperationName = getOperationId(operation) || `${method.toUpperCase()} ${path}`;
 				const jsdoc = `/**\n * Header parameters for ${jsdocOperationName}\n */\n`;
 				this.generatedTypes.set(`HeaderParams:${typeName}`, `${jsdoc}${code}`);
 			}
@@ -727,34 +798,32 @@ export class TypeScriptGenerator {
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
 			if (!pathItem || typeof pathItem !== "object") continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
-				if (!operation || !operation.requestBody) continue;
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
+				if (!operation) continue;
 
 				// Apply operation filters
 				if (!shouldIncludeOperation(operation, path, method, this.options.operationFilters)) {
 					continue;
 				}
 
-				const requestBody = operation.requestBody;
-				if (!requestBody.content) continue;
+				const requestBodyContent = getRequestBodyContent(operation);
+				if (!requestBodyContent) continue;
 
-				const contentTypes = Object.keys(requestBody.content);
+				const contentTypes = Object.keys(requestBodyContent);
 				const hasMultipleContentTypes = contentTypes.length > 1;
 
-				for (const [contentType, mediaType] of Object.entries(requestBody.content)) {
-					const mt = mediaType as { schema?: OpenAPISchema };
-					if (!mt.schema) continue;
+				for (const [contentType, mediaType] of Object.entries(requestBodyContent)) {
+					const mediaSchema = getMediaSchema(mediaType);
+					if (!mediaSchema) continue;
 
 					// Skip if schema is just a $ref (already generated from components)
-					if (mt.schema.$ref) continue;
+					if (mediaSchema.$ref) continue;
 
 					// Get operation name (with stripPathPrefix applied)
 					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
 					const operationName = getOperationName(
-						operation.operationId,
+						getOperationId(operation),
 						method,
 						strippedPath,
 						this.options.useOperationId
@@ -763,11 +832,11 @@ export class TypeScriptGenerator {
 
 					// Generate the type
 					const deps = new Set<string>();
-					const typeStr = this.schemaToTypeString(mt.schema, deps);
+					const typeStr = this.schemaToTypeString(mediaSchema, deps);
 					const code = `export type ${typeName} = ${typeStr};`;
 
 					// Add JSDoc
-					const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+					const jsdocOperationName = getOperationId(operation) || `${method.toUpperCase()} ${path}`;
 					const jsdoc = `/**\n * Request body for ${jsdocOperationName}\n */\n`;
 					this.generatedTypes.set(`Request:${typeName}`, `${jsdoc}${code}`);
 				}
@@ -784,18 +853,18 @@ export class TypeScriptGenerator {
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
 			if (!pathItem || typeof pathItem !== "object") continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
-				if (!operation || !operation.responses) continue;
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
+				if (!operation) continue;
 
 				// Apply operation filters
 				if (!shouldIncludeOperation(operation, path, method, this.options.operationFilters)) {
 					continue;
 				}
 
-				const responses = operation.responses;
+				const responsesValue = operation.responses;
+				if (!isRecord(responsesValue)) continue;
+				const responses = responsesValue;
 				// Only count success status codes (2xx) for hasMultipleStatuses determination
 				const successStatusCodes = Object.keys(responses).filter(code => {
 					const codeNum = Number.parseInt(code, 10);
@@ -804,20 +873,21 @@ export class TypeScriptGenerator {
 				const hasMultipleStatuses = successStatusCodes.length > 1;
 
 				for (const [statusCode, response] of Object.entries(responses)) {
-					const resp = response as { content?: Record<string, { schema?: OpenAPISchema }> };
-					if (!resp.content) continue;
+					const responseContent = getResponseContent(response);
+					if (!responseContent) continue;
 
 					// Usually there's one content type per response, but handle multiple
-					for (const [_contentType, mediaType] of Object.entries(resp.content)) {
-						if (!mediaType.schema) continue;
+					for (const [_contentType, mediaType] of Object.entries(responseContent)) {
+						const mediaSchema = getMediaSchema(mediaType);
+						if (!mediaSchema) continue;
 
 						// Skip if schema is just a $ref (already generated from components)
-						if (mediaType.schema.$ref) continue;
+						if (mediaSchema.$ref) continue;
 
 						// Get operation name (with stripPathPrefix applied)
 						const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
 						const operationName = getOperationName(
-							operation.operationId,
+							getOperationId(operation),
 							method,
 							strippedPath,
 							this.options.useOperationId
@@ -826,11 +896,11 @@ export class TypeScriptGenerator {
 
 						// Generate the type
 						const deps = new Set<string>();
-						const typeStr = this.schemaToTypeString(mediaType.schema, deps);
+						const typeStr = this.schemaToTypeString(mediaSchema, deps);
 						const code = `export type ${typeName} = ${typeStr};`;
 
 						// Add JSDoc
-						const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
+						const jsdocOperationName = getOperationId(operation) || `${method.toUpperCase()} ${path}`;
 						const jsdoc = `/**\n * Response for ${jsdocOperationName} (${statusCode})\n */\n`;
 						this.generatedTypes.set(`Response:${typeName}`, `${jsdoc}${code}`);
 					}

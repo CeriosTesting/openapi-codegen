@@ -39,12 +39,16 @@ export function createTypeScriptLoader(): Loader {
 			// This allows the config to import packages from the user's project
 			const configRequire = createRequire(filepath);
 
-			// Create a module and execute it
-			const module = { exports: {} } as any;
+			// Intentional dynamic module loading: Execute compiled TypeScript config
+			// This pattern is necessary to support user-defined TypeScript configuration files
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion), typescript-eslint(no-unsafe-assignment)
+			const module: { exports: Record<string, unknown> } = { exports: {} };
+			// oxlint-disable-next-line typescript-eslint(no-implied-eval)
 			const func = new Function("exports", "module", "require", "__filename", "__dirname", jsCode);
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-call)
 			func(module.exports, module, configRequire, filepath, path.dirname(filepath));
 
-			return module.exports.default || module.exports;
+			return module.exports.default ?? module.exports;
 		} catch (error) {
 			throw new Error(
 				`Failed to load TypeScript config from ${filepath}: ${error instanceof Error ? error.message : String(error)}`

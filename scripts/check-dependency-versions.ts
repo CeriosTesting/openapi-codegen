@@ -8,6 +8,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { z } from "zod";
+
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const PACKAGES_DIR = join(__dirname, "..", "packages");
@@ -25,12 +27,16 @@ const SHARED_DEPS = [
 	"zod",
 ];
 
-interface PackageJson {
-	name: string;
-	dependencies?: Record<string, string>;
-	devDependencies?: Record<string, string>;
-	peerDependencies?: Record<string, string>;
-}
+const stringRecordSchema = z.record(z.string(), z.string());
+
+const packageJsonSchema = z.object({
+	name: z.string(),
+	dependencies: stringRecordSchema.optional(),
+	devDependencies: stringRecordSchema.optional(),
+	peerDependencies: stringRecordSchema.optional(),
+});
+
+type PackageJson = z.infer<typeof packageJsonSchema>;
 
 interface Package {
 	name: string;
@@ -39,7 +45,8 @@ interface Package {
 
 function getPackageJson(packageName: string): PackageJson {
 	const pkgPath = join(PACKAGES_DIR, packageName, "package.json");
-	return JSON.parse(readFileSync(pkgPath, "utf-8"));
+	const parsed: unknown = JSON.parse(readFileSync(pkgPath, "utf-8"));
+	return packageJsonSchema.parse(parsed);
 }
 
 function getVersion(pkg: PackageJson, depName: string): string | undefined {

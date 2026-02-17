@@ -82,7 +82,7 @@ components:
 			);
 
 			// Run all generators in parallel (generate schemas)
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify each output has its expected format
 			// Pattern 0: custom regex
@@ -130,7 +130,7 @@ components:
 			);
 
 			// Run all in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify isolation
 			for (let i = 0; i < numGenerators; i++) {
@@ -167,7 +167,7 @@ components:
 					})
 			);
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify each generator used its own configuration
 			expect(outputs[0]).toContain("z.string().regex(/^pattern-A$/");
@@ -202,7 +202,7 @@ components:
 				}),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Each should have its own format
 			expect(outputs[0]).toContain("z.string().regex(/^config-1$/");

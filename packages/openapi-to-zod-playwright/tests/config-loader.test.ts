@@ -55,7 +55,7 @@ describe("Config Loading - Playwright", () => {
 			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid configuration file|Unrecognized key.*schemaType/);
 		});
 
-		it("should accept useOperationId option in config", async () => {
+		it("should accept useOperationId option in config", () => {
 			const config: PlaywrightConfigFile = {
 				specs: [
 					{ input: "api.yaml", outputTypes: "api.ts", outputClient: "client.ts", useOperationId: true },

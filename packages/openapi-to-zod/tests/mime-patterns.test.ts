@@ -1,3 +1,6 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { describe, expect, it } from "vitest";
 
 import { OpenApiGenerator } from "../src/openapi-generator";
@@ -61,15 +64,29 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 			const { attachmentSchema } = await import(outputPath);
 
 			// Valid MIME types
-			expect(() => attachmentSchema.parse({ mimetype: "text/plain" })).not.toThrow();
-			expect(() => attachmentSchema.parse({ mimetype: "application/json" })).not.toThrow();
-			expect(() => attachmentSchema.parse({ mimetype: "image/png" })).not.toThrow();
-			expect(() => attachmentSchema.parse({ mimetype: "application/vnd.api+json" })).not.toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "text/plain" });
+			}).not.toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "application/json" });
+			}).not.toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "image/png" });
+			}).not.toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "application/vnd.api+json" });
+			}).not.toThrow();
 
 			// Invalid MIME types
-			expect(() => attachmentSchema.parse({ mimetype: "invalid" })).toThrow();
-			expect(() => attachmentSchema.parse({ mimetype: "/plain" })).toThrow();
-			expect(() => attachmentSchema.parse({ mimetype: "text/" })).toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "invalid" });
+			}).toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "/plain" });
+			}).toThrow();
+			expect(() => {
+				attachmentSchema.parse({ mimetype: "text/" });
+			}).toThrow();
 		});
 
 		it("should validate media file URLs correctly", async () => {
@@ -85,27 +102,27 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 			const { mediaFileSchema } = await import(outputPath);
 
 			// Valid media types and URLs
-			expect(() =>
+			expect(() => {
 				mediaFileSchema.parse({
 					type: "image/png",
 					url: "https://example.com/image.png",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
-			expect(() =>
+			expect(() => {
 				mediaFileSchema.parse({
 					type: "video/mp4",
 					url: "http://cdn.example.com/videos/test.mp4",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid media type (not image/video/audio)
-			expect(() =>
+			expect(() => {
 				mediaFileSchema.parse({
 					type: "text/plain",
 					url: "https://example.com/file.txt",
-				})
-			).toThrow();
+				});
+			}).toThrow();
 		});
 
 		it("should validate API endpoint paths correctly", async () => {
@@ -121,12 +138,20 @@ describe("MIME and URL Patterns with Forward Slashes", () => {
 			const { apiEndpointSchema } = await import(outputPath);
 
 			// Valid API paths
-			expect(() => apiEndpointSchema.parse({ path: "/api/v1/users" })).not.toThrow();
-			expect(() => apiEndpointSchema.parse({ path: "/api/v2/posts/comments" })).not.toThrow();
+			expect(() => {
+				apiEndpointSchema.parse({ path: "/api/v1/users" });
+			}).not.toThrow();
+			expect(() => {
+				apiEndpointSchema.parse({ path: "/api/v2/posts/comments" });
+			}).not.toThrow();
 
 			// Invalid paths
-			expect(() => apiEndpointSchema.parse({ path: "api/v1/users" })).toThrow(); // No leading slash
-			expect(() => apiEndpointSchema.parse({ path: "/api/users" })).toThrow(); // No version
+			expect(() => {
+				apiEndpointSchema.parse({ path: "api/v1/users" });
+			}).toThrow(); // No leading slash
+			expect(() => {
+				apiEndpointSchema.parse({ path: "/api/users" });
+			}).toThrow(); // No version
 		});
 	});
 

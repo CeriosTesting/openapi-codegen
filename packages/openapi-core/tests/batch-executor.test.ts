@@ -1,3 +1,5 @@
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-argument
 import { describe, expect, it, vi } from "vitest";
 
 import type { Generator } from "../src/batch-executor";

@@ -1,3 +1,5 @@
+// oxlint-disable typescript/no-unsafe-argument
+// oxlint-disable typescript/no-unsafe-type-assertion
 import { describe, expect, it } from "vitest";
 
 import {

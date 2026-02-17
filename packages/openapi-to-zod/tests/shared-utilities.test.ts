@@ -1,3 +1,7 @@
+// oxlint-disable typescript/no-unsafe-type-assertion
+// oxlint-disable typescript/no-unsafe-argument
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
 import { join } from "node:path";
 
 import {

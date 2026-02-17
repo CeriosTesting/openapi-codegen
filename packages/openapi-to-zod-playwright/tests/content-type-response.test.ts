@@ -1,3 +1,5 @@
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";

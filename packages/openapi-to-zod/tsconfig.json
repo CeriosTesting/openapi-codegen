@@ -2,7 +2,6 @@
 	"compilerOptions": {
 		"target": "es2019",
 		"module": "commonjs",
-		"baseUrl": "./",
 		"paths": {
 			"@cerios/openapi-core": ["../openapi-core/src"],
 			"@cerios/openapi-core/test-utils": ["../openapi-core/src/test-utils"]

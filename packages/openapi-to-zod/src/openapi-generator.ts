@@ -34,6 +34,79 @@ import { PropertyGenerator } from "./generators/property-generator";
 import type { OpenAPISchema, OpenAPISpec, OpenApiGeneratorOptions, ResolvedOptions } from "./types";
 import { buildDateTimeValidation } from "./validators/string-validator";
 
+/**
+ * OpenAPI operation structure for path methods
+ */
+interface OpenAPIOperation {
+	operationId?: string;
+	parameters?: unknown[];
+	requestBody?: {
+		content?: Record<string, { schema?: unknown }>;
+	};
+	responses?: Record<
+		string,
+		{
+			content?: Record<string, { schema?: unknown }>;
+		}
+	>;
+	[key: string]: unknown;
+}
+
+/**
+ * OpenAPI path item with HTTP method operations
+ */
+interface OpenAPIPathItem {
+	parameters?: unknown[];
+	get?: OpenAPIOperation;
+	post?: OpenAPIOperation;
+	put?: OpenAPIOperation;
+	patch?: OpenAPIOperation;
+	delete?: OpenAPIOperation;
+	head?: OpenAPIOperation;
+	options?: OpenAPIOperation;
+	[key: string]: unknown;
+}
+
+/** HTTP methods that can have operations */
+type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options";
+
+/** Array of HTTP methods for iteration */
+const HTTP_METHODS: HttpMethod[] = ["get", "post", "put", "patch", "delete", "head", "options"];
+
+/**
+ * Resolved parameter after $ref resolution - matches OpenAPIParameter structure
+ */
+interface ResolvedParameter {
+	name: string;
+	in: "query" | "header" | "path" | "cookie";
+	description?: string;
+	required?: boolean;
+	schema?: OpenAPISchema & { $ref?: string };
+	deprecated?: boolean;
+	style?: string;
+	explode?: boolean;
+}
+
+/**
+ * Type guard to check if a value is a valid resolved parameter
+ */
+function isResolvedParameter(param: unknown): param is ResolvedParameter {
+	return (
+		typeof param === "object" &&
+		param !== null &&
+		"name" in param &&
+		typeof (param as Record<string, unknown>).name === "string" &&
+		"in" in param
+	);
+}
+
+/**
+ * Type guard to check if a value is a valid OpenAPIPathItem
+ */
+function isOpenAPIPathItem(value: unknown): value is OpenAPIPathItem {
+	return typeof value === "object" && value !== null;
+}
+
 export class OpenApiGenerator {
 	private schemas: Map<string, string> = new Map();
 	private types: Map<string, string> = new Map();
@@ -247,7 +320,10 @@ export class OpenApiGenerator {
 			console.log(`  ✓ Generated ${normalizedTypes}`);
 
 			// Write schemas file (outputZodSchemas is guaranteed by separateSchemasMode check)
-			const outputZodSchemas = this.options.outputZodSchemas as string;
+			if (!this.options.outputZodSchemas) {
+				throw new Error("Internal error: outputZodSchemas should be defined in separateSchemasMode");
+			}
+			const outputZodSchemas = this.options.outputZodSchemas;
 			const normalizedSchemas = normalize(outputZodSchemas);
 			this.ensureDirectoryExists(normalizedSchemas);
 			writeFileSync(normalizedSchemas, schemasContent, "utf-8");
@@ -275,7 +351,10 @@ export class OpenApiGenerator {
 		}
 
 		// Guard: outputZodSchemas must exist (we're in separateSchemasMode)
-		const outputZodSchemas = this.options.outputZodSchemas as string;
+		if (!this.options.outputZodSchemas) {
+			throw new Error("Internal error: outputZodSchemas should be defined in separateSchemasMode");
+		}
+		const outputZodSchemas = this.options.outputZodSchemas;
 
 		// Pre-analyze schemas to detect circular dependencies
 		this.analyzeCircularDependencies();
@@ -338,7 +417,7 @@ export class OpenApiGenerator {
 				const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
 
 				// Pass schema definition for complexity calculation (may be undefined for query/header schemas)
-				const schemaDefinition = schemas[name] as Record<string, unknown> | undefined;
+				const schemaDefinition = this.isRecordObject(schemas[name]) ? schemas[name] : undefined;
 				const transformedCode = this.addExplicitTypeAnnotation(schemaCode, schemaName, typeName, schemaDefinition);
 				output.push(transformedCode);
 				output.push("");
@@ -423,6 +502,13 @@ export class OpenApiGenerator {
 	}
 
 	/**
+	 * Type guard to check if a value is a Record<string, unknown>
+	 */
+	private isRecordObject(value: unknown): value is Record<string, unknown> {
+		return typeof value === "object" && value !== null && !Array.isArray(value);
+	}
+
+	/**
 	 * Calculate the complexity of a schema for threshold comparison
 	 * Complexity formula: properties + (nested levels * 10) + (array/union members * 2)
 	 */
@@ -440,62 +526,62 @@ export class OpenApiGenerator {
 		}
 
 		// Count properties
-		const properties = schema.properties as Record<string, unknown> | undefined;
-		if (properties && typeof properties === "object") {
+		const properties = schema.properties;
+		if (this.isRecordObject(properties)) {
 			const propCount = Object.keys(properties).length;
 			complexity += propCount;
 
 			// Recursively calculate nested property complexity
 			for (const prop of Object.values(properties)) {
-				if (prop && typeof prop === "object") {
-					complexity += this.calculateSchemaComplexity(prop as Record<string, unknown>, depth + 1);
+				if (this.isRecordObject(prop)) {
+					complexity += this.calculateSchemaComplexity(prop, depth + 1);
 				}
 			}
 		}
 
 		// Handle allOf
-		const allOf = schema.allOf as unknown[] | undefined;
+		const allOf = schema.allOf;
 		if (Array.isArray(allOf)) {
 			complexity += allOf.length * 2;
 			for (const subSchema of allOf) {
-				if (subSchema && typeof subSchema === "object") {
-					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
 				}
 			}
 		}
 
 		// Handle oneOf
-		const oneOf = schema.oneOf as unknown[] | undefined;
+		const oneOf = schema.oneOf;
 		if (Array.isArray(oneOf)) {
 			complexity += oneOf.length * 2;
 			for (const subSchema of oneOf) {
-				if (subSchema && typeof subSchema === "object") {
-					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
 				}
 			}
 		}
 
 		// Handle anyOf
-		const anyOf = schema.anyOf as unknown[] | undefined;
+		const anyOf = schema.anyOf;
 		if (Array.isArray(anyOf)) {
 			complexity += anyOf.length * 2;
 			for (const subSchema of anyOf) {
-				if (subSchema && typeof subSchema === "object") {
-					complexity += this.calculateSchemaComplexity(subSchema as Record<string, unknown>, depth + 1);
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
 				}
 			}
 		}
 
 		// Handle array items
-		const items = schema.items as Record<string, unknown> | undefined;
-		if (items && typeof items === "object") {
+		const items = schema.items;
+		if (this.isRecordObject(items)) {
 			complexity += 2; // Array cost
 			complexity += this.calculateSchemaComplexity(items, depth + 1);
 		}
 
 		// Handle additionalProperties
-		const additionalProps = schema.additionalProperties as Record<string, unknown> | undefined;
-		if (additionalProps && typeof additionalProps === "object") {
+		const additionalProps = schema.additionalProperties;
+		if (this.isRecordObject(additionalProps)) {
 			complexity += 2; // Record cost
 			complexity += this.calculateSchemaComplexity(additionalProps, depth + 1);
 		}
@@ -546,10 +632,10 @@ export class OpenApiGenerator {
 			const responseSchemas = new Set<string>();
 
 			for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-				const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-				for (const method of methods) {
-					const operation = (pathItem as Record<string, unknown>)[method];
-					if (typeof operation !== "object" || !operation) continue;
+				if (!isOpenAPIPathItem(pathItem)) continue;
+				for (const method of HTTP_METHODS) {
+					const operation = pathItem[method];
+					if (!operation) continue;
 
 					// Track total operations
 					this.filterStats.totalOperations++;
@@ -562,36 +648,31 @@ export class OpenApiGenerator {
 					// Count included operation
 					this.filterStats.includedOperations++;
 
-					const op = operation as Record<string, unknown>;
-
 					// Check request bodies
-					if (op.requestBody && typeof op.requestBody === "object") {
-						const reqBody = op.requestBody as Record<string, unknown>;
+					if (operation.requestBody && typeof operation.requestBody === "object") {
+						const reqBody = operation.requestBody;
 						if (reqBody.content && typeof reqBody.content === "object") {
 							for (const mediaType of Object.values(reqBody.content)) {
-								if (mediaType && typeof mediaType === "object") {
-									const mt = mediaType as Record<string, unknown>;
-									if (mt.schema) {
-										extractSchemaRefs(mt.schema as OpenAPISchema, requestSchemas);
-									}
+								if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
+									extractSchemaRefs(mediaType.schema as OpenAPISchema, requestSchemas);
 								}
 							}
 						}
 					}
 
 					// Check responses
-					if (op.responses && typeof op.responses === "object") {
-						for (const response of Object.values(op.responses)) {
-							if (response && typeof response === "object") {
-								const resp = response as Record<string, unknown>;
-								if (resp.content && typeof resp.content === "object") {
-									for (const mediaType of Object.values(resp.content)) {
-										if (mediaType && typeof mediaType === "object") {
-											const mt = mediaType as Record<string, unknown>;
-											if (mt.schema) {
-												extractSchemaRefs(mt.schema as OpenAPISchema, responseSchemas);
-											}
-										}
+					if (operation.responses && typeof operation.responses === "object") {
+						for (const response of Object.values(operation.responses)) {
+							if (
+								response &&
+								typeof response === "object" &&
+								"content" in response &&
+								response.content &&
+								typeof response.content === "object"
+							) {
+								for (const mediaType of Object.values(response.content)) {
+									if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
+										extractSchemaRefs(mediaType.schema as OpenAPISchema, responseSchemas);
 									}
 								}
 							}
@@ -599,13 +680,10 @@ export class OpenApiGenerator {
 					}
 
 					// Check parameters
-					if (op.parameters && Array.isArray(op.parameters)) {
-						for (const param of op.parameters) {
-							if (param && typeof param === "object") {
-								const p = param as Record<string, unknown>;
-								if (p.schema) {
-									extractSchemaRefs(p.schema as OpenAPISchema, requestSchemas);
-								}
+					if (operation.parameters && Array.isArray(operation.parameters)) {
+						for (const param of operation.parameters) {
+							if (isResolvedParameter(param) && param.schema) {
+								extractSchemaRefs(param.schema as OpenAPISchema, requestSchemas);
 							}
 						}
 					}
@@ -640,9 +718,9 @@ export class OpenApiGenerator {
 			// Track operation stats when no filters
 			if (this.spec.paths) {
 				for (const pathItem of Object.values(this.spec.paths)) {
-					const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-					for (const method of methods) {
-						const operation = (pathItem as Record<string, unknown>)[method];
+					if (!isOpenAPIPathItem(pathItem)) continue;
+					for (const method of HTTP_METHODS) {
+						const operation = pathItem[method];
 						if (typeof operation === "object" && operation) {
 							this.filterStats.totalOperations++;
 							this.filterStats.includedOperations++;
@@ -849,12 +927,10 @@ export class OpenApiGenerator {
 		}
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem || typeof pathItem !== "object") continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = pathItem[method];
 				if (!operation) continue;
 
 				// Apply operation filters (stats already tracked in analyzeSchemaUsage)
@@ -867,7 +943,7 @@ export class OpenApiGenerator {
 
 				// Filter for query parameters only
 				const queryParams = allParams.filter(
-					(param: any) => param && typeof param === "object" && param.in === "query"
+					(param): param is ResolvedParameter => isResolvedParameter(param) && param.in === "query"
 				);
 
 				if (queryParams.length === 0) {
@@ -994,12 +1070,10 @@ export class OpenApiGenerator {
 		}
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem || typeof pathItem !== "object") continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = pathItem[method];
 				if (!operation) continue;
 
 				// Apply operation filters
@@ -1012,8 +1086,8 @@ export class OpenApiGenerator {
 
 				// Filter for header parameters only, excluding ignored ones
 				const headerParams = allParams.filter(
-					(param: any) =>
-						param && typeof param === "object" && param.in === "header" && !this.shouldIgnoreHeader(param.name)
+					(param): param is ResolvedParameter =>
+						isResolvedParameter(param) && param.in === "header" && !this.shouldIgnoreHeader(param.name)
 				);
 
 				if (headerParams.length === 0) {

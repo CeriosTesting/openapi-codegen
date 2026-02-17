@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** Type guard to check if value is a string array */
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every(item => typeof item === "string");
+}
+
 /**
  * Custom error messages for specific field keys
  * Key is the field name, value is the custom error message
@@ -37,16 +42,27 @@ export interface FormatZodErrorsOptions {
 }
 
 /**
+ * Helper to safely get a property from a Zod issue object
+ */
+function getIssueProperty(issue: z.core.$ZodIssue, prop: string): unknown {
+	if (prop in issue) {
+		// Intentional: Access dynamic property after checking existence
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+		return (issue as unknown as Record<string, unknown>)[prop];
+	}
+	return undefined;
+}
+
+/**
  * Format a single Zod issue into a user-friendly message
  */
-function formatZodIssue(issue: z.ZodIssue, options: FormatZodErrorsOptions): string {
+function formatZodIssue(issue: z.core.$ZodIssue, options: FormatZodErrorsOptions): string {
 	const path = issue.path.length > 0 ? issue.path.join(".") : "root";
 	const field = issue.path[issue.path.length - 1];
 	const fieldStr = String(field);
-	const issueAny = issue as unknown as Record<string, unknown>;
 
 	// Handle missing required fields (undefined)
-	if (issue.code === "invalid_type" && issueAny.received === "undefined") {
+	if (issue.code === "invalid_type" && getIssueProperty(issue, "received") === "undefined") {
 		const customMessage = options.missingFieldMessages?.[fieldStr];
 		if (customMessage) {
 			return `  - ${path}: Missing '${fieldStr}'. ${customMessage}`;
@@ -57,7 +73,8 @@ function formatZodIssue(issue: z.ZodIssue, options: FormatZodErrorsOptions): str
 	// Handle unrecognized keys (extra properties in strictObject)
 	if (issue.code === "unrecognized_keys") {
 		const messages: string[] = [];
-		const keys = (issueAny.keys as string[]) || [];
+		const keysValue = getIssueProperty(issue, "keys");
+		const keys = isStringArray(keysValue) ? keysValue : [];
 		for (const key of keys) {
 			const customMessage = options.unrecognizedKeyMessages?.[key];
 			if (customMessage) {
@@ -70,10 +87,13 @@ function formatZodIssue(issue: z.ZodIssue, options: FormatZodErrorsOptions): str
 	}
 
 	// Handle invalid enum/value errors
-	if (issue.code === "invalid_value" || (issueAny as { code?: string }).code === "invalid_enum_value") {
-		const received = issueAny.received ?? issueAny.values ?? "unknown";
-		const options_values = (issueAny.options as string[]) ?? (issueAny.values as string[]) ?? [];
-		if (Array.isArray(options_values) && options_values.length > 0) {
+	if (issue.code === "invalid_value" || String(getIssueProperty(issue, "code")) === "invalid_enum_value") {
+		const receivedRaw = getIssueProperty(issue, "received") ?? getIssueProperty(issue, "values") ?? "unknown";
+		const received = typeof receivedRaw === "string" ? receivedRaw : JSON.stringify(receivedRaw);
+		const optionsRaw = getIssueProperty(issue, "options");
+		const valuesRaw = getIssueProperty(issue, "values");
+		const options_values = isStringArray(optionsRaw) ? optionsRaw : isStringArray(valuesRaw) ? valuesRaw : [];
+		if (options_values.length > 0) {
 			return `  - ${path}: Invalid value '${received}'. Expected one of: ${options_values.join(", ")}`;
 		}
 		return `  - ${path}: ${issue.message}`;

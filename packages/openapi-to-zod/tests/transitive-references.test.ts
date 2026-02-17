@@ -202,7 +202,7 @@ describe("Transitive Reference Expansion with Operation Filtering", () => {
 			expect(methodIndex).toBeLessThan(contactInfoIndex);
 		});
 
-		it("should generate valid TypeScript that can be compiled", async () => {
+		it("should generate valid TypeScript that can be compiled", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
 				outputTypes: "output.ts",

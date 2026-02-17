@@ -28,7 +28,9 @@ export const TestUtils = {
 	 */
 	getZodFixturePath(filename: string): string {
 		// Resolve relative to the zod package's fixtures directory
-		const path = require("node:path");
+		// Use dynamic require for test utilities
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+		const path = require("node:path") as typeof import("node:path");
 		return path.join(__dirname, "..", "..", "..", "openapi-to-zod", "tests", "fixtures", filename);
 	},
 

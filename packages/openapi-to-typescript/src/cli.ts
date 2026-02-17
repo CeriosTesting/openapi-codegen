@@ -24,6 +24,26 @@ import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 
 const program = new Command();
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function getStringField(value: unknown, field: string): string | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	const fieldValue = value[field];
+	return typeof fieldValue === "string" ? fieldValue : undefined;
+}
+
+function getBooleanField(value: unknown, field: string): boolean | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	const fieldValue = value[field];
+	return typeof fieldValue === "boolean" ? fieldValue : undefined;
+}
+
 program
 	.name("openapi-to-typescript")
 	.description("Generate TypeScript types from OpenAPI specifications")
@@ -43,7 +63,7 @@ Examples:
   $ openapi-to-typescript --config custom.config.ts
 `
 	)
-	.action(async options => {
+	.action(async (options: { config?: string }) => {
 		try {
 			await executeConfigMode(options);
 		} catch (error) {
@@ -72,7 +92,7 @@ program
 		}
 	});
 
-program.parse();
+void program.parseAsync(process.argv);
 
 /**
  * Execute config mode (only mode available)
@@ -111,12 +131,13 @@ async function initConfigFile(): Promise<void> {
 
 	const existingConfig = configFiles.find(f => existsSync(f));
 	if (existingConfig) {
-		const { overwrite } = await prompts({
+		const overwriteResponse: unknown = await prompts({
 			type: "confirm",
 			name: "overwrite",
 			message: `Config file '${existingConfig}' already exists. Overwrite?`,
 			initial: false,
 		});
+		const overwrite = getBooleanField(overwriteResponse, "overwrite") === true;
 
 		if (!overwrite) {
 			console.log("Initialization cancelled.");
@@ -141,70 +162,74 @@ async function initConfigFile(): Promise<void> {
 			{ title: "→ Enter manually...", value: "__MANUAL__" },
 		];
 
-		const inputResponse = await prompts({
+		const inputResponse: unknown = await prompts({
 			type: "select",
 			name: "input",
 			message: "Select OpenAPI spec file (YAML or JSON):",
 			choices,
 		});
 
-		if (!inputResponse.input) {
+		const selectedInput = getStringField(inputResponse, "input");
+
+		if (!selectedInput) {
 			console.log("\nInitialization cancelled.");
 			return;
 		}
 
-		if (inputResponse.input === "__MANUAL__") {
+		if (selectedInput === "__MANUAL__") {
 			// Manual entry
-			const manualResponse = await prompts({
+			const manualResponse: unknown = await prompts({
 				type: "text",
 				name: "input",
 				message: "Input OpenAPI file path (YAML or JSON):",
 				initial: "openapi.{yaml,yml,json}",
-				validate: value => {
+				validate: (value: string) => {
 					if (value.length === 0) return "Input path is required";
 					if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 					return true;
 				},
 			});
+			const manualInput = getStringField(manualResponse, "input");
 
-			if (!manualResponse.input) {
+			if (!manualInput) {
 				console.log("\nInitialization cancelled.");
 				return;
 			}
 
-			inputPath = manualResponse.input;
+			inputPath = manualInput;
 		} else {
-			inputPath = inputResponse.input;
+			inputPath = selectedInput;
 		}
 	} else {
 		// No files found, fall back to text input
-		const manualResponse = await prompts({
+		const manualResponse: unknown = await prompts({
 			type: "text",
 			name: "input",
 			message: "Input OpenAPI file path (YAML or JSON):",
 			initial: "openapi.{yaml,yml,json}",
-			validate: value => {
+			validate: (value: string) => {
 				if (value.length === 0) return "Input path is required";
 				if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 				return true;
 			},
 		});
+		const manualInput = getStringField(manualResponse, "input");
 
-		if (!manualResponse.input) {
+		if (!manualInput) {
 			console.log("\nInitialization cancelled.");
 			return;
 		}
 
-		inputPath = manualResponse.input;
+		inputPath = manualInput;
 	}
 
-	const response = await prompts([
+	const response: unknown = await prompts([
 		{
 			type: "text",
 			name: "output",
 			message: "Output TypeScript file path:",
 			initial: "src/types.ts",
-			validate: value => value.length > 0 || "Output path is required",
+			validate: (value: string) => value.length > 0 || "Output path is required",
 		},
 		{
 			type: "select",
@@ -234,14 +259,17 @@ async function initConfigFile(): Promise<void> {
 			initial: true,
 		},
 	]);
+	const output = getStringField(response, "output");
+	const enumFormat = getStringField(response, "enumFormat") ?? "union";
+	const format = getStringField(response, "format");
+	const includeDefaults = getBooleanField(response, "includeDefaults") ?? true;
 
 	// Handle user cancellation (Ctrl+C)
-	if (!response.output || !response.format) {
+	if (!output || !format) {
 		console.log("\nInitialization cancelled.");
 		return;
 	}
 
-	const { output, enumFormat, format, includeDefaults } = response;
 	const input = inputPath;
 
 	// Generate config content

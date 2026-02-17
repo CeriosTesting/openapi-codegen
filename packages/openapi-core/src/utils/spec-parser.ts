@@ -48,10 +48,14 @@ function parseOpenAPISpecFromString(
 	let spec: OpenAPISpec;
 
 	try {
+		// parseYaml returns any, cast to expected type after validation
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
 		spec = parseYaml(content) as OpenAPISpec;
 	} catch (yamlError) {
 		// If YAML parsing fails, try JSON
 		try {
+			// JSON.parse returns any, cast to expected type after validation
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
 			spec = JSON.parse(content) as OpenAPISpec;
 		} catch {
 			if (yamlError instanceof Error) {
@@ -75,7 +79,12 @@ function parseOpenAPISpecFromString(
 
 	// Validate spec has required fields
 	if (validate) {
-		if (!spec.openapi && !(spec as Record<string, unknown>).swagger) {
+		// Check for swagger field which may exist on Swagger 2.0 specs
+		// Intentional cast: spec is OpenAPISpec but may have additional swagger field
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+		const specRecord = spec as Record<string, unknown>;
+		const hasSwagger = "swagger" in spec && typeof specRecord.swagger === "string";
+		if (!spec.openapi && !hasSwagger) {
 			throw new SpecValidationError(
 				`Invalid OpenAPI specification: missing 'openapi' or 'swagger' field in ${sourcePath}`,
 				{ filePath: sourcePath }

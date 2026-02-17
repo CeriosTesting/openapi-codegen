@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-unsafe-type-assertion
 import { existsSync, rmSync } from "node:fs";
 
 import { afterEach, describe, expect, it, vi } from "vitest";

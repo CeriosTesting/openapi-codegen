@@ -120,7 +120,7 @@ export function extractPathParams(pathString: string): string[] {
 export function sanitizeParamName(paramName: string): string {
 	// Convert kebab-case and snake_case to camelCase
 	const camelCased = paramName
-		.replace(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase())
+		.replace(/[-_]([a-z])/g, (_: string, letter: string) => letter.toUpperCase())
 		.replace(/[^a-zA-Z0-9]/g, "");
 
 	// Prefix with _ if starts with number

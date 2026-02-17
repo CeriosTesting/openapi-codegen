@@ -18,7 +18,9 @@ describe("File Splitting Validation", () => {
 				// No outputService
 			});
 
-			expect(() => generator.generate()).not.toThrow();
+			expect(() => {
+				generator.generate();
+			}).not.toThrow();
 		});
 
 		it("should accept schemas + client + service", () => {
@@ -29,7 +31,9 @@ describe("File Splitting Validation", () => {
 				outputService: TestUtils.getOutputPath("service.ts"),
 			});
 
-			expect(() => generator.generate()).not.toThrow();
+			expect(() => {
+				generator.generate();
+			}).not.toThrow();
 		});
 	});
 

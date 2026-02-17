@@ -317,7 +317,9 @@ describe("Split Files - Path Edge Cases", () => {
 				outputService: TestUtils.getOutputPath("shared/services/api.ts"),
 			});
 
-			expect(() => generator.generate()).not.toThrow();
+			expect(() => {
+				generator.generate();
+			}).not.toThrow();
 
 			const serviceContent = readFileSync(TestUtils.getOutputPath("shared/services/api.ts"), "utf-8");
 

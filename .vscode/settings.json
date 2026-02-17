@@ -6,5 +6,7 @@
 	"typescript.preferences.importModuleSpecifier": "non-relative",
 	"jest.runMode": "on-demand",
 	"editor.defaultFormatter": "oxc.oxc-vscode",
-	"editor.formatOnSave": true
+	"editor.formatOnSave": true,
+	"oxc.path.oxlint": "node_modules/.bin/oxlint",
+	"oxc.typeAware": true
 }

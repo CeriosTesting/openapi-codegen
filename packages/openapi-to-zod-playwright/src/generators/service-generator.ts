@@ -5,6 +5,8 @@ import {
 	getOperationName,
 	getResponseParseMethod,
 	mergeParameters,
+	type OpenAPIParameter,
+	type OpenAPISchema,
 	resolveRequestBodyRef,
 	resolveResponseRef,
 	sanitizeOperationId,
@@ -31,7 +33,7 @@ interface ResponseInfo {
 	description?: string;
 	hasBody: boolean;
 	contentType: string;
-	inlineSchema?: any; // For inline schemas (arrays, objects without $ref)
+	inlineSchema?: OpenAPISchema; // For inline schemas (arrays, objects without $ref)
 	inlineSchemaName?: string; // Generated name for inline schemas (e.g., "GetUsersResponse")
 }
 
@@ -40,8 +42,31 @@ interface RequestBodyInfo {
 	schema?: string;
 	schemaName?: string;
 	required: boolean;
-	inlineSchema?: any; // For inline schemas (objects without $ref)
+	inlineSchema?: OpenAPISchema; // For inline schemas (objects without $ref)
 	inlineSchemaName?: string; // Generated name for inline schemas (e.g., "PostUsersRequest")
+}
+
+/** OpenAPI request body structure */
+interface OpenAPIRequestBody {
+	content?: Record<string, { schema?: OpenAPISchema }>;
+	required?: boolean;
+}
+
+/** OpenAPI operation structure */
+interface OpenAPIOperation {
+	operationId?: string;
+	parameters?: OpenAPIParameter[];
+	requestBody?: OpenAPIRequestBody | { $ref: string };
+	responses?: Record<
+		string,
+		{
+			description?: string;
+			content?: Record<string, { schema?: OpenAPISchema }>;
+		}
+	>;
+	deprecated?: boolean;
+	summary?: string;
+	description?: string;
 }
 
 interface EndpointInfo {
@@ -49,8 +74,8 @@ interface EndpointInfo {
 	method: string;
 	methodName: string;
 	pathParams: string[];
-	parameters?: any[];
-	requestBody?: any;
+	parameters?: OpenAPIParameter[];
+	requestBody?: OpenAPIRequestBody;
 	requestBodyInfo?: RequestBodyInfo; // Parsed request body information
 	responses: ResponseInfo[];
 	queryParamSchemaName?: string; // Name of the generated query parameter schema
@@ -58,6 +83,35 @@ interface EndpointInfo {
 	deprecated?: boolean;
 	summary?: string;
 	description?: string;
+}
+
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** Type to represent a path item that can be indexed by method */
+interface PathItemLike extends Record<string, unknown> {
+	parameters?: unknown[];
+}
+
+/** Type guard to check if a value is a path item */
+function isPathItemLike(value: unknown): value is PathItemLike {
+	return typeof value === "object" && value !== null;
+}
+
+/** Type guard for OpenAPI operation */
+function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
+	return typeof value === "object" && value !== null;
+}
+
+/** Helper to safely get operation from path item */
+function getOperation(pathItem: Record<string, unknown>, method: HttpMethod): OpenAPIOperation | undefined {
+	const operation = pathItem[method];
+	return isOpenAPIOperation(operation) ? operation : undefined;
+}
+
+/** Type guard for OpenAPI parameter */
+function isOpenAPIParameter(value: unknown): value is OpenAPIParameter {
+	return typeof value === "object" && value !== null && "name" in value && "in" in value;
 }
 
 /**
@@ -71,7 +125,7 @@ function stripContentTypeParams(contentType: string): string {
  * Parse request body information including inline schema detection
  */
 function parseRequestBodyInfo(
-	requestBody: any,
+	requestBody: OpenAPIRequestBody | undefined,
 	methodName: string,
 	preferredContentTypes?: string[]
 ): RequestBodyInfo | undefined {
@@ -242,15 +296,13 @@ function extractEndpoints(
 	}
 
 	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
+		if (!isPathItemLike(pathItem)) continue;
 
 		// Strip prefix from path for processing
 		const path = stripPathPrefix(originalPath, stripPrefix);
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-		for (const method of methods) {
-			const operation = pathItem[method];
+		for (const method of HTTP_METHODS) {
+			const operation = getOperation(pathItem, method);
 			if (!operation) continue;
 
 			// Apply operation filters
@@ -281,8 +333,14 @@ function extractEndpoints(
 
 					if (!isSuccess) continue;
 
+					// Type assertion with proper interface for response object
+					const typedResponse = responseObj as {
+						description?: string;
+						content?: Record<string, { schema?: OpenAPISchema }>;
+					};
+
 					// Extract first content type only (Playwright handles content negotiation)
-					const content = (responseObj as any).content;
+					const content = typedResponse.content;
 
 					if (content && typeof content === "object") {
 						// Get available content types and select based on preference
@@ -298,11 +356,11 @@ function extractEndpoints(
 
 								let schemaRef: string | undefined;
 								let schemaName: string | undefined;
-								let inlineSchema: any;
+								let inlineSchema: OpenAPISchema | undefined;
 								const hasBody = statusCode !== "204";
 
-								if ((contentObj as any).schema) {
-									const schema = (contentObj as any).schema;
+								if (contentObj.schema) {
+									const schema = contentObj.schema;
 									schemaRef = schema.$ref;
 									if (schemaRef) {
 										// Extract schema name from $ref
@@ -318,7 +376,7 @@ function extractEndpoints(
 									statusCode,
 									schema: schemaRef,
 									schemaName,
-									description: (responseObj as any).description,
+									description: typedResponse.description,
 									hasBody,
 									contentType,
 									inlineSchema,
@@ -331,7 +389,7 @@ function extractEndpoints(
 							statusCode,
 							schema: undefined,
 							schemaName: undefined,
-							description: (responseObj as any).description,
+							description: typedResponse.description,
 							hasBody: false,
 							contentType: "application/json", // Default fallback
 						});
@@ -341,8 +399,9 @@ function extractEndpoints(
 
 			// Check if operation has query parameters (merge path-level and operation-level, resolve $refs)
 			let queryParamSchemaName: string | undefined;
-			const allParams = mergeParameters(pathItem.parameters, operation.parameters, spec);
-			const hasQueryParams = allParams.some((param: any) => param && typeof param === "object" && param.in === "query");
+			const pathItemParams = Array.isArray(pathItem.parameters) ? pathItem.parameters : undefined;
+			const allParams = mergeParameters(pathItemParams, operation.parameters, spec);
+			const hasQueryParams = allParams.some(param => isOpenAPIParameter(param) && param.in === "query");
 			if (hasQueryParams) {
 				// Generate schema name matching the base generator pattern
 				// Use getOperationName for consistent naming with @cerios/openapi-to-zod
@@ -354,8 +413,7 @@ function extractEndpoints(
 			// Check if operation has header parameters (excluding ignored ones)
 			let headerParamSchemaName: string | undefined;
 			const hasHeaderParams = allParams.some(
-				(param: any) =>
-					param && typeof param === "object" && param.in === "header" && !shouldIgnoreHeader(param.name, ignoreHeaders)
+				param => isOpenAPIParameter(param) && param.in === "header" && !shouldIgnoreHeader(param.name, ignoreHeaders)
 			);
 			if (hasHeaderParams) {
 				// Generate schema name matching the base generator pattern
@@ -501,26 +559,28 @@ function generateSuccessMethods(
  * Returns the schema code and type name
  */
 function generateInlineSchemaCode(
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema | undefined,
 	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string
 ): { schemaCode: string; typeName: string } | null {
 	if (!inlineSchema) return null;
 
+	const schemaType = Array.isArray(inlineSchema.type) ? inlineSchema.type[0] : inlineSchema.type;
+
 	// Handle primitives
-	if (inlineSchema.type === "string") {
+	if (schemaType === "string") {
 		return { schemaCode: "z.string()", typeName: "string" };
 	}
-	if (inlineSchema.type === "number" || inlineSchema.type === "integer") {
+	if (schemaType === "number" || schemaType === "integer") {
 		return { schemaCode: "z.number()", typeName: "number" };
 	}
-	if (inlineSchema.type === "boolean") {
+	if (schemaType === "boolean") {
 		return { schemaCode: "z.boolean()", typeName: "boolean" };
 	}
 
 	// Handle arrays of refs
-	if (inlineSchema.type === "array" && inlineSchema.items?.$ref) {
+	if (schemaType === "array" && inlineSchema.items?.$ref) {
 		const refParts = inlineSchema.items.$ref.split("/");
 		const itemSchemaName = refParts[refParts.length - 1];
 		// Apply stripSchemaPrefix before converting to valid TypeScript identifiers
@@ -535,8 +595,8 @@ function generateInlineSchemaCode(
 	}
 
 	// Handle arrays of primitives
-	if (inlineSchema.type === "array" && inlineSchema.items?.type) {
-		const itemType = inlineSchema.items.type;
+	if (schemaType === "array" && inlineSchema.items?.type) {
+		const itemType = Array.isArray(inlineSchema.items.type) ? inlineSchema.items.type[0] : inlineSchema.items.type;
 		if (itemType === "string") {
 			return { schemaCode: "z.array(z.string())", typeName: "string[]" };
 		}
@@ -596,9 +656,9 @@ function generateServiceMethod(
 	}
 
 	// Determine what parameters we need in options
-	const hasQueryParams = endpoint.parameters?.some((p: any) => p.in === "query");
+	const hasQueryParams = endpoint.parameters?.some(p => isOpenAPIParameter(p) && p.in === "query");
 	const hasHeaderParams = endpoint.parameters?.some(
-		(p: any) => p.in === "header" && !shouldIgnoreHeader(p.name, ignoreHeaders)
+		p => isOpenAPIParameter(p) && p.in === "header" && !shouldIgnoreHeader(p.name, ignoreHeaders)
 	);
 
 	// Extract request content-type info if we have a request body (use first content type)
@@ -642,7 +702,7 @@ function generateServiceMethod(
 		}
 
 		// Add request body based on content-type
-		if (hasRequestBody && requestContentType) {
+		if (hasRequestBody && requestContentType && requestBody) {
 			const isRequired = requestBody.required === true;
 			const optionalMarker = isRequired ? "" : "?";
 
@@ -760,7 +820,7 @@ function generateServiceMethod(
 		}
 
 		// Validate request body (for application/json with a schema ref or inline schema)
-		if (hasRequestBody && requestContentType === "application/json") {
+		if (hasRequestBody && requestContentType === "application/json" && requestBody) {
 			const requestBodyInfo = endpoint.requestBodyInfo;
 			const isRequired = requestBody.required === true;
 

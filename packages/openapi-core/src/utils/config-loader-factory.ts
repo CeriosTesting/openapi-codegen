@@ -72,7 +72,7 @@ export interface ConfigLoader<TConfig> {
  */
 export function createConfigLoader<TConfig>(
 	options: ConfigLoaderOptions,
-	schema: z.ZodSchema<TConfig>
+	schema: z.ZodType<TConfig>
 ): ConfigLoader<TConfig> {
 	const { packageName, additionalSearchPlaces = [], errorMessages = {} } = options;
 

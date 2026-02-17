@@ -1,3 +1,8 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
+// oxlint-disable typescript/no-unsafe-type-assertion
+// oxlint-disable typescript/no-unsafe-argument
 import { describe, expect, it } from "vitest";
 
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";

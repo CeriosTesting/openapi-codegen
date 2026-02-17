@@ -1,3 +1,6 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { describe, expect, it } from "vitest";
 
 import { OpenApiGenerator } from "../src/openapi-generator";

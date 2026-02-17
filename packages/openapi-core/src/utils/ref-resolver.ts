@@ -1,16 +1,45 @@
 /**
- * OpenAPI $ref resolution utilities
- *
+ * OpenAPI $ref resolution utilities\n *
  * Provides functions to resolve $ref references to component definitions
  * Supports: parameters, requestBodies, responses, schemas
  */
 
-import type { OpenAPIParameter, OpenAPIRequestBody, OpenAPIResponse, OpenAPISchema, OpenAPISpec } from "../types";
+import type { OpenAPIParameter, OpenAPIRequestBody, OpenAPIResponse, OpenAPISpec } from "../types";
 
 /**
- * Type for any resolvable component
+ * Type guard to check if an object has a $ref property
  */
-type ResolvableComponent = OpenAPIParameter | OpenAPIRequestBody | OpenAPIResponse | OpenAPISchema | any;
+function hasRef(obj: unknown): obj is { $ref: string } {
+	return (
+		typeof obj === "object" &&
+		obj !== null &&
+		"$ref" in obj &&
+		typeof (obj as Record<string, unknown>).$ref === "string"
+	);
+}
+
+/**
+ * Type guard to check if value is a record object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type for resolved parameters with proper typing
+ */
+interface ResolvedParameter {
+	name: string;
+	in: string;
+	[key: string]: unknown;
+}
+
+/**
+ * Type guard to check if a value is a resolved parameter
+ */
+function isResolvedParameter(value: unknown): value is ResolvedParameter {
+	return isRecord(value) && typeof value.name === "string" && typeof value.in === "string";
+}
 
 /**
  * Resolve a $ref to a component definition
@@ -22,12 +51,15 @@ type ResolvableComponent = OpenAPIParameter | OpenAPIRequestBody | OpenAPIRespon
  * @returns The resolved component, or the original object if not a reference
  * @internal
  */
-export function resolveRef<T extends ResolvableComponent>(obj: T | any, spec: OpenAPISpec, maxDepth = 10): T {
-	if (!obj || typeof obj !== "object" || maxDepth <= 0) return obj;
-	if (!obj.$ref) return obj;
+export function resolveRef<T>(obj: T | { $ref: string }, spec: OpenAPISpec, maxDepth = 10): T {
+	// Intentional cast: Caller asserts expected type via generic parameter
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	if (!obj || typeof obj !== "object" || maxDepth <= 0) return obj as T;
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	if (!hasRef(obj)) return obj as T;
 
-	const ref = obj.$ref as string;
-	let resolved: any = null;
+	const ref = obj.$ref;
+	let resolved: unknown = null;
 
 	// Match different component types
 	const paramMatch = ref.match(/^#\/components\/parameters\/(.+)$/);
@@ -51,14 +83,17 @@ export function resolveRef<T extends ResolvableComponent>(obj: T | any, spec: Op
 
 	if (resolved) {
 		// Recursively resolve nested $refs
-		if (resolved.$ref) {
-			return resolveRef(resolved, spec, maxDepth - 1);
+		if (hasRef(resolved)) {
+			return resolveRef<T>(resolved, spec, maxDepth - 1);
 		}
-		return resolved;
+		// Intentional cast: Caller asserts expected type via generic parameter
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+		return resolved as T;
 	}
 
-	// Return original if can't resolve
-	return obj;
+	// Return original if can't resolve - intentional cast to caller's expected type
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	return obj as T;
 }
 
 /**
@@ -66,24 +101,30 @@ export function resolveRef<T extends ResolvableComponent>(obj: T | any, spec: Op
  * Convenience wrapper for resolveRef with parameter type
  * @internal
  */
-export function resolveParameterRef(param: any, spec: OpenAPISpec): OpenAPIParameter | any {
-	return resolveRef<OpenAPIParameter>(param, spec);
+export function resolveParameterRef(param: unknown, spec: OpenAPISpec): OpenAPIParameter {
+	// Intentional cast: Function accepts unknown to support refs and objects
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	return resolveRef<OpenAPIParameter>(param as OpenAPIParameter | { $ref: string }, spec);
 }
 
 /**
  * Resolve a request body reference
  * Convenience wrapper for resolveRef with request body type
  */
-export function resolveRequestBodyRef(requestBody: any, spec: OpenAPISpec): OpenAPIRequestBody | any {
-	return resolveRef<OpenAPIRequestBody>(requestBody, spec);
+export function resolveRequestBodyRef(requestBody: unknown, spec: OpenAPISpec): OpenAPIRequestBody {
+	// Intentional cast: Function accepts unknown to support refs and objects
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	return resolveRef<OpenAPIRequestBody>(requestBody as OpenAPIRequestBody | { $ref: string }, spec);
 }
 
 /**
  * Resolve a response reference
  * Convenience wrapper for resolveRef with response type
  */
-export function resolveResponseRef(response: any, spec: OpenAPISpec): OpenAPIResponse | any {
-	return resolveRef<OpenAPIResponse>(response, spec);
+export function resolveResponseRef(response: unknown, spec: OpenAPISpec): OpenAPIResponse {
+	// Intentional cast: Function accepts unknown to support refs and objects
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+	return resolveRef<OpenAPIResponse>(response as OpenAPIResponse | { $ref: string }, spec);
 }
 
 /**
@@ -96,22 +137,22 @@ export function resolveResponseRef(response: any, spec: OpenAPISpec): OpenAPIRes
  * @returns Merged array of resolved parameters
  */
 export function mergeParameters(
-	pathParams: any[] | undefined,
-	operationParams: any[] | undefined,
+	pathParams: unknown[] | undefined,
+	operationParams: unknown[] | undefined,
 	spec: OpenAPISpec
-): any[] {
+): unknown[] {
 	const resolvedPathParams = (pathParams || []).map(p => resolveParameterRef(p, spec));
 	const resolvedOperationParams = (operationParams || []).map(p => resolveParameterRef(p, spec));
 
 	// Start with path-level params
-	const merged = [...resolvedPathParams];
+	const merged: unknown[] = [...resolvedPathParams];
 
 	// Operation params override path params by name + in
 	for (const opParam of resolvedOperationParams) {
-		if (!opParam || typeof opParam !== "object") continue;
+		if (!isResolvedParameter(opParam)) continue;
 
 		const existingIndex = merged.findIndex(
-			p => p && typeof p === "object" && p.name === opParam.name && p.in === opParam.in
+			p => isResolvedParameter(p) && p.name === opParam.name && p.in === opParam.in
 		);
 
 		if (existingIndex >= 0) {

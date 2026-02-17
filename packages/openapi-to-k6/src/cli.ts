@@ -17,13 +17,52 @@ import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 
 const program = new Command();
 
-// Read package.json for version
-const packageJson = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function getStringField(value: unknown, field: string): string | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	const fieldValue = value[field];
+	return typeof fieldValue === "string" ? fieldValue : undefined;
+}
+
+function getBooleanField(value: unknown, field: string): boolean | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+	const fieldValue = value[field];
+	return typeof fieldValue === "boolean" ? fieldValue : undefined;
+}
+
+function readPackageVersion(): string {
+	const parsed: unknown = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+	const version = getStringField(parsed, "version");
+	if (!version) {
+		throw new Error("Invalid package.json: missing string 'version'");
+	}
+	return version;
+}
+
+type CliOptions = {
+	config?: string;
+	input?: string;
+	output?: string;
+	outputTypes?: string;
+	useOperationId?: boolean;
+	basePath?: string;
+	descriptions?: boolean;
+	stats?: boolean;
+};
+
+const packageVersion = readPackageVersion();
 
 program
 	.name("openapi-to-k6")
 	.description("Generate type-safe K6 HTTP clients from OpenAPI specifications")
-	.version(packageJson.version)
+	.version(packageVersion)
 	.option("-c, --config <path>", "Path to config file (openapi-to-k6.config.{ts,json})")
 	.option("-i, --input <path>", "Input OpenAPI specification file")
 	.option("-o, --output <path>", "Output file path for K6 client")
@@ -52,14 +91,26 @@ Examples:
   $ openapi-to-k6 --config custom.config.ts
 `
 	)
-	.action(async options => {
+	.action(async (options: CliOptions) => {
 		try {
-			if (options.input && options.output) {
+			if (options.input || options.output || options.outputTypes) {
+				if (!options.input || !options.output || !options.outputTypes) {
+					throw new CliOptionsError("Direct mode requires --input, --output, and --output-types.");
+				}
+
 				// Direct CLI mode
-				await executeDirectMode(options);
+				executeDirectMode({
+					input: options.input,
+					outputClient: options.output,
+					outputTypes: options.outputTypes,
+					useOperationId: options.useOperationId,
+					basePath: options.basePath,
+					descriptions: options.descriptions,
+					stats: options.stats,
+				});
 			} else {
 				// Config file mode
-				await executeConfigMode(options);
+				await executeConfigMode({ config: options.config });
 			}
 		} catch (error) {
 			if (error instanceof CliOptionsError || error instanceof ConfigValidationError) {
@@ -87,12 +138,12 @@ program
 		}
 	});
 
-program.parse();
+void program.parseAsync(process.argv);
 
 /**
  * Execute with direct CLI options
  */
-async function executeDirectMode(options: {
+function executeDirectMode(options: {
 	input: string;
 	outputClient: string;
 	outputTypes: string;
@@ -100,7 +151,7 @@ async function executeDirectMode(options: {
 	basePath?: string;
 	descriptions?: boolean;
 	stats?: boolean;
-}): Promise<void> {
+}): void {
 	const generator = new OpenApiK6Generator({
 		input: options.input,
 		outputClient: options.outputClient,
@@ -132,7 +183,7 @@ async function executeConfigMode(options: { config?: string }): Promise<void> {
 	console.log(`\n${getRandomCeriosMessage()}\n`);
 
 	// Generate for all specs using batch executor
-	executeBatch(specs, executionMode, spec => new OpenApiK6Generator(spec), 10);
+	await executeBatch(specs, executionMode, spec => new OpenApiK6Generator(spec), 10);
 
 	console.log("\n✅ Generation complete!\n");
 }
@@ -148,12 +199,13 @@ async function initConfigFile(): Promise<void> {
 
 	const existingConfig = configFiles.find(f => existsSync(f));
 	if (existingConfig) {
-		const { overwrite } = await prompts({
+		const overwriteResponse: unknown = await prompts({
 			type: "confirm",
 			name: "overwrite",
 			message: `Config file '${existingConfig}' already exists. Overwrite?`,
 			initial: false,
 		});
+		const overwrite = getBooleanField(overwriteResponse, "overwrite") === true;
 
 		if (!overwrite) {
 			console.log("Initialization cancelled.");
@@ -178,70 +230,73 @@ async function initConfigFile(): Promise<void> {
 			{ title: "→ Enter manually...", value: "__MANUAL__" },
 		];
 
-		const inputResponse = await prompts({
+		const inputResponse: unknown = await prompts({
 			type: "select",
 			name: "input",
 			message: "Select OpenAPI spec file (YAML or JSON):",
 			choices,
 		});
+		const selectedInput = getStringField(inputResponse, "input");
 
-		if (!inputResponse.input) {
+		if (!selectedInput) {
 			console.log("\nInitialization cancelled.");
 			return;
 		}
 
-		if (inputResponse.input === "__MANUAL__") {
+		if (selectedInput === "__MANUAL__") {
 			// Manual entry
-			const manualResponse = await prompts({
+			const manualResponse: unknown = await prompts({
 				type: "text",
 				name: "input",
 				message: "Input OpenAPI file path (YAML or JSON):",
 				initial: "openapi.yaml",
-				validate: value => {
+				validate: (value: string) => {
 					if (value.length === 0) return "Input path is required";
 					if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 					return true;
 				},
 			});
+			const manualInput = getStringField(manualResponse, "input");
 
-			if (!manualResponse.input) {
+			if (!manualInput) {
 				console.log("\nInitialization cancelled.");
 				return;
 			}
 
-			inputPath = manualResponse.input;
+			inputPath = manualInput;
 		} else {
-			inputPath = inputResponse.input;
+			inputPath = selectedInput;
 		}
 	} else {
 		// No files found, fall back to text input
-		const manualResponse = await prompts({
+		const manualResponse: unknown = await prompts({
 			type: "text",
 			name: "input",
 			message: "Input OpenAPI file path (YAML or JSON):",
 			initial: "openapi.yaml",
-			validate: value => {
+			validate: (value: string) => {
 				if (value.length === 0) return "Input path is required";
 				if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 				return true;
 			},
 		});
+		const manualInput = getStringField(manualResponse, "input");
 
-		if (!manualResponse.input) {
+		if (!manualInput) {
 			console.log("\nInitialization cancelled.");
 			return;
 		}
 
-		inputPath = manualResponse.input;
+		inputPath = manualInput;
 	}
 
-	const response = await prompts([
+	const response: unknown = await prompts([
 		{
 			type: "text",
 			name: "outputClient",
 			message: "Output file path for K6 client:",
 			initial: "k6/api-client.ts",
-			validate: value => value.length > 0 || "Output path is required",
+			validate: (value: string) => value.length > 0 || "Output path is required",
 		},
 		{
 			type: "text",
@@ -267,15 +322,21 @@ async function initConfigFile(): Promise<void> {
 		},
 	]);
 
-	if (!response.outputClient || !response.outputTypes) {
+	const outputClient = getStringField(response, "outputClient");
+	const outputTypes = getStringField(response, "outputTypes");
+	const formatValue = getStringField(response, "format");
+	const useOperationId = getBooleanField(response, "useOperationId") === true;
+	const format: "ts" | "json" = formatValue === "json" ? "json" : "ts";
+
+	if (!outputClient) {
 		console.log("\nInitialization cancelled.");
 		return;
 	}
 
-	const configFileName = `openapi-to-k6.config.${response.format}`;
+	const configFileName = `openapi-to-k6.config.${format}`;
 	let content: string;
 
-	if (response.format === "ts") {
+	if (format === "ts") {
 		content = `import { defineConfig } from "@cerios/openapi-to-k6";
 
 export default defineConfig({
@@ -287,7 +348,7 @@ export default defineConfig({
   specs: [
     {
       input: "${inputPath}",
-      outputClient: "${response.outputClient}",${response.outputTypes ? `\n      outputTypes: "${response.outputTypes}",` : ""}${response.useOperationId ? "\n      useOperationId: true," : ""}
+      outputClient: "${outputClient}",${outputTypes ? `\n      outputTypes: "${outputTypes}",` : ""}${useOperationId ? "\n      useOperationId: true," : ""}
     },
   ],
 });
@@ -295,12 +356,12 @@ export default defineConfig({
 	} else {
 		const spec: Record<string, unknown> = {
 			input: inputPath,
-			outputClient: response.outputClient,
+			outputClient,
 		};
-		if (response.outputTypes) {
-			spec.outputTypes = response.outputTypes;
+		if (outputTypes) {
+			spec.outputTypes = outputTypes;
 		}
-		if (response.useOperationId) {
+		if (useOperationId) {
 			spec.useOperationId = true;
 		}
 

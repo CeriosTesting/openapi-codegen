@@ -53,6 +53,8 @@ export function resolveFixture(relativePath: string): string {
 export function loadYamlFixture(category: FixtureCategory, filename: string): OpenAPISpec {
 	const fixturePath = getFixturePath(category, filename);
 	const content = readFileSync(fixturePath, "utf-8");
+	// Test utility: parseYaml returns any, we trust fixtures are valid OpenAPISpec
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
 	return parseYaml(content) as OpenAPISpec;
 }
 
@@ -66,6 +68,8 @@ export function loadYamlFixture(category: FixtureCategory, filename: string): Op
 export function loadJsonFixture(category: FixtureCategory, filename: string): OpenAPISpec {
 	const fixturePath = getFixturePath(category, filename);
 	const content = readFileSync(fixturePath, "utf-8");
+	// Test utility: JSON.parse returns any, we trust fixtures are valid OpenAPISpec
+	// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
 	return JSON.parse(content) as OpenAPISpec;
 }
 

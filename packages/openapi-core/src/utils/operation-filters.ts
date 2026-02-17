@@ -2,6 +2,13 @@ import { minimatch } from "minimatch";
 
 import type { OperationFilters } from "../types";
 
+/** Operation structure for filtering */
+interface FilterableOperation {
+	operationId?: string;
+	tags?: string[];
+	deprecated?: boolean;
+}
+
 /**
  * Filter statistics to track which operations were included/excluded
  */
@@ -76,7 +83,7 @@ function containsAny(arr: string[] | undefined, values: string[] | undefined): b
  * @returns true if the operation should be included, false otherwise
  */
 export function shouldIncludeOperation(
-	operation: any,
+	operation: FilterableOperation | undefined,
 	path: string,
 	method: string,
 	filters?: OperationFilters,

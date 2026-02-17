@@ -44,7 +44,7 @@ const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
 	// When outputZodSchemas is specified, outputTypes is required for TypeScript types
 	if (hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: "custom",
 			path: ["outputTypes"],
 			message: "When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions.",
 		});
@@ -53,7 +53,7 @@ const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
 	// Standard validation when outputZodSchemas is not used
 	if (!hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: "custom",
 			path: ["outputTypes"],
 			message: "Each spec must specify an output file path using 'outputTypes' (preferred) or deprecated 'output'.",
 		});
@@ -61,7 +61,7 @@ const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
 
 	if (hasOutputTypes && hasOutput && spec.outputTypes !== spec.output) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: "custom",
 			path: ["output"],
 			message: "Invalid configuration: 'outputTypes' and deprecated 'output' are both set but have different values.",
 		});
@@ -133,6 +133,7 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 	let warnedDeprecatedOutput = false;
 
 	return config.specs.map(spec => {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const output = spec.output;
 		const outputTypes = spec.outputTypes;
 		const resolvedOutputTypes = outputTypes ?? output;
@@ -154,6 +155,11 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			throw new Error("Invalid configuration: 'outputTypes' and deprecated 'output' cannot have different values.");
 		}
 
+		// Type guard: resolvedOutputTypes is guaranteed non-undefined by validation checks above
+		if (!resolvedOutputTypes) {
+			throw new Error("Internal error: outputTypes should be defined after validation");
+		}
+
 		if (output && !warnedDeprecatedOutput) {
 			console.warn(
 				"[openapi-to-zod] Deprecation warning: 'output' is deprecated and will be removed in a future release. Use 'outputTypes' instead."
@@ -161,6 +167,7 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			warnedDeprecatedOutput = true;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { output: _deprecatedOutput, ...specWithoutDeprecatedOutput } = spec;
 
 		// Deep merge: spec options override defaults
@@ -181,8 +188,7 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 
 			// Override with spec-specific values
 			...specWithoutDeprecatedOutput,
-			// resolvedOutputTypes is guaranteed to be defined by the validation checks above
-			outputTypes: resolvedOutputTypes as string,
+			outputTypes: resolvedOutputTypes,
 		};
 		return merged;
 	});

@@ -1,3 +1,7 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
+// oxlint-disable typescript/no-unsafe-return
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";

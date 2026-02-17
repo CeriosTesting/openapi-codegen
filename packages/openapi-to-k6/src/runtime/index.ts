@@ -99,6 +99,11 @@ export function cleanBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, "");
 }
 
+/** Type guard for K6 FileData-like objects (have a 'data' property) */
+function isFileDataLike(value: unknown): value is RequestBody {
+	return typeof value === "object" && value !== null && "data" in value;
+}
+
 /**
  * Serializes a request body for K6 HTTP requests.
  * - null/undefined: passed through as-is
@@ -115,6 +120,6 @@ export function serializeBody(body: unknown): RequestBody | null | undefined {
 	if (typeof body === "string") return body;
 	if (body instanceof ArrayBuffer) return body;
 	// FileData is a K6 type with 'data' property - pass through as-is
-	if (typeof body === "object" && body !== null && "data" in body) return body as RequestBody;
+	if (isFileDataLike(body)) return body;
 	return JSON.stringify(body);
 }

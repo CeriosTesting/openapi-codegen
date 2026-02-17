@@ -7,6 +7,45 @@
 
 import { minimatch } from "minimatch";
 
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+
+/** Operation with parameters */
+interface OperationWithParams {
+	parameters?: unknown[];
+}
+
+/** Parameter with in and name properties */
+interface HeaderParam {
+	in: "header";
+	name: string;
+}
+
+/** Type guard for operation with parameters */
+function isOperationWithParams(value: unknown): value is OperationWithParams {
+	if (typeof value !== "object" || value === null || !("parameters" in value)) {
+		return false;
+	}
+	const params = (value as Record<string, unknown>).parameters;
+	return Array.isArray(params);
+}
+
+/** Type guard for header parameter */
+function isHeaderParam(value: unknown): value is HeaderParam {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"in" in value &&
+		(value as { in: unknown }).in === "header" &&
+		"name" in value &&
+		typeof (value as { name: unknown }).name === "string"
+	);
+}
+
+/** Type guard for Record */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
 /**
  * Check if a header should be ignored based on filter patterns
  *
@@ -78,29 +117,14 @@ function collectAllHeaderNames(spec: { paths?: Record<string, unknown> }): Set<s
 	}
 
 	for (const pathItem of Object.values(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
+		if (!isRecord(pathItem)) continue;
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
+		for (const method of HTTP_METHODS) {
+			const operation = pathItem[method];
+			if (!isOperationWithParams(operation)) continue;
 
-		for (const method of methods) {
-			const operation = (pathItem as Record<string, unknown>)[method];
-			if (
-				!operation ||
-				typeof operation !== "object" ||
-				!("parameters" in operation) ||
-				!Array.isArray((operation as { parameters?: unknown }).parameters)
-			)
-				continue;
-
-			for (const param of (operation as { parameters: unknown[] }).parameters) {
-				if (
-					param &&
-					typeof param === "object" &&
-					"in" in param &&
-					param.in === "header" &&
-					"name" in param &&
-					typeof param.name === "string"
-				) {
+			for (const param of operation.parameters ?? []) {
+				if (isHeaderParam(param)) {
 					headerNames.add(param.name.toLowerCase());
 				}
 			}

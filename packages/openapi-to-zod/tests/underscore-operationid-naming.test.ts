@@ -201,7 +201,7 @@ describe("Underscore OperationId Schema Naming", () => {
 					const schemaName = match.match(/typeof (\w+)/)?.[1];
 					return schemaName;
 				})
-				.filter(Boolean) as string[];
+				.filter(Boolean);
 
 			// Each referenced schema should be declared
 			for (const schemaName of referencedSchemas) {

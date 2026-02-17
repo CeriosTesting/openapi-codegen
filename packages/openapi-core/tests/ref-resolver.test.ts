@@ -1,3 +1,5 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
 import { describe, expect, it } from "vitest";
 
 import type { OpenAPISpec } from "../src/types";
@@ -108,7 +110,10 @@ describe("ref-resolver", () => {
 		it("should return null/undefined as-is", () => {
 			const spec: OpenAPISpec = { components: { schemas: {} } };
 			expect(resolveRef(null, spec)).toBeNull();
-			expect(resolveRef(undefined, spec)).toBeUndefined();
+			// Test undefined handling - resolveRef returns input as-is when no ref
+			// oxlint-disable-next-line typescript-eslint(no-confusing-void-expression)
+			const result = resolveRef(undefined as { $ref: string } | undefined, spec);
+			expect(result).toBeUndefined();
 		});
 	});
 
@@ -176,14 +181,18 @@ describe("ref-resolver", () => {
 			const pathParams = [{ name: "id", in: "path", schema: { type: "string" } }];
 			const merged = mergeParameters(pathParams, undefined, spec);
 			expect(merged).toHaveLength(1);
-			expect(merged[0].name).toBe("id");
+			// Test assertion - we know the structure from the test input
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			expect((merged[0] as { name: string }).name).toBe("id");
 		});
 
 		it("should return operation params when path params are undefined", () => {
 			const opParams = [{ name: "filter", in: "query", schema: { type: "string" } }];
 			const merged = mergeParameters(undefined, opParams, spec);
 			expect(merged).toHaveLength(1);
-			expect(merged[0].name).toBe("filter");
+			// Test assertion - we know the structure from the test input
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			expect((merged[0] as { name: string }).name).toBe("filter");
 		});
 
 		it("should merge path and operation params", () => {
@@ -198,8 +207,11 @@ describe("ref-resolver", () => {
 			const opParams = [{ name: "id", in: "path", schema: { type: "integer" }, description: "Operation level" }];
 			const merged = mergeParameters(pathParams, opParams, spec);
 			expect(merged).toHaveLength(1);
-			expect(merged[0].description).toBe("Operation level");
-			expect(merged[0].schema.type).toBe("integer");
+			// Test assertion - we know the structure from the test input
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			const param = merged[0] as { description: string; schema: { type: string } };
+			expect(param.description).toBe("Operation level");
+			expect(param.schema.type).toBe("integer");
 		});
 
 		it("should not override if location differs", () => {
@@ -213,7 +225,9 @@ describe("ref-resolver", () => {
 			const pathParams = [{ $ref: "#/components/parameters/CommonParam" }];
 			const merged = mergeParameters(pathParams, undefined, spec);
 			expect(merged).toHaveLength(1);
-			expect(merged[0].name).toBe("common");
+			// Test assertion - we know the structure from spec.components.parameters
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			expect((merged[0] as { name: string }).name).toBe("common");
 		});
 	});
 });

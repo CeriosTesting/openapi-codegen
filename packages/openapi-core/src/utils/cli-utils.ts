@@ -90,7 +90,7 @@ export function findSpecFiles(options: FindSpecFilesOptions = {}): FindSpecFiles
 			const entries = readdirSync(folder, { recursive: true, encoding: "utf-8" });
 
 			for (const entry of entries) {
-				const fullPath = join(folder, entry as string);
+				const fullPath = join(folder, entry);
 
 				// Skip if path contains excluded patterns
 				if (excludePatterns.some(pattern => fullPath.includes(pattern))) continue;

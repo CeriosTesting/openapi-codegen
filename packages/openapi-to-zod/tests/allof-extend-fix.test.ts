@@ -1,3 +1,6 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -466,17 +469,31 @@ components:
 			const { baseSchema, extendedSchema, nullableExtendedSchema } = await import(outputPath);
 
 			// Base schema should work
-			expect(() => baseSchema.parse({ id: "123" })).not.toThrow();
-			expect(() => baseSchema.parse({})).toThrow();
+			expect(() => {
+				baseSchema.parse({ id: "123" });
+			}).not.toThrow();
+			expect(() => {
+				baseSchema.parse({});
+			}).toThrow();
 
 			// Extended schema should require both fields
-			expect(() => extendedSchema.parse({ id: "123", name: "test" })).not.toThrow();
-			expect(() => extendedSchema.parse({ id: "123" })).toThrow();
-			expect(() => extendedSchema.parse({ name: "test" })).toThrow();
+			expect(() => {
+				extendedSchema.parse({ id: "123", name: "test" });
+			}).not.toThrow();
+			expect(() => {
+				extendedSchema.parse({ id: "123" });
+			}).toThrow();
+			expect(() => {
+				extendedSchema.parse({ name: "test" });
+			}).toThrow();
 
 			// Nullable extended should accept null
-			expect(() => nullableExtendedSchema.parse(null)).not.toThrow();
-			expect(() => nullableExtendedSchema.parse({ id: "123", name: "test" })).not.toThrow();
+			expect(() => {
+				nullableExtendedSchema.parse(null);
+			}).not.toThrow();
+			expect(() => {
+				nullableExtendedSchema.parse({ id: "123", name: "test" });
+			}).not.toThrow();
 		});
 	});
 });

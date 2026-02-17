@@ -15,6 +15,103 @@ import {
 
 import type { OpenApiK6GeneratorOptions } from "../types";
 
+/** Resolved request body structure */
+interface ResolvedRequestBody {
+	content?: Record<string, unknown>;
+	required?: boolean;
+}
+
+/** Type guard for resolved request body */
+function isResolvedRequestBody(value: unknown): value is ResolvedRequestBody {
+	return typeof value === "object" && value !== null && "content" in value;
+}
+
+/** Resolved response structure */
+interface ResolvedResponse {
+	content?: Record<string, unknown>;
+}
+
+/** Type guard for resolved response */
+function isResolvedResponse(value: unknown): value is ResolvedResponse {
+	return typeof value === "object" && value !== null && "content" in value;
+}
+
+/** Media type content with optional schema */
+interface MediaTypeContent {
+	schema?: OpenAPISchemaLike;
+}
+
+/** Type guard for media type content */
+function isMediaTypeContent(value: unknown): value is MediaTypeContent {
+	return typeof value === "object" && value !== null;
+}
+
+/** OpenAPI schema structure for type conversion */
+interface OpenAPISchemaLike {
+	$ref?: string;
+	type?: "string" | "number" | "integer" | "boolean" | "array" | "object" | "null";
+	enum?: string[];
+	items?: OpenAPISchemaLike;
+	additionalProperties?: OpenAPISchemaLike | boolean;
+}
+
+/** OpenAPI operation structure for path methods */
+interface OpenAPIOperation {
+	operationId?: string;
+	parameters?: unknown[];
+	requestBody?: {
+		content?: Record<string, { schema?: unknown }>;
+		required?: boolean;
+	};
+	responses?: Record<
+		string,
+		{
+			content?: Record<string, { schema?: unknown }>;
+		}
+	>;
+	deprecated?: boolean;
+	summary?: string;
+	description?: string;
+}
+
+/** HTTP methods constant for type-safe iteration */
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+
+/** Type to represent a path item that can be indexed by method */
+interface PathItemLike extends Record<string, unknown> {
+	parameters?: unknown[];
+}
+
+/** Type guard to check if a value is a path item */
+function isPathItemLike(value: unknown): value is PathItemLike {
+	return typeof value === "object" && value !== null;
+}
+
+/** Type guard to check if a value is an OpenAPIOperation */
+function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
+	return typeof value === "object" && value !== null;
+}
+
+/** Get operation from path item if it exists */
+function getOperation(pathItem: Record<string, unknown>, method: string): OpenAPIOperation | undefined {
+	const value = pathItem[method];
+	return isOpenAPIOperation(value) ? value : undefined;
+}
+
+/** Parameter info for typed parameter access */
+interface OpenAPIParameter {
+	name: string;
+	in: string;
+	required?: boolean;
+	schema?: OpenAPISchemaLike;
+	description?: string;
+}
+
+/** Type guard for OpenAPI parameter */
+function isOpenAPIParameter(value: unknown): value is OpenAPIParameter {
+	return typeof value === "object" && value !== null && "name" in value && "in" in value;
+}
+
 interface ParameterInfo {
 	name: string;
 	required: boolean;
@@ -46,7 +143,7 @@ interface RequestBodyInfo {
 /**
  * Converts OpenAPI schema type to TypeScript type
  */
-function schemaToTypeString(schema: any): string {
+function schemaToTypeString(schema: OpenAPISchemaLike | undefined): string {
 	if (!schema) return "unknown";
 
 	if (schema.$ref) {
@@ -69,11 +166,12 @@ function schemaToTypeString(schema: any): string {
 		case "array":
 			return `${schemaToTypeString(schema.items)}[]`;
 		case "object":
-			if (schema.additionalProperties) {
+			if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
 				return `Record<string, ${schemaToTypeString(schema.additionalProperties)}>`;
 			}
 			return "Record<string, unknown>";
-		default:
+		case "null":
+		case undefined:
 			return "unknown";
 	}
 }
@@ -100,18 +198,13 @@ function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions)
 	}
 
 	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
-
-		// Cast pathItem to access OpenAPI properties
-		const pathItemObj = pathItem as Record<string, any>;
+		if (!isPathItemLike(pathItem)) continue;
 
 		// Strip prefix from path for processing
 		const path = stripPathPrefix(originalPath, options.stripPathPrefix);
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-
-		for (const method of methods) {
-			const operation = pathItemObj[method];
+		for (const method of HTTP_METHODS) {
+			const operation = getOperation(pathItem, method);
 			if (!operation) continue;
 
 			// Apply operation filters
@@ -129,10 +222,11 @@ function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions)
 			const pathParams = extractPathParams(path);
 
 			// Merge and extract parameters
-			const mergedParams = mergeParameters(pathItemObj.parameters, operation.parameters, spec);
+			const mergedParams = mergeParameters(pathItem.parameters, operation.parameters, spec);
+			const typedParams = mergedParams.filter(isOpenAPIParameter);
 
 			// Extract query parameters
-			const queryParams: ParameterInfo[] = mergedParams
+			const queryParams: ParameterInfo[] = typedParams
 				.filter(p => p.in === "query")
 				.map(p => ({
 					name: p.name,
@@ -143,7 +237,7 @@ function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions)
 
 			// Extract header parameters (filtered by ignoreHeaders)
 			const headerParams: ParameterInfo[] = filterHeaders(
-				mergedParams.filter(p => p.in === "header"),
+				typedParams.filter(p => p.in === "header"),
 				options.ignoreHeaders
 			).map(p => ({
 				name: p.name,
@@ -156,13 +250,13 @@ function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions)
 			let requestBody: RequestBodyInfo | undefined;
 			if (operation.requestBody) {
 				const resolved = resolveRequestBodyRef(operation.requestBody, spec);
-
-				if (resolved?.content) {
+				if (isResolvedRequestBody(resolved) && resolved.content) {
 					const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
 					if (contentType) {
-						const mediaType = resolved.content[contentType];
+						const mediaTypeRaw = resolved.content[contentType];
+						const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
 						requestBody = {
-							required: resolved.required || false,
+							required: Boolean(resolved.required),
 							contentType,
 							typeName: mediaType?.schema ? schemaToTypeString(mediaType.schema) : "unknown",
 						};
@@ -181,10 +275,11 @@ function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions)
 					successStatusCode = parseInt(statusCode, 10);
 
 					const resolved = resolveResponseRef(responseRef, spec);
-					if (resolved?.content) {
+					if (isResolvedResponse(resolved) && resolved.content) {
 						const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
 						if (contentType) {
-							const mediaType = resolved.content[contentType];
+							const mediaTypeRaw = resolved.content[contentType];
+							const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
 							if (mediaType?.schema) {
 								successResponseType = schemaToTypeString(mediaType.schema);
 								break; // Use first matching success response
@@ -526,7 +621,7 @@ export function getServiceEndpointStats(
 			if (!pathItem || typeof pathItem !== "object") continue;
 			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
 			for (const method of methods) {
-				if ((pathItem as any)[method]) totalOperations++;
+				if (pathItem && typeof pathItem === "object" && method in pathItem) totalOperations++;
 			}
 		}
 	}

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-unsafe-member-access
 import { describe, expect, it, vi } from "vitest";
 
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";

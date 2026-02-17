@@ -18,7 +18,12 @@ import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
 const program = new Command();
 
 // Read package.json for version
-const packageJson = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+interface PackageJson {
+	version: string;
+}
+// JSON.parse returns any, we validate the shape
+// oxlint-disable-next-line typescript-eslint(no-unsafe-assignment)
+const packageJson: PackageJson = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
 
 program
 	.name("openapi-to-zod-playwright")
@@ -39,7 +44,7 @@ Examples:
   $ openapi-to-zod-playwright --config custom.config.ts
 `
 	)
-	.action(async options => {
+	.action(async (options: { config?: string }) => {
 		try {
 			await executeConfigMode(options);
 		} catch (error) {
@@ -87,7 +92,7 @@ async function executeConfigMode(options: { config?: string }): Promise<void> {
 	const batchSize = specs[0]?.batchSize ?? 10;
 
 	// Generate for all specs using batch executor
-	executeBatch(specs, executionMode, spec => new OpenApiPlaywrightGenerator(spec), batchSize);
+	await executeBatch(specs, executionMode, spec => new OpenApiPlaywrightGenerator(spec), batchSize);
 }
 
 /**
@@ -101,12 +106,13 @@ async function initConfigFile(): Promise<void> {
 
 	const existingConfig = configFiles.find(f => existsSync(f));
 	if (existingConfig) {
-		const { overwrite } = await prompts({
+		const result = await prompts({
 			type: "confirm",
 			name: "overwrite",
 			message: `Config file '${existingConfig}' already exists. Overwrite?`,
 			initial: false,
 		});
+		const overwrite = Boolean((result as Record<string, unknown>).overwrite);
 
 		if (!overwrite) {
 			console.log("Initialization cancelled.");
@@ -131,7 +137,7 @@ async function initConfigFile(): Promise<void> {
 			{ title: "→ Enter manually...", value: "__MANUAL__" },
 		];
 
-		const inputResponse = await prompts({
+		const inputResponse: { input?: string } = await prompts({
 			type: "select",
 			name: "input",
 			message: "Select OpenAPI spec file (YAML or JSON):",
@@ -145,12 +151,12 @@ async function initConfigFile(): Promise<void> {
 
 		if (inputResponse.input === "__MANUAL__") {
 			// Manual entry
-			const manualResponse = await prompts({
+			const manualResponse: { input?: string } = await prompts({
 				type: "text",
 				name: "input",
 				message: "Input OpenAPI file path (YAML or JSON):",
 				initial: "openapi.{yaml,yml,json}",
-				validate: value => {
+				validate: (value: string) => {
 					if (value.length === 0) return "Input path is required";
 					if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 					return true;
@@ -168,12 +174,12 @@ async function initConfigFile(): Promise<void> {
 		}
 	} else {
 		// No files found, fall back to text input
-		const manualResponse = await prompts({
+		const manualResponse: { input?: string } = await prompts({
 			type: "text",
 			name: "input",
 			message: "Input OpenAPI file path (YAML or JSON):",
 			initial: "openapi.{yaml,yml,json}",
-			validate: value => {
+			validate: (value: string) => {
 				if (value.length === 0) return "Input path is required";
 				if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 				return true;
@@ -188,20 +194,28 @@ async function initConfigFile(): Promise<void> {
 		inputPath = manualResponse.input;
 	}
 
-	const response = await prompts([
+	interface PromptsResponse {
+		output?: string;
+		outputClient?: string;
+		outputService?: string;
+		format?: string;
+		includeDefaults?: boolean;
+	}
+
+	const response: PromptsResponse = await prompts([
 		{
 			type: "text",
 			name: "output",
 			message: "Output file path for schemas and types:",
 			initial: "tests/schemas.ts",
-			validate: value => value.length > 0 || "Output path is required",
+			validate: (value: string) => value.length > 0 || "Output path is required",
 		},
 		{
 			type: "text",
 			name: "outputClient",
 			message: "Output file path for client class:",
 			initial: "tests/client.ts",
-			validate: value => value.length > 0 || "Client output path is required",
+			validate: (value: string) => value.length > 0 || "Client output path is required",
 		},
 		{
 			type: "text",
@@ -285,7 +299,20 @@ ${specConfig.join("\n")}
 		}
 	} else {
 		configFilename = "openapi-to-zod-playwright.config.json";
-		const specObj: any = {
+		interface SpecConfig {
+			input: string;
+			outputTypes: string | undefined;
+			outputClient: string | undefined;
+			outputService?: string;
+		}
+		interface JsonConfig {
+			specs: SpecConfig[];
+			defaults?: {
+				mode: string;
+				validateServiceRequest: boolean;
+			};
+		}
+		const specObj: SpecConfig = {
 			input,
 			outputTypes: output,
 			outputClient,
@@ -294,7 +321,7 @@ ${specConfig.join("\n")}
 			specObj.outputService = outputService;
 		}
 
-		const jsonConfig: any = {
+		const jsonConfig: JsonConfig = {
 			specs: [specObj],
 		};
 

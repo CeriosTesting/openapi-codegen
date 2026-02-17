@@ -83,16 +83,20 @@ describe("Cross-Package Integration: Core → Playwright", () => {
 		});
 
 		it("should format errors correctly with Playwright-specific notes", () => {
+			// Create a mock ZodError-like object for testing
 			const mockError = {
 				issues: [
 					{
-						path: ["specs", 0, "input"],
+						path: ["specs", 0, "input"] as (string | number)[],
 						message: "Required",
 					},
 				],
 			};
 
-			const result = formatConfigValidationError(mockError as any, "config.ts", undefined, {
+			// formatConfigValidationError accepts z.ZodError, use type assertion to test with mock
+			// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			const errorParam = mockError as Parameters<typeof formatConfigValidationError>[0];
+			const result = formatConfigValidationError(errorParam, "config.ts", undefined, {
 				additionalNotes: ["Note: schemaType is always 'all' for Playwright generator"],
 			});
 

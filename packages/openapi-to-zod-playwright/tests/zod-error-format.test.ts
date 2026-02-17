@@ -1,3 +1,7 @@
+// oxlint-disable typescript/no-unsafe-type-assertion
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";

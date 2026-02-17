@@ -24,6 +24,42 @@ import {
 } from "./generators/service-generator";
 import type { OpenApiPlaywrightGeneratorOptions } from "./types";
 
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** Parameter structure for type-safe access */
+interface OpenAPIParameter {
+	in?: string;
+	$ref?: string;
+}
+
+/** Response structure for type-safe access */
+interface OpenAPIResponse {
+	content?: Record<string, { schema?: { $ref?: string } }>;
+}
+
+/** Operation structure for type-safe access */
+interface OpenAPIOperation {
+	parameters?: OpenAPIParameter[];
+	responses?: Record<string, OpenAPIResponse>;
+}
+
+/** Type guard for OpenAPI operation */
+function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
+	return typeof value === "object" && value !== null;
+}
+
+/** Type guard for OpenAPI path item */
+function isOpenAPIPathItem(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+/** Helper to safely get operation from path item */
+function getOperation(pathItem: Record<string, unknown>, method: HttpMethod): OpenAPIOperation | undefined {
+	const operation = pathItem[method];
+	return isOpenAPIOperation(operation) ? operation : undefined;
+}
+
 /**
  * Main generator class for Playwright API clients
  * Supports file splitting: schemas (always), client (optional), service (optional, requires client)
@@ -316,7 +352,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 */
 	private parseSpec(): OpenAPISpec {
 		// Use core utility with caching
-		const spec = loadOpenAPISpecCached(this.options.input, OpenApiPlaywrightGenerator.specCache) as OpenAPISpec;
+		const spec = loadOpenAPISpecCached(this.options.input, OpenApiPlaywrightGenerator.specCache);
 		return spec;
 	}
 
@@ -671,12 +707,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}> = [];
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem) continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-
-			for (const method of methods) {
-				const operation = pathItem[method];
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
 				if (!operation) continue;
 
 				// Extract path parameters
@@ -684,26 +718,26 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 				// Check for query parameters
 				const queryParamSchemaName = operation.parameters?.some(
-					(p: any) => p.in === "query" || p.$ref?.includes("/parameters/")
+					p => p.in === "query" || p.$ref?.includes("/parameters/")
 				)
 					? "queryParams"
 					: undefined;
 
 				// Extract response schemas
-				const responses =
-					operation.responses &&
-					Object.values(operation.responses)
-						.map((response: any) => {
-							const content = response.content;
-							if (!content) return { schemaName: undefined };
+				const responses = operation.responses
+					? Object.values(operation.responses)
+							.map(response => {
+								const content = response.content;
+								if (!content) return { schemaName: undefined };
 
-							const jsonContent = content["application/json"];
-							if (!jsonContent?.schema?.$ref) return { schemaName: undefined };
+								const jsonContent = content["application/json"];
+								if (!jsonContent?.schema?.$ref) return { schemaName: undefined };
 
-							const refParts = jsonContent.schema.$ref.split("/");
-							return { schemaName: refParts[refParts.length - 1] };
-						})
-						.filter(r => r.schemaName);
+								const refParts = jsonContent.schema.$ref.split("/");
+								return { schemaName: refParts[refParts.length - 1] };
+							})
+							.filter(r => r.schemaName)
+					: [];
 
 				endpoints.push({
 					path,
@@ -711,7 +745,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 					methodName: `${method}${path.replace(/\{[^}]+\}/g, "param")}`,
 					pathParams,
 					queryParamSchemaName,
-					responses: responses || [],
+					responses,
 				});
 			}
 		}

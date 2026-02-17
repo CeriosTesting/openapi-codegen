@@ -56,7 +56,9 @@ describe("Dependency Check", () => {
 			// The package is installed in the workspace, so this should not throw
 			const { checkCoreDependency } = await import("../src/utils/dependency-check");
 
-			expect(() => checkCoreDependency()).not.toThrow();
+			expect(() => {
+				checkCoreDependency();
+			}).not.toThrow();
 		});
 
 		it("should create proper error with installation instructions", () => {

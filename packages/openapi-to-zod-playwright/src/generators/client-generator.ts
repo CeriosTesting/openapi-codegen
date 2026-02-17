@@ -66,6 +66,34 @@ interface EndpointInfo {
 	description?: string;
 }
 
+/** HTTP methods constant for type-safe iteration */
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** OpenAPI operation structure */
+interface OpenAPIOperation {
+	operationId?: string;
+	deprecated?: boolean;
+	summary?: string;
+	description?: string;
+}
+
+/** Type guard for OpenAPI operation */
+function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
+	return typeof value === "object" && value !== null;
+}
+
+/** Helper to safely get operation from path item */
+function getOperation(pathItem: Record<string, unknown>, method: HttpMethod): OpenAPIOperation | undefined {
+	const operation = pathItem[method];
+	return isOpenAPIOperation(operation) ? operation : undefined;
+}
+
+/** Type guard for OpenAPI path item */
+function isOpenAPIPathItem(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
 /**
  * Generates the ApiClient class code
  * The client is a thin passthrough layer with no validation
@@ -93,10 +121,9 @@ export function generateClientClass(
 		let totalOperations = 0;
 		if (spec.paths) {
 			for (const pathItem of Object.values(spec.paths)) {
-				if (!pathItem || typeof pathItem !== "object") continue;
-				const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-				for (const method of methods) {
-					if (pathItem[method]) totalOperations++;
+				if (!isOpenAPIPathItem(pathItem)) continue;
+				for (const method of HTTP_METHODS) {
+					if (getOperation(pathItem, method)) totalOperations++;
 				}
 			}
 		}
@@ -151,15 +178,13 @@ function extractEndpoints(
 	}
 
 	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
+		if (!isOpenAPIPathItem(pathItem)) continue;
 
 		// Strip prefix from path for processing
 		const path = stripPathPrefix(originalPath, stripPrefix);
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-		for (const method of methods) {
-			const operation = pathItem[method];
+		for (const method of HTTP_METHODS) {
+			const operation = getOperation(pathItem, method);
 			if (!operation) continue;
 
 			// Apply operation filters

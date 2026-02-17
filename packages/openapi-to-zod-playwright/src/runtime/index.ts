@@ -40,8 +40,9 @@ export type MultipartFormData = FormData | { [key: string]: MultipartFormValue }
 
 /**
  * Request body data (JSON, text, or binary)
+ * Supports all valid JSON types including primitives
  */
-export type RequestBody = string | Buffer | unknown;
+export type RequestBody = string | number | boolean | null | Buffer | Record<string, unknown> | unknown[];
 
 /**
  * Options for API requests

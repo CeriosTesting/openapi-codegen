@@ -134,7 +134,9 @@ export class PropertyGenerator {
 	private filterNestedProperties(schema: OpenAPISchema): OpenAPISchema {
 		// Performance optimization: More efficient cache key generation
 		const propKeys = schema.properties ? Object.keys(schema.properties).sort().join(",") : "";
-		const cacheKey = `${this.context.schemaType}:${schema.type || "unknown"}:${propKeys}:${schema.required?.join(",") || ""}`;
+		const requiredKeys = Array.isArray(schema.required) ? schema.required.join(",") : String(schema.required ?? "");
+		const schemaType = Array.isArray(schema.type) ? schema.type.join("|") : schema.type || "unknown";
+		const cacheKey = `${this.context.schemaType}:${schemaType}:${propKeys}:${requiredKeys}`;
 		const cached = this.filteredPropsCache.get(cacheKey);
 		if (cached) {
 			return cached;
@@ -680,13 +682,14 @@ export class PropertyGenerator {
 						case "loose":
 							validation = "z.looseObject({})";
 							break;
-						default:
+						case "record":
 							validation = "z.record(z.string(), z.unknown())";
 							break;
 					}
 					validation = addDescription(validation, schema.description, this.context.useDescribe);
 				}
 				break;
+			case undefined:
 			default:
 				validation = "z.unknown()";
 				validation = addDescription(validation, schema.description, this.context.useDescribe);

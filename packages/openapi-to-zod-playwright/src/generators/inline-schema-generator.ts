@@ -1,4 +1,4 @@
-import { LRUCache, toCamelCase, toPascalCase } from "@cerios/openapi-core";
+import { LRUCache, type OpenAPISchema, toCamelCase, toPascalCase } from "@cerios/openapi-core";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { buildDateTimeValidation, PropertyGenerator, type PropertyGeneratorContext } from "@cerios/openapi-to-zod";
 
@@ -9,7 +9,7 @@ export interface InlineSchemaInfo {
 	/** Generated schema name (e.g., "GetUsersResponse") */
 	schemaName: string;
 	/** The raw OpenAPI schema definition */
-	schema: any;
+	schema: OpenAPISchema;
 	/** Method name this schema belongs to */
 	methodName: string;
 	/** HTTP status code */
@@ -27,7 +27,7 @@ export interface InlineRequestSchemaInfo {
 	/** Generated schema name (e.g., "PostUsersRequest") */
 	schemaName: string;
 	/** The raw OpenAPI schema definition */
-	schema: any;
+	schema: OpenAPISchema;
 	/** Method name this schema belongs to */
 	methodName: string;
 	/** Content type (e.g., "application/json") */
@@ -66,7 +66,7 @@ function createPropertyGeneratorContext(
 		spec: options.spec,
 		schemaDependencies: new Map(), // Empty - inline schemas don't track dependencies
 		schemaType, // request schemas exclude readOnly, response schemas exclude writeOnly
-		mode: (options.mode as "strict" | "normal" | "loose") ?? "normal",
+		mode: options.mode ?? "normal",
 		includeDescriptions: options.includeDescriptions ?? false,
 		useDescribe: options.useDescribe ?? false,
 		namingOptions: {
@@ -87,7 +87,7 @@ function createPropertyGeneratorContext(
  */
 function generateInlineSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions,
 	schemaType: "request" | "response"
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
@@ -131,7 +131,7 @@ function generateInlineSchema(
  */
 export function generateInlineResponseSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
 	return generateInlineSchema(schemaName, inlineSchema, options, "response");
@@ -144,7 +144,7 @@ export function generateInlineResponseSchema(
  */
 export function generateInlineRequestSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
 	return generateInlineSchema(schemaName, inlineSchema, options, "request");

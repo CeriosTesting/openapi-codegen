@@ -10,6 +10,30 @@ export interface Generator {
 }
 
 /**
+ * Type guard to check if a value has an input property
+ */
+function hasInput(value: unknown): value is { input: string } {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"input" in value &&
+		typeof (value as Record<string, unknown>).input === "string"
+	);
+}
+
+/**
+ * Type guard to check if a value has an output property
+ */
+function hasOutput(value: unknown): value is { output: string } {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"output" in value &&
+		typeof (value as Record<string, unknown>).output === "string"
+	);
+}
+
+/**
  * Result of processing a single spec
  */
 export interface SpecResult<T> {
@@ -31,15 +55,10 @@ export interface BatchExecutionSummary<T> {
 /**
  * Process a single spec and return result with error handling
  */
-async function processSpec<T>(
-	spec: T,
-	index: number,
-	total: number,
-	createGenerator: (spec: T) => Generator
-): Promise<SpecResult<T>> {
+function processSpec<T>(spec: T, index: number, total: number, createGenerator: (spec: T) => Generator): SpecResult<T> {
 	// Live progress to stdout
-	const specInput = (spec as any).input || "spec";
-	const specOutput = (spec as any).output || "output";
+	const specInput = hasInput(spec) ? spec.input : "spec";
+	const specOutput = hasOutput(spec) ? spec.output : "output";
 	console.log(`Processing [${index + 1}/${total}] ${specInput}...`);
 
 	try {
@@ -79,8 +98,10 @@ async function executeParallel<T>(
 	// Process in batches to control memory usage
 	for (let i = 0; i < specs.length; i += batchSize) {
 		const batch = specs.slice(i, Math.min(i + batchSize, specs.length));
+		// Use Promise.all with synchronous results wrapped in Promise.resolve
+		// oxlint-disable-next-line typescript-eslint(promise-function-async)
 		const batchPromises = batch.map((spec, batchIndex) =>
-			processSpec(spec, i + batchIndex, specs.length, createGenerator)
+			Promise.resolve(processSpec(spec, i + batchIndex, specs.length, createGenerator))
 		);
 
 		const batchResults = await Promise.allSettled(batchPromises);
@@ -108,13 +129,13 @@ async function executeParallel<T>(
  * Execute specs sequentially one at a time
  * Continues processing all specs even if some fail
  */
-async function executeSequential<T>(specs: T[], createGenerator: (spec: T) => Generator): Promise<SpecResult<T>[]> {
+function executeSequential<T>(specs: T[], createGenerator: (spec: T) => Generator): SpecResult<T>[] {
 	console.log(`\nExecuting ${specs.length} spec(s) sequentially...\n`);
 
 	const results: SpecResult<T>[] = [];
 
 	for (let i = 0; i < specs.length; i++) {
-		const result = await processSpec(specs[i], i, specs.length, createGenerator);
+		const result = processSpec(specs[i], i, specs.length, createGenerator);
 		results.push(result);
 	}
 
@@ -136,7 +157,7 @@ function printSummary<T>(summary: BatchExecutionSummary<T>): void {
 		console.log("\nFailed specs:");
 		for (const result of summary.results) {
 			if (!result.success) {
-				const specInput = (result.spec as any).input || "spec";
+				const specInput = hasInput(result.spec) ? result.spec.input : "spec";
 				console.error(`  ✗ ${specInput}`);
 				console.error(`    Error: ${result.error}`);
 			}
@@ -173,7 +194,7 @@ export async function executeBatch<T>(
 		results =
 			executionMode === "parallel"
 				? await executeParallel(specs, createGenerator, batchSize)
-				: await executeSequential(specs, createGenerator);
+				: executeSequential(specs, createGenerator);
 
 		// Calculate summary
 		const summary: BatchExecutionSummary<T> = {
@@ -194,7 +215,8 @@ export async function executeBatch<T>(
 			for (const result of results) {
 				// Keep only essential info, clear large objects
 				if (result.spec) {
-					(result.spec as any) = null;
+					// Use Object.assign to clear the spec reference without unsafe type assertion
+					Object.assign(result, { spec: null });
 				}
 			}
 

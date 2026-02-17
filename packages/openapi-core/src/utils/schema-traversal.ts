@@ -9,6 +9,47 @@ import type { OpenAPISchema, OpenAPISpec } from "../types";
 import { resolveRefName } from "./name-utils";
 
 /**
+ * HTTP methods to check in path items
+ */
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+
+/**
+ * Type guard to check if a value is a record object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type for operation with requestBody, responses, and parameters
+ */
+interface OperationLike {
+	requestBody?: {
+		content?: Record<string, { schema?: OpenAPISchema }>;
+	};
+	responses?: Record<string, { content?: Record<string, { schema?: OpenAPISchema }> }>;
+	parameters?: Array<{ schema?: OpenAPISchema }>;
+}
+
+/**
+ * Type guard to check if a value looks like an operation
+ */
+function isOperationLike(value: unknown): value is OperationLike {
+	return isRecord(value);
+}
+
+/**
+ * Get an operation from a path item by method name
+ */
+function getOperation(pathItem: Record<string, unknown>, method: string): OperationLike | undefined {
+	const op = pathItem[method];
+	if (isOperationLike(op)) {
+		return op;
+	}
+	return undefined;
+}
+
+/**
  * Schema context indicating where a schema is used
  */
 export type SchemaContext = "request" | "response" | "both";
@@ -354,41 +395,28 @@ export function analyzeSchemaUsage(spec: OpenAPISpec): SchemaUsageAnalysis {
 	// Analyze paths section if available
 	if (spec.paths) {
 		for (const [_path, pathItem] of Object.entries(spec.paths)) {
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-			for (const method of methods) {
-				const operation = (pathItem as Record<string, unknown>)[method];
-				if (typeof operation !== "object" || !operation) continue;
+			if (!isRecord(pathItem)) continue;
 
-				const op = operation as Record<string, unknown>;
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
+				if (!operation) continue;
 
 				// Check request bodies
-				if (op.requestBody && typeof op.requestBody === "object") {
-					const reqBody = op.requestBody as Record<string, unknown>;
-					if (reqBody.content && typeof reqBody.content === "object") {
-						for (const mediaType of Object.values(reqBody.content)) {
-							if (mediaType && typeof mediaType === "object") {
-								const mt = mediaType as Record<string, unknown>;
-								if (mt.schema) {
-									extractSchemaRefs(mt.schema as OpenAPISchema, requestSchemas);
-								}
-							}
+				if (operation.requestBody?.content) {
+					for (const mediaType of Object.values(operation.requestBody.content)) {
+						if (mediaType?.schema) {
+							extractSchemaRefs(mediaType.schema, requestSchemas);
 						}
 					}
 				}
 
 				// Check responses
-				if (op.responses && typeof op.responses === "object") {
-					for (const response of Object.values(op.responses)) {
-						if (response && typeof response === "object") {
-							const resp = response as Record<string, unknown>;
-							if (resp.content && typeof resp.content === "object") {
-								for (const mediaType of Object.values(resp.content)) {
-									if (mediaType && typeof mediaType === "object") {
-										const mt = mediaType as Record<string, unknown>;
-										if (mt.schema) {
-											extractSchemaRefs(mt.schema as OpenAPISchema, responseSchemas);
-										}
-									}
+				if (operation.responses) {
+					for (const response of Object.values(operation.responses)) {
+						if (response?.content) {
+							for (const mediaType of Object.values(response.content)) {
+								if (mediaType?.schema) {
+									extractSchemaRefs(mediaType.schema, responseSchemas);
 								}
 							}
 						}
@@ -396,13 +424,10 @@ export function analyzeSchemaUsage(spec: OpenAPISpec): SchemaUsageAnalysis {
 				}
 
 				// Check parameters (used in requests)
-				if (op.parameters && Array.isArray(op.parameters)) {
-					for (const param of op.parameters) {
-						if (param && typeof param === "object") {
-							const p = param as Record<string, unknown>;
-							if (p.schema) {
-								extractSchemaRefs(p.schema as OpenAPISchema, requestSchemas);
-							}
+				if (operation.parameters) {
+					for (const param of operation.parameters) {
+						if (param?.schema) {
+							extractSchemaRefs(param.schema, requestSchemas);
 						}
 					}
 				}

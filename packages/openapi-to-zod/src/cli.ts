@@ -37,7 +37,7 @@ Examples:
   $ openapi-to-zod --config custom.config.ts
 `
 	)
-	.action(async options => {
+	.action(async (options: { config?: string }) => {
 		try {
 			await executeConfigMode(options);
 		} catch (error) {
@@ -103,12 +103,13 @@ async function initConfigFile(): Promise<void> {
 
 	const existingConfig = configFiles.find(f => existsSync(f));
 	if (existingConfig) {
-		const { overwrite } = await prompts({
+		const result = await prompts({
 			type: "confirm",
 			name: "overwrite",
 			message: `Config file '${existingConfig}' already exists. Overwrite?`,
 			initial: false,
 		});
+		const overwrite = Boolean((result as Record<string, unknown>).overwrite);
 
 		if (!overwrite) {
 			console.log("Initialization cancelled.");
@@ -133,7 +134,7 @@ async function initConfigFile(): Promise<void> {
 			{ title: "→ Enter manually...", value: "__MANUAL__" },
 		];
 
-		const inputResponse = await prompts({
+		const inputResponse: { input?: string } = await prompts({
 			type: "select",
 			name: "input",
 			message: "Select OpenAPI spec file (YAML or JSON):",
@@ -147,12 +148,12 @@ async function initConfigFile(): Promise<void> {
 
 		if (inputResponse.input === "__MANUAL__") {
 			// Manual entry
-			const manualResponse = await prompts({
+			const manualResponse: { input?: string } = await prompts({
 				type: "text",
 				name: "input",
 				message: "Input OpenAPI file path (YAML or JSON):",
 				initial: "openapi.{yaml,yml,json}",
-				validate: value => {
+				validate: (value: string) => {
 					if (value.length === 0) return "Input path is required";
 					if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 					return true;
@@ -170,12 +171,12 @@ async function initConfigFile(): Promise<void> {
 		}
 	} else {
 		// No files found, fall back to text input
-		const manualResponse = await prompts({
+		const manualResponse: { input?: string } = await prompts({
 			type: "text",
 			name: "input",
 			message: "Input OpenAPI file path (YAML or JSON):",
 			initial: "openapi.{yaml,yml,json}",
-			validate: value => {
+			validate: (value: string) => {
 				if (value.length === 0) return "Input path is required";
 				if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 				return true;
@@ -190,13 +191,13 @@ async function initConfigFile(): Promise<void> {
 		inputPath = manualResponse.input;
 	}
 
-	const response = await prompts([
+	const response: { output?: string; format?: "ts" | "json"; includeDefaults?: boolean } = await prompts([
 		{
 			type: "text",
 			name: "output",
 			message: "Output TypeScript file path:",
 			initial: "src/schemas.ts",
-			validate: value => value.length > 0 || "Output path is required",
+			validate: (value: string) => value.length > 0 || "Output path is required",
 		},
 		{
 			type: "select",
@@ -265,7 +266,10 @@ export default defineConfig({
 		}
 	} else {
 		configFilename = "openapi-to-zod.config.json";
-		const jsonConfig: any = {
+		const jsonConfig: {
+			specs: Array<{ input: string; outputTypes: string | undefined }>;
+			defaults?: { mode: string; includeDescriptions: boolean; showStats: boolean };
+		} = {
 			specs: [
 				{
 					input,
