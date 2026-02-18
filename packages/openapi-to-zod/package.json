@@ -65,24 +65,24 @@
 	"dependencies": {
 		"@cerios/openapi-core": "workspace:*",
 		"@cerios/openapi-to-typescript": "workspace:*",
-		"commander": "^14.0.3",
-		"cosmiconfig": "^9.0.0",
-		"minimatch": "^10.2.0",
-		"yaml": "^2.8.2"
+		"commander": "catalog:",
+		"cosmiconfig": "catalog:",
+		"minimatch": "catalog:",
+		"yaml": "catalog:"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.2",
-		"@changesets/cli": "^2.29.8",
-		"@types/node": "^25.2.3",
-		"@types/prompts": "^2.4.9",
-		"husky": "^9.1.7",
-		"lint-staged": "^16.2.7",
-		"prompts": "^2.4.2",
-		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18",
-		"zod": "^4.3.6"
+		"@arethetypeswrong/cli": "catalog:",
+		"@changesets/cli": "catalog:",
+		"@types/node": "catalog:",
+		"@types/prompts": "catalog:",
+		"husky": "catalog:",
+		"lint-staged": "catalog:",
+		"prompts": "catalog:",
+		"tsup": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"zod": "catalog:"
 	},
 	"peerDependencies": {
 		"zod": "^4.0.0"

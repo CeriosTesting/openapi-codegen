@@ -64,21 +64,21 @@
 		"@cerios/openapi-core": "workspace:*",
 		"@cerios/openapi-to-typescript": "workspace:*",
 		"@cerios/openapi-to-zod": "workspace:*",
-		"commander": "^14.0.3",
-		"cosmiconfig": "^9.0.0",
-		"minimatch": "^10.2.0",
-		"prompts": "^2.4.2",
-		"yaml": "^2.8.2"
+		"commander": "catalog:",
+		"cosmiconfig": "catalog:",
+		"minimatch": "catalog:",
+		"prompts": "catalog:",
+		"yaml": "catalog:"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.2",
+		"@arethetypeswrong/cli": "catalog:",
 		"@playwright/test": "^1.58.2",
-		"@types/node": "^25.2.3",
-		"@types/prompts": "^2.4.9",
-		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18",
-		"zod": "^4.3.6"
+		"@types/node": "catalog:",
+		"@types/prompts": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"zod": "catalog:"
 	},
 	"peerDependencies": {
 		"@playwright/test": ">=1.48.0",

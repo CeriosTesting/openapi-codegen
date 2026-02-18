@@ -294,3 +294,40 @@ export function generateHeaderParamsTypeName(operationName: string): string {
 export function generatePathParamsTypeName(operationName: string): string {
 	return `${operationName}PathParams`;
 }
+
+/**
+ * Derives a class name from an output file path
+ *
+ * Extracts the file name, converts to PascalCase, and optionally adds a suffix.
+ * Avoids duplicating existing suffixes (e.g., won't produce "ApiClientClient").
+ *
+ * @param outputPath - The output file path (e.g., "src/api-client.ts")
+ * @param suffix - Optional suffix to add (e.g., "Client", "Service")
+ * @returns PascalCase class name
+ *
+ * @example
+ * ```typescript
+ * deriveClassName("src/api-client.ts") // "ApiClient"
+ * deriveClassName("src/api-client.ts", "Service") // "ApiClientService"
+ * deriveClassName("src/user-service.ts", "Service") // "UserService" (not "UserServiceService")
+ * ```
+ */
+export function deriveClassName(outputPath: string, suffix?: string): string {
+	const fileName = outputPath.split("/").pop()?.split("\\").pop() || "Api";
+	const baseName = fileName.replace(/\.(ts|js)$/, "");
+
+	// Convert to PascalCase
+	const pascalCase = baseName
+		.split(/[-_\s]+/)
+		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.join("");
+
+	if (!suffix) {
+		return pascalCase;
+	}
+
+	// Remove existing suffix if present to avoid duplication
+	const cleanName = pascalCase.replace(/Service$/i, "").replace(/Client$/i, "");
+
+	return cleanName + suffix;
+}

@@ -25,6 +25,7 @@ export {
 export type {
 	BaseGeneratorOptions,
 	ExecutionMode,
+	HttpMethod,
 	OpenAPIParameter,
 	OpenAPIRequestBody,
 	OpenAPIResponse,
@@ -33,6 +34,7 @@ export type {
 	OperationFilters,
 	RequireExcept,
 } from "./types";
+export { HTTP_METHODS } from "./types";
 // CLI Utilities
 export type { FindSpecFilesOptions, FindSpecFilesResult, SpecFile } from "./utils/cli-utils";
 export { findSpecFiles, getRandomCeriosMessage } from "./utils/cli-utils";
@@ -62,7 +64,12 @@ export {
 } from "./utils/config-validation";
 export type { ContentTypeParseResult, FallbackContentTypeParsing } from "./utils/content-type-utils";
 // Content Type Utilities
-export { getResponseParseMethod } from "./utils/content-type-utils";
+export {
+	DEFAULT_PREFERRED_CONTENT_TYPES,
+	getResponseParseMethod,
+	normalizeContentType,
+	selectContentType,
+} from "./utils/content-type-utils";
 // Enum Utilities
 export { numericToEnumMember, stringToEnumMember } from "./utils/enum-utils";
 // Header Filters
@@ -82,6 +89,7 @@ export type { NamingOptions } from "./utils/name-utils";
 export {
 	applyFormatting,
 	capitalize,
+	deriveClassName,
 	generateHeaderParamsTypeName,
 	generateInlineRequestTypeName,
 	generateInlineResponseTypeName,
@@ -100,6 +108,8 @@ export {
 	shouldIncludeOperation,
 	validateFilters,
 } from "./utils/operation-filters";
+// Path Utilities
+export { constructFullPath, normalizeBasePath } from "./utils/path-utils";
 // Pattern Utilities
 export { isGlobPattern, stripAffixes, stripPathPrefix, stripPrefix, stripSuffix } from "./utils/pattern-utils";
 // Ref Resolution
@@ -126,5 +136,29 @@ export {
 	hasMultipleTypes,
 	isNullable,
 } from "./utils/string-utils";
+// Type Guards
+export type { OpenAPIOperationLike, PathItemLike } from "./utils/type-guards";
+export { getOperation, isOpenAPIOperation, isPathItemLike } from "./utils/type-guards";
 // TypeScript Loader
 export { createTypeScriptLoader } from "./utils/typescript-loader";
+// Endpoint Extraction
+export type {
+	EndpointInfo,
+	EndpointStats,
+	ExtractEndpointsOptions,
+	ParameterInfo,
+	RequestBodyInfo,
+} from "./utils/endpoint-extraction";
+export { extractEndpoints, getEndpointStats } from "./utils/endpoint-extraction";
+// Schema Utilities
+export type { MediaTypeContent, OpenAPISchemaLike, ResolvedRequestBody, ResolvedResponse } from "./utils/schema-utils";
+export {
+	isMediaTypeContent,
+	isOpenAPIParameter,
+	isResolvedRequestBody,
+	isResolvedResponse,
+	schemaToTypeString,
+} from "./utils/schema-utils";
+// JSDoc Utilities
+export type { GenerateMinimalJSDocOptions, GenerateOperationJSDocOptions } from "./utils/jsdoc-utils";
+export { generateMinimalJSDoc, generateOperationJSDoc } from "./utils/jsdoc-utils";

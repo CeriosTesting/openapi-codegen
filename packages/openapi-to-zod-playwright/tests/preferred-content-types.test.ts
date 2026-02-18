@@ -1,11 +1,7 @@
+import { DEFAULT_PREFERRED_CONTENT_TYPES, normalizeContentType, selectContentType } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
 
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
-import {
-	DEFAULT_PREFERRED_CONTENT_TYPES,
-	normalizeContentType,
-	selectContentType,
-} from "../src/utils/content-type-selector";
 
 import { TestUtils } from "./utils/test-utils";
 

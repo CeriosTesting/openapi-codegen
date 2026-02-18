@@ -2,15 +2,23 @@ import {
 	extractPathParams,
 	type FallbackContentTypeParsing,
 	generateHttpMethodName as generateMethodName,
+	generateInlineResponseTypeName,
+	generateOperationJSDoc,
+	getOperation,
 	getOperationName,
 	getResponseParseMethod,
+	HTTP_METHODS,
+	isOpenAPIParameter,
+	isPathItemLike,
 	mergeParameters,
+	normalizeContentType,
 	type OpenAPIParameter,
 	type OpenAPISchema,
 	resolveRequestBodyRef,
 	resolveResponseRef,
 	sanitizeOperationId,
 	sanitizeParamName,
+	selectContentType,
 	shouldIgnoreHeader,
 	stripPathPrefix,
 	stripPrefix,
@@ -20,9 +28,7 @@ import {
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 
 import type { PlaywrightOperationFilters, ZodErrorFormat } from "../types";
-import { selectContentType } from "../utils/content-type-selector";
 import { shouldIncludeOperation } from "../utils/operation-filters";
-import { generateOperationJSDoc } from "../utils/operation-jsdoc";
 
 import { generateInlineRequestSchemaName } from "./inline-schema-generator";
 
@@ -52,23 +58,6 @@ interface OpenAPIRequestBody {
 	required?: boolean;
 }
 
-/** OpenAPI operation structure */
-interface OpenAPIOperation {
-	operationId?: string;
-	parameters?: OpenAPIParameter[];
-	requestBody?: OpenAPIRequestBody | { $ref: string };
-	responses?: Record<
-		string,
-		{
-			description?: string;
-			content?: Record<string, { schema?: OpenAPISchema }>;
-		}
-	>;
-	deprecated?: boolean;
-	summary?: string;
-	description?: string;
-}
-
 interface EndpointInfo {
 	path: string;
 	method: string;
@@ -83,42 +72,6 @@ interface EndpointInfo {
 	deprecated?: boolean;
 	summary?: string;
 	description?: string;
-}
-
-const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-type HttpMethod = (typeof HTTP_METHODS)[number];
-
-/** Type to represent a path item that can be indexed by method */
-interface PathItemLike extends Record<string, unknown> {
-	parameters?: unknown[];
-}
-
-/** Type guard to check if a value is a path item */
-function isPathItemLike(value: unknown): value is PathItemLike {
-	return typeof value === "object" && value !== null;
-}
-
-/** Type guard for OpenAPI operation */
-function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
-	return typeof value === "object" && value !== null;
-}
-
-/** Helper to safely get operation from path item */
-function getOperation(pathItem: Record<string, unknown>, method: HttpMethod): OpenAPIOperation | undefined {
-	const operation = pathItem[method];
-	return isOpenAPIOperation(operation) ? operation : undefined;
-}
-
-/** Type guard for OpenAPI parameter */
-function isOpenAPIParameter(value: unknown): value is OpenAPIParameter {
-	return typeof value === "object" && value !== null && "name" in value && "in" in value;
-}
-
-/**
- * Strips charset and other parameters from content-type string
- */
-function stripContentTypeParams(contentType: string): string {
-	return contentType.split(";")[0].trim();
 }
 
 /**
@@ -352,7 +305,7 @@ function extractEndpoints(
 
 							if (typeof contentObj === "object" && contentObj) {
 								// Strip charset and parameters from content-type
-								const contentType = stripContentTypeParams(rawContentType);
+								const contentType = normalizeContentType(rawContentType);
 
 								let schemaRef: string | undefined;
 								let schemaName: string | undefined;
@@ -458,8 +411,12 @@ function extractEndpoints(
 						strippedPathForResponse,
 						useOperationId
 					);
-					const statusSuffix = hasMultipleStatuses ? response.statusCode : "";
-					response.inlineSchemaName = `${pascalOperationName}${statusSuffix}Response`;
+					// Use core utility for consistent naming
+					response.inlineSchemaName = generateInlineResponseTypeName(
+						pascalOperationName,
+						response.statusCode,
+						hasMultipleStatuses
+					);
 				}
 			}
 
@@ -468,7 +425,7 @@ function extractEndpoints(
 				method: method.toUpperCase(),
 				methodName,
 				pathParams,
-				parameters: operation.parameters,
+				parameters: operation.parameters?.filter((p): p is OpenAPIParameter => isOpenAPIParameter(p)),
 				requestBody: resolvedRequestBody,
 				requestBodyInfo,
 				responses,
@@ -667,7 +624,7 @@ function generateServiceMethod(
 	if (requestBody?.content) {
 		const firstContentType = Object.keys(requestBody.content)[0];
 		if (firstContentType) {
-			requestContentType = stripContentTypeParams(firstContentType);
+			requestContentType = normalizeContentType(firstContentType);
 			hasRequestBody = true;
 		}
 	}
@@ -991,17 +948,12 @@ function generateServiceMethod(
 	}
 	// Note: No else clause - void methods don't need a return statement
 
-	// Build JSDoc tags
-	const additionalTags: string[] = [];
-
-	// Add content-type and status info
+	// Build JSDoc info
 	const contentTypeInfo = requestContentType ? ` [${requestContentType}]` : "";
 	const statusInfo = response ? ` (${statusCode})` : "";
 
-	// Add @returns tag ONLY if there's a body with a meaningful return type
-	if (response?.hasBody && returnTypeName) {
-		additionalTags.push(`@returns ${returnTypeName}`);
-	}
+	// Determine return type for JSDoc (ONLY if there's a body with a meaningful return type)
+	const returnsAnnotation = response?.hasBody && returnTypeName ? returnTypeName : undefined;
 
 	const jsdoc = generateOperationJSDoc({
 		summary: endpoint.summary,
@@ -1009,7 +961,8 @@ function generateServiceMethod(
 		deprecated: endpoint.deprecated,
 		method,
 		path: `${path}${contentTypeInfo}${statusInfo}`,
-		additionalTags,
+		returns: returnsAnnotation,
+		indent: "\t",
 	});
 
 	return `${jsdoc}

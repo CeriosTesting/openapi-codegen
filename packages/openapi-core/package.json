@@ -57,17 +57,17 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"cosmiconfig": "^9.0.0",
-		"esbuild": "^0.27.3",
-		"minimatch": "^10.2.0",
-		"yaml": "^2.8.2",
-		"zod": "^4.3.6"
+		"cosmiconfig": "catalog:",
+		"esbuild": "catalog:",
+		"minimatch": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.2",
-		"@types/node": "^25.2.3",
-		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"@arethetypeswrong/cli": "catalog:",
+		"@types/node": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	}
 }

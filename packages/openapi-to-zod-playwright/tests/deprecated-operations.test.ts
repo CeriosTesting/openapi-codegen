@@ -129,10 +129,10 @@ describe("Deprecated Operations", () => {
 
 		// Check for proper JSDoc structure for /complex endpoint
 		expect(client).toContain("/**");
-		expect(client).toContain(" * Complex operation");
-		expect(client).toContain(" * @deprecated");
-		expect(client).toContain(" * @returns");
-		expect(client).toContain(" */");
+		expect(client).toContain("@summary Complex operation");
+		expect(client).toContain("@deprecated");
+		expect(client).toContain("@returns");
+		expect(client).toContain("*/");
 	});
 
 	it("should handle deprecated operations with request bodies in service", () => {

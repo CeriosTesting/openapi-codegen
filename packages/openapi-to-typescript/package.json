@@ -60,18 +60,18 @@
 	},
 	"dependencies": {
 		"@cerios/openapi-core": "workspace:*",
-		"commander": "^14.0.3",
-		"cosmiconfig": "^9.0.0",
-		"prompts": "^2.4.2",
-		"yaml": "^2.8.2",
-		"zod": "^4.3.6"
+		"commander": "catalog:",
+		"cosmiconfig": "catalog:",
+		"prompts": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@types/node": "^25.2.3",
-		"@types/prompts": "^2.4.9",
-		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"@types/node": "catalog:",
+		"@types/prompts": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"engines": {
 		"node": ">=18"

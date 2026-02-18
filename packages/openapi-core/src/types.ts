@@ -5,6 +5,17 @@
  */
 
 /**
+ * HTTP methods constant for type-safe iteration
+ * Standard HTTP methods supported by OpenAPI specifications
+ */
+export const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+
+/**
+ * Type representing a valid HTTP method
+ */
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/**
  * Utility type that makes all properties required except the specified keys
  *
  * Useful for creating "resolved options" types where most properties have defaults

@@ -41,11 +41,11 @@ describe("JSDoc Security", () => {
 			expect(escapeJSDoc("*/")).toBe("*\\/");
 		});
 
-		it("should preserve other special characters", () => {
+		it("should escape @ symbols to prevent JSDoc tag injection", () => {
 			const text = "Price: $10.00 @deprecated (yes!)";
 			const escaped = escapeJSDoc(text);
 			expect(escaped).toContain("$10.00");
-			expect(escaped).toContain("@deprecated");
+			expect(escaped).toContain("\\@deprecated");
 			expect(escaped).toContain("(yes!)");
 		});
 	});

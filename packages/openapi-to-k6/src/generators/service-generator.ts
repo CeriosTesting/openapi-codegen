@@ -1,346 +1,15 @@
-import type { OpenAPISpec } from "@cerios/openapi-core";
 import {
-	extractPathParams,
-	filterHeaders,
-	generateHttpMethodName as generateMethodName,
-	mergeParameters,
-	resolveRequestBodyRef,
-	resolveResponseRef,
-	sanitizeOperationId,
+	deriveClassName,
+	extractEndpoints,
+	generateOperationJSDoc,
+	getEndpointStats,
 	sanitizeParamName,
-	shouldIncludeOperation,
-	stripPathPrefix,
 	toPascalCase,
+	type EndpointInfo,
 } from "@cerios/openapi-core";
+import type { OpenAPISpec } from "@cerios/openapi-core";
 
 import type { OpenApiK6GeneratorOptions } from "../types";
-
-/** Resolved request body structure */
-interface ResolvedRequestBody {
-	content?: Record<string, unknown>;
-	required?: boolean;
-}
-
-/** Type guard for resolved request body */
-function isResolvedRequestBody(value: unknown): value is ResolvedRequestBody {
-	return typeof value === "object" && value !== null && "content" in value;
-}
-
-/** Resolved response structure */
-interface ResolvedResponse {
-	content?: Record<string, unknown>;
-}
-
-/** Type guard for resolved response */
-function isResolvedResponse(value: unknown): value is ResolvedResponse {
-	return typeof value === "object" && value !== null && "content" in value;
-}
-
-/** Media type content with optional schema */
-interface MediaTypeContent {
-	schema?: OpenAPISchemaLike;
-}
-
-/** Type guard for media type content */
-function isMediaTypeContent(value: unknown): value is MediaTypeContent {
-	return typeof value === "object" && value !== null;
-}
-
-/** OpenAPI schema structure for type conversion */
-interface OpenAPISchemaLike {
-	$ref?: string;
-	type?: "string" | "number" | "integer" | "boolean" | "array" | "object" | "null";
-	enum?: string[];
-	items?: OpenAPISchemaLike;
-	additionalProperties?: OpenAPISchemaLike | boolean;
-}
-
-/** OpenAPI operation structure for path methods */
-interface OpenAPIOperation {
-	operationId?: string;
-	parameters?: unknown[];
-	requestBody?: {
-		content?: Record<string, { schema?: unknown }>;
-		required?: boolean;
-	};
-	responses?: Record<
-		string,
-		{
-			content?: Record<string, { schema?: unknown }>;
-		}
-	>;
-	deprecated?: boolean;
-	summary?: string;
-	description?: string;
-}
-
-/** HTTP methods constant for type-safe iteration */
-const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-
-/** Type to represent a path item that can be indexed by method */
-interface PathItemLike extends Record<string, unknown> {
-	parameters?: unknown[];
-}
-
-/** Type guard to check if a value is a path item */
-function isPathItemLike(value: unknown): value is PathItemLike {
-	return typeof value === "object" && value !== null;
-}
-
-/** Type guard to check if a value is an OpenAPIOperation */
-function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
-	return typeof value === "object" && value !== null;
-}
-
-/** Get operation from path item if it exists */
-function getOperation(pathItem: Record<string, unknown>, method: string): OpenAPIOperation | undefined {
-	const value = pathItem[method];
-	return isOpenAPIOperation(value) ? value : undefined;
-}
-
-/** Parameter info for typed parameter access */
-interface OpenAPIParameter {
-	name: string;
-	in: string;
-	required?: boolean;
-	schema?: OpenAPISchemaLike;
-	description?: string;
-}
-
-/** Type guard for OpenAPI parameter */
-function isOpenAPIParameter(value: unknown): value is OpenAPIParameter {
-	return typeof value === "object" && value !== null && "name" in value && "in" in value;
-}
-
-interface ParameterInfo {
-	name: string;
-	required: boolean;
-	type: string;
-	description?: string;
-}
-
-interface EndpointInfo {
-	path: string;
-	method: string;
-	methodName: string;
-	pathParams: string[];
-	queryParams: ParameterInfo[];
-	headerParams: ParameterInfo[];
-	requestBody?: RequestBodyInfo;
-	successResponseType?: string;
-	successStatusCode?: number;
-	deprecated?: boolean;
-	summary?: string;
-	description?: string;
-}
-
-interface RequestBodyInfo {
-	required: boolean;
-	contentType: string;
-	typeName: string;
-}
-
-/**
- * Converts OpenAPI schema type to TypeScript type
- */
-function schemaToTypeString(schema: OpenAPISchemaLike | undefined): string {
-	if (!schema) return "unknown";
-
-	if (schema.$ref) {
-		// Extract type name from ref
-		const parts = schema.$ref.split("/");
-		return parts[parts.length - 1];
-	}
-
-	switch (schema.type) {
-		case "integer":
-		case "number":
-			return "number";
-		case "boolean":
-			return "boolean";
-		case "string":
-			if (schema.enum) {
-				return schema.enum.map((v: string) => `"${v}"`).join(" | ");
-			}
-			return "string";
-		case "array":
-			return `${schemaToTypeString(schema.items)}[]`;
-		case "object":
-			if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
-				return `Record<string, ${schemaToTypeString(schema.additionalProperties)}>`;
-			}
-			return "Record<string, unknown>";
-		case "null":
-		case undefined:
-			return "unknown";
-	}
-}
-
-/**
- * Selects the best content type from available options
- */
-function selectContentType(available: string[], preferred: string[]): string | undefined {
-	for (const pref of preferred) {
-		if (available.includes(pref)) return pref;
-	}
-	return available[0];
-}
-
-/**
- * Extracts all endpoints from OpenAPI spec (for service generation)
- */
-function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions): EndpointInfo[] {
-	const endpoints: EndpointInfo[] = [];
-	const preferredContentTypes = options.preferredContentTypes || ["application/json"];
-
-	if (!spec.paths) {
-		return endpoints;
-	}
-
-	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!isPathItemLike(pathItem)) continue;
-
-		// Strip prefix from path for processing
-		const path = stripPathPrefix(originalPath, options.stripPathPrefix);
-
-		for (const method of HTTP_METHODS) {
-			const operation = getOperation(pathItem, method);
-			if (!operation) continue;
-
-			// Apply operation filters
-			if (!shouldIncludeOperation(operation, path, method, options.operationFilters)) {
-				continue;
-			}
-
-			// Generate method name
-			const methodName =
-				options.useOperationId && operation.operationId
-					? sanitizeOperationId(operation.operationId)
-					: generateMethodName(method, path);
-
-			// Extract path parameters
-			const pathParams = extractPathParams(path);
-
-			// Merge and extract parameters
-			const mergedParams = mergeParameters(pathItem.parameters, operation.parameters, spec);
-			const typedParams = mergedParams.filter(isOpenAPIParameter);
-
-			// Extract query parameters
-			const queryParams: ParameterInfo[] = typedParams
-				.filter(p => p.in === "query")
-				.map(p => ({
-					name: p.name,
-					required: p.required || false,
-					type: schemaToTypeString(p.schema),
-					description: p.description,
-				}));
-
-			// Extract header parameters (filtered by ignoreHeaders)
-			const headerParams: ParameterInfo[] = filterHeaders(
-				typedParams.filter(p => p.in === "header"),
-				options.ignoreHeaders
-			).map(p => ({
-				name: p.name,
-				required: p.required || false,
-				type: schemaToTypeString(p.schema),
-				description: p.description,
-			}));
-
-			// Extract request body info
-			let requestBody: RequestBodyInfo | undefined;
-			if (operation.requestBody) {
-				const resolved = resolveRequestBodyRef(operation.requestBody, spec);
-				if (isResolvedRequestBody(resolved) && resolved.content) {
-					const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
-					if (contentType) {
-						const mediaTypeRaw = resolved.content[contentType];
-						const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
-						requestBody = {
-							required: Boolean(resolved.required),
-							contentType,
-							typeName: mediaType?.schema ? schemaToTypeString(mediaType.schema) : "unknown",
-						};
-					}
-				}
-			}
-
-			// Extract success response type and status code
-			let successResponseType: string | undefined;
-			let successStatusCode: number | undefined;
-			if (operation.responses) {
-				for (const [statusCode, responseRef] of Object.entries(operation.responses)) {
-					// Only consider 2xx responses
-					if (!statusCode.startsWith("2")) continue;
-
-					successStatusCode = parseInt(statusCode, 10);
-
-					const resolved = resolveResponseRef(responseRef, spec);
-					if (isResolvedResponse(resolved) && resolved.content) {
-						const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
-						if (contentType) {
-							const mediaTypeRaw = resolved.content[contentType];
-							const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
-							if (mediaType?.schema) {
-								successResponseType = schemaToTypeString(mediaType.schema);
-								break; // Use first matching success response
-							}
-						}
-					} else {
-						// Response with no content (e.g., 204 No Content)
-						successResponseType = "void";
-						break;
-					}
-				}
-			}
-
-			endpoints.push({
-				path,
-				method,
-				methodName,
-				pathParams,
-				queryParams,
-				headerParams,
-				requestBody,
-				successResponseType,
-				successStatusCode,
-				deprecated: operation.deprecated,
-				summary: operation.summary,
-				description: operation.description,
-			});
-		}
-	}
-
-	return endpoints;
-}
-
-/**
- * Generates JSDoc comment for a service method
- */
-function generateMethodJSDoc(endpoint: EndpointInfo, includeDescriptions: boolean): string {
-	const lines: string[] = ["/**"];
-
-	if (endpoint.summary && includeDescriptions) {
-		lines.push(` * @summary ${endpoint.summary}`);
-	}
-
-	if (endpoint.description && includeDescriptions) {
-		const descLines = endpoint.description.split("\n");
-		lines.push(` * @description ${descLines[0]}`);
-		for (let i = 1; i < descLines.length; i++) {
-			lines.push(` * ${descLines[i]}`);
-		}
-	}
-
-	if (endpoint.deprecated) {
-		lines.push(" * @deprecated");
-	}
-
-	lines.push(` * @method ${endpoint.method.toUpperCase()} ${endpoint.path}`);
-	lines.push(` * @returns K6ServiceResult with status check and parsed data`);
-	lines.push(" */");
-
-	return lines.join("\n  ");
-}
 
 /**
  * Generates a single service method
@@ -387,7 +56,15 @@ function generateServiceMethod(endpoint: EndpointInfo, includeDescriptions: bool
 	const expectedStatus = endpoint.successStatusCode || 200;
 
 	// Generate JSDoc
-	const jsdoc = generateMethodJSDoc(endpoint, includeDescriptions);
+	const jsdoc = generateOperationJSDoc({
+		summary: endpoint.summary,
+		description: endpoint.description,
+		deprecated: endpoint.deprecated,
+		method: endpoint.method,
+		path: endpoint.path,
+		includeDescriptions,
+		returns: "K6ServiceResult with status check and parsed data",
+	});
 
 	// Build client call - client takes path params + options object
 	const pathParamArgs = pathParams.map(p => sanitizeParamName(p)).join(", ");
@@ -444,25 +121,6 @@ ${headerMergeCode}    const response = ${clientCall};
     ${dataExtraction}
     return { response, data, ok };
   }`;
-}
-
-/**
- * Derives a class name from output file path
- */
-function deriveClassName(outputPath: string, suffix: string): string {
-	const fileName = outputPath.split("/").pop()?.split("\\").pop() || "Api";
-	const baseName = fileName.replace(/\.(ts|js)$/, "");
-
-	// Convert to PascalCase
-	const pascalCase = baseName
-		.split(/[-_\s]+/)
-		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join("");
-
-	// Remove existing suffix if present to avoid duplication
-	const cleanName = pascalCase.replace(/Service$/i, "").replace(/Client$/i, "");
-
-	return cleanName + suffix;
 }
 
 /**
@@ -540,7 +198,14 @@ export function generateK6ServiceCode(
 	clientImportPath: string,
 	typesImportPath: string
 ): string {
-	const endpoints = extractEndpoints(spec, options);
+	const endpoints = extractEndpoints(spec, {
+		useOperationId: options.useOperationId,
+		operationFilters: options.operationFilters,
+		ignoreHeaders: options.ignoreHeaders,
+		stripPathPrefix: options.stripPathPrefix,
+		preferredContentTypes: options.preferredContentTypes,
+		trackStatusCode: true,
+	});
 
 	if (endpoints.length === 0) {
 		return "";
@@ -611,26 +276,11 @@ export function getServiceEndpointStats(
 	spec: OpenAPISpec,
 	options: OpenApiK6GeneratorOptions
 ): { totalPaths: number; totalOperations: number; includedOperations: number } {
-	let totalPaths = 0;
-	let totalOperations = 0;
-
-	if (spec.paths) {
-		totalPaths = Object.keys(spec.paths).length;
-
-		for (const pathItem of Object.values(spec.paths)) {
-			if (!pathItem || typeof pathItem !== "object") continue;
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-			for (const method of methods) {
-				if (pathItem && typeof pathItem === "object" && method in pathItem) totalOperations++;
-			}
-		}
-	}
-
-	const endpoints = extractEndpoints(spec, options);
-
-	return {
-		totalPaths,
-		totalOperations,
-		includedOperations: endpoints.length,
-	};
+	return getEndpointStats(spec, {
+		useOperationId: options.useOperationId,
+		operationFilters: options.operationFilters,
+		ignoreHeaders: options.ignoreHeaders,
+		stripPathPrefix: options.stripPathPrefix,
+		preferredContentTypes: options.preferredContentTypes,
+	});
 }

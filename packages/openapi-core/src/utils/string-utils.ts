@@ -70,9 +70,12 @@ export function escapePattern(str: string): string {
 
 /**
  * Escape JSDoc comment content to prevent injection
+ *
+ * Escapes comment-closing sequences to prevent premature closing of JSDoc comment
+ * and @ symbols to prevent injection of JSDoc tags.
  */
 export function escapeJSDoc(str: string): string {
-	return str.replace(/\*\//g, "*\\/");
+	return str.replace(/\*\//g, "*\\/").replace(/@/g, "\\@");
 }
 
 /**

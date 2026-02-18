@@ -1,213 +1,18 @@
 import type { OpenAPISpec } from "@cerios/openapi-core";
 import {
-	extractPathParams,
-	filterHeaders,
-	generateHttpMethodName as generateMethodName,
-	mergeParameters,
-	resolveRequestBodyRef,
-	resolveResponseRef,
-	sanitizeOperationId,
+	constructFullPath,
+	deriveClassName,
+	extractEndpoints,
+	generateOperationJSDoc,
+	getEndpointStats,
+	normalizeBasePath,
 	sanitizeParamName,
-	shouldIncludeOperation,
-	stripPathPrefix,
 	toPascalCase,
+	type EndpointInfo,
+	type ParameterInfo,
 } from "@cerios/openapi-core";
 
 import type { OpenApiK6GeneratorOptions } from "../types";
-
-/** Resolved request body structure */
-interface ResolvedRequestBody {
-	content?: Record<string, unknown>;
-	required?: boolean;
-}
-
-/** Type guard for resolved request body */
-function isResolvedRequestBody(value: unknown): value is ResolvedRequestBody {
-	return typeof value === "object" && value !== null && "content" in value;
-}
-
-/** Resolved response structure */
-interface ResolvedResponse {
-	content?: Record<string, unknown>;
-}
-
-/** Type guard for resolved response */
-function isResolvedResponse(value: unknown): value is ResolvedResponse {
-	return typeof value === "object" && value !== null && "content" in value;
-}
-
-/** Media type content with optional schema */
-interface MediaTypeContent {
-	schema?: OpenAPISchemaLike;
-}
-
-/** Type guard for media type content */
-function isMediaTypeContent(value: unknown): value is MediaTypeContent {
-	return typeof value === "object" && value !== null;
-}
-
-/** OpenAPI schema structure for type conversion */
-interface OpenAPISchemaLike {
-	$ref?: string;
-	type?: "string" | "number" | "integer" | "boolean" | "array" | "object" | "null";
-	enum?: string[];
-	items?: OpenAPISchemaLike;
-	additionalProperties?: OpenAPISchemaLike | boolean;
-}
-
-/** OpenAPI operation structure for path methods */
-interface OpenAPIOperation {
-	operationId?: string;
-	parameters?: unknown[];
-	requestBody?: {
-		content?: Record<string, { schema?: unknown }>;
-		required?: boolean;
-	};
-	responses?: Record<
-		string,
-		{
-			content?: Record<string, { schema?: unknown }>;
-		}
-	>;
-	deprecated?: boolean;
-	summary?: string;
-	description?: string;
-}
-
-/** HTTP methods constant for type-safe iteration */
-const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-
-/** Type to represent a path item that can be indexed by method */
-interface PathItemLike extends Record<string, unknown> {
-	parameters?: unknown[];
-}
-
-/** Type guard to check if a value is a path item */
-function isPathItemLike(value: unknown): value is PathItemLike {
-	return typeof value === "object" && value !== null;
-}
-
-/** Type guard to check if a path item has a specific HTTP method */
-function hasMethod(
-	pathItem: PathItemLike,
-	method: string
-): pathItem is PathItemLike & { [K in typeof method]: OpenAPIOperation } {
-	return method in pathItem && typeof pathItem[method] === "object" && pathItem[method] !== null;
-}
-
-/** Parameter info for typed parameter access */
-interface OpenAPIParameter {
-	name: string;
-	in: string;
-	required?: boolean;
-	schema?: OpenAPISchemaLike;
-	description?: string;
-}
-
-/** Type guard for OpenAPI parameter */
-function isOpenAPIParameter(value: unknown): value is OpenAPIParameter {
-	return typeof value === "object" && value !== null && "name" in value && "in" in value;
-}
-
-interface ParameterInfo {
-	name: string;
-	required: boolean;
-	type: string;
-	description?: string;
-}
-
-interface EndpointInfo {
-	path: string;
-	method: string;
-	methodName: string;
-	pathParams: string[];
-	queryParams: ParameterInfo[];
-	headerParams: ParameterInfo[];
-	requestBody?: RequestBodyInfo;
-	successResponseType?: string;
-	deprecated?: boolean;
-	summary?: string;
-	description?: string;
-}
-
-interface RequestBodyInfo {
-	required: boolean;
-	contentType: string;
-	typeName: string;
-}
-
-/**
- * Normalizes a base path by ensuring it has a leading slash and no trailing slash
- */
-function normalizeBasePath(basePath?: string): string | undefined {
-	if (!basePath || basePath === "/" || basePath.trim() === "") {
-		return undefined;
-	}
-
-	let normalized = basePath.trim();
-	// Ensure leading slash
-	if (!normalized.startsWith("/")) {
-		normalized = `/${normalized}`;
-	}
-	// Remove trailing slash
-	if (normalized.endsWith("/")) {
-		normalized = normalized.slice(0, -1);
-	}
-
-	return normalized;
-}
-
-/**
- * Constructs the full path by combining base path with endpoint path
- */
-function constructFullPath(basePath: string | undefined, path: string): string {
-	if (!basePath) {
-		return path;
-	}
-
-	let normalizedPath = path.trim();
-	if (!normalizedPath.startsWith("/")) {
-		normalizedPath = `/${normalizedPath}`;
-	}
-
-	return basePath + normalizedPath;
-}
-
-/**
- * Converts OpenAPI schema type to TypeScript type
- */
-function schemaToTypeString(schema: OpenAPISchemaLike | undefined): string {
-	if (!schema) return "unknown";
-
-	if (schema.$ref) {
-		// Extract type name from ref
-		const parts = schema.$ref.split("/");
-		return parts[parts.length - 1];
-	}
-
-	switch (schema.type) {
-		case "integer":
-		case "number":
-			return "number";
-		case "boolean":
-			return "boolean";
-		case "string":
-			if (schema.enum) {
-				return schema.enum.map((v: string) => `"${v}"`).join(" | ");
-			}
-			return "string";
-		case "array":
-			return `${schemaToTypeString(schema.items)}[]`;
-		case "object":
-			if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
-				return `Record<string, ${schemaToTypeString(schema.additionalProperties)}>`;
-			}
-			return "Record<string, unknown>";
-		case "null":
-		case undefined:
-			return "unknown";
-	}
-}
 
 /**
  * Check if a property name needs to be quoted in TypeScript interface
@@ -224,135 +29,6 @@ function needsQuoting(propName: string): boolean {
  */
 function formatPropertyName(propName: string): string {
 	return needsQuoting(propName) ? `"${propName}"` : propName;
-}
-
-/**
- * Selects the best content type from available options
- */
-function selectContentType(available: string[], preferred: string[]): string | undefined {
-	for (const pref of preferred) {
-		if (available.includes(pref)) return pref;
-	}
-	return available[0];
-}
-
-/**
- * Extracts all endpoints from OpenAPI spec
- */
-function extractEndpoints(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions): EndpointInfo[] {
-	const endpoints: EndpointInfo[] = [];
-	const preferredContentTypes = options.preferredContentTypes || ["application/json"];
-
-	if (!spec.paths) {
-		return endpoints;
-	}
-
-	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!isPathItemLike(pathItem)) continue;
-
-		// Strip prefix from path for processing
-		const path = stripPathPrefix(originalPath, options.stripPathPrefix);
-
-		for (const method of HTTP_METHODS) {
-			if (!hasMethod(pathItem, method)) continue;
-			const operation = pathItem[method];
-
-			// Apply operation filters
-			if (!shouldIncludeOperation(operation, path, method, options.operationFilters)) {
-				continue;
-			}
-
-			// Generate method name
-			const methodName =
-				options.useOperationId && operation.operationId
-					? sanitizeOperationId(operation.operationId)
-					: generateMethodName(method, path);
-
-			// Extract path parameters
-			const pathParams = extractPathParams(path);
-
-			// Merge and extract parameters
-			const mergedParams = mergeParameters(pathItem.parameters, operation.parameters, spec);
-			const typedParams = mergedParams.filter(isOpenAPIParameter);
-
-			// Extract query parameters
-			const queryParams: ParameterInfo[] = typedParams
-				.filter(p => p.in === "query")
-				.map(p => ({
-					name: p.name,
-					required: p.required || false,
-					type: schemaToTypeString(p.schema),
-					description: p.description,
-				}));
-
-			// Extract header parameters (filtered by ignoreHeaders)
-			const headerParams: ParameterInfo[] = filterHeaders(
-				typedParams.filter(p => p.in === "header"),
-				options.ignoreHeaders
-			).map(p => ({
-				name: p.name,
-				required: p.required || false,
-				type: schemaToTypeString(p.schema),
-				description: p.description,
-			}));
-
-			// Extract request body info
-			let requestBody: RequestBodyInfo | undefined;
-			if (operation.requestBody) {
-				const resolved = resolveRequestBodyRef(operation.requestBody, spec);
-				if (isResolvedRequestBody(resolved) && resolved.content) {
-					const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
-					if (contentType) {
-						const mediaTypeRaw = resolved.content[contentType];
-						const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
-						requestBody = {
-							required: Boolean(resolved.required),
-							contentType,
-							typeName: mediaType?.schema ? schemaToTypeString(mediaType.schema) : "unknown",
-						};
-					}
-				}
-			}
-
-			// Extract success response type
-			let successResponseType: string | undefined;
-			if (operation.responses) {
-				for (const [statusCode, responseRef] of Object.entries(operation.responses)) {
-					// Only consider 2xx responses
-					if (!statusCode.startsWith("2")) continue;
-
-					const resolved = resolveResponseRef(responseRef, spec);
-					if (isResolvedResponse(resolved) && resolved.content) {
-						const contentType = selectContentType(Object.keys(resolved.content), preferredContentTypes);
-						if (contentType) {
-							const mediaTypeRaw = resolved.content[contentType];
-							const mediaType = isMediaTypeContent(mediaTypeRaw) ? mediaTypeRaw : undefined;
-							if (mediaType?.schema) {
-								successResponseType = schemaToTypeString(mediaType.schema);
-								break; // Use first matching success response
-							}
-						}
-					}
-				}
-			}
-
-			endpoints.push({
-				path,
-				method,
-				methodName,
-				pathParams,
-				queryParams,
-				headerParams,
-				requestBody,
-				successResponseType,
-				deprecated: operation.deprecated,
-				summary: operation.summary,
-				description: operation.description,
-			});
-		}
-	}
-
-	return endpoints;
 }
 
 /**
@@ -390,35 +66,6 @@ function generateHeadersType(methodName: string, params: ParameterInfo[]): strin
 		.join("\n");
 
 	return `export type ${typeName} = {\n${props}\n};`;
-}
-
-/**
- * Generates JSDoc comment for a method
- */
-function generateMethodJSDoc(endpoint: EndpointInfo, fullPath: string, includeDescriptions: boolean): string {
-	const lines: string[] = ["/**"];
-
-	if (endpoint.summary && includeDescriptions) {
-		lines.push(` * @summary ${endpoint.summary}`);
-	}
-
-	if (endpoint.description && includeDescriptions) {
-		// Split long descriptions into multiple lines
-		const descLines = endpoint.description.split("\n");
-		lines.push(` * @description ${descLines[0]}`);
-		for (let i = 1; i < descLines.length; i++) {
-			lines.push(` * ${descLines[i]}`);
-		}
-	}
-
-	if (endpoint.deprecated) {
-		lines.push(" * @deprecated");
-	}
-
-	lines.push(` * @method ${endpoint.method.toUpperCase()} ${fullPath}`);
-	lines.push(" */");
-
-	return lines.join("\n  ");
 }
 
 /**
@@ -473,7 +120,14 @@ function generateClientMethod(
 	}
 
 	// Generate JSDoc
-	const jsdoc = generateMethodJSDoc(endpoint, fullPath, includeDescriptions);
+	const jsdoc = generateOperationJSDoc({
+		summary: endpoint.summary,
+		description: endpoint.description,
+		deprecated: endpoint.deprecated,
+		method: endpoint.method,
+		path: fullPath,
+		includeDescriptions,
+	});
 
 	// Build method body
 	const httpMethod = method.toUpperCase();
@@ -507,27 +161,17 @@ function generateClientMethod(
 }
 
 /**
- * Derives a class name from output file path
- */
-function deriveClassName(outputPath: string): string {
-	const fileName = outputPath.split("/").pop()?.split("\\").pop() || "ApiClient";
-	const baseName = fileName.replace(/\.(ts|js)$/, "");
-
-	// Convert to PascalCase
-	const pascalCase = baseName
-		.split(/[-_\s]+/)
-		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-		.join("");
-
-	return pascalCase;
-}
-
-/**
  * Generates TypeScript types code for K6 client (parameter types)
  * Used when outputTypes is specified to generate types to a separate file
  */
 export function generateK6TypesCode(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions): string {
-	const endpoints = extractEndpoints(spec, options);
+	const endpoints = extractEndpoints(spec, {
+		useOperationId: options.useOperationId,
+		operationFilters: options.operationFilters,
+		ignoreHeaders: options.ignoreHeaders,
+		stripPathPrefix: options.stripPathPrefix,
+		preferredContentTypes: options.preferredContentTypes,
+	});
 
 	if (endpoints.length === 0) {
 		return "";
@@ -557,7 +201,13 @@ export function generateK6TypesCode(spec: OpenAPISpec, options: OpenApiK6Generat
  * @param typesImportPath - Optional relative import path for types (when using separate types file)
  */
 export function generateK6ClientCode(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions): string {
-	const endpoints = extractEndpoints(spec, options);
+	const endpoints = extractEndpoints(spec, {
+		useOperationId: options.useOperationId,
+		operationFilters: options.operationFilters,
+		ignoreHeaders: options.ignoreHeaders,
+		stripPathPrefix: options.stripPathPrefix,
+		preferredContentTypes: options.preferredContentTypes,
+	});
 
 	if (endpoints.length === 0) {
 		// Warn if all operations were filtered out
@@ -656,29 +306,15 @@ ${methods}
 /**
  * Returns statistics about endpoints
  */
-export function getEndpointStats(
+export function getClientEndpointStats(
 	spec: OpenAPISpec,
 	options: OpenApiK6GeneratorOptions
 ): { totalPaths: number; totalOperations: number; includedOperations: number } {
-	let totalPaths = 0;
-	let totalOperations = 0;
-
-	if (spec.paths) {
-		totalPaths = Object.keys(spec.paths).length;
-
-		for (const pathItem of Object.values(spec.paths)) {
-			if (!isPathItemLike(pathItem)) continue;
-			for (const method of HTTP_METHODS) {
-				if (hasMethod(pathItem, method)) totalOperations++;
-			}
-		}
-	}
-
-	const endpoints = extractEndpoints(spec, options);
-
-	return {
-		totalPaths,
-		totalOperations,
-		includedOperations: endpoints.length,
-	};
+	return getEndpointStats(spec, {
+		useOperationId: options.useOperationId,
+		operationFilters: options.operationFilters,
+		ignoreHeaders: options.ignoreHeaders,
+		stripPathPrefix: options.stripPathPrefix,
+		preferredContentTypes: options.preferredContentTypes,
+	});
 }

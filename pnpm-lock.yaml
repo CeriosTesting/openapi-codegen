@@ -4,28 +4,82 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@arethetypeswrong/cli':
+      specifier: ^0.18.2
+      version: 0.18.2
+    '@changesets/cli':
+      specifier: ^2.29.8
+      version: 2.29.8
+    '@types/node':
+      specifier: ^25.2.3
+      version: 25.2.3
+    '@types/prompts':
+      specifier: ^2.4.9
+      version: 2.4.9
+    commander:
+      specifier: ^14.0.3
+      version: 14.0.3
+    cosmiconfig:
+      specifier: ^9.0.0
+      version: 9.0.0
+    esbuild:
+      specifier: ^0.27.3
+      version: 0.27.3
+    husky:
+      specifier: ^9.1.7
+      version: 9.1.7
+    lint-staged:
+      specifier: ^16.2.7
+      version: 16.2.7
+    minimatch:
+      specifier: ^10.2.0
+      version: 10.2.0
+    prompts:
+      specifier: ^2.4.2
+      version: 2.4.2
+    tsup:
+      specifier: ^8.5.1
+      version: 8.5.1
+    tsx:
+      specifier: ^4.21.0
+      version: 4.21.0
+    typescript:
+      specifier: ^5.9.3
+      version: 5.9.3
+    vitest:
+      specifier: ^4.0.18
+      version: 4.0.18
+    yaml:
+      specifier: ^2.8.2
+      version: 2.8.2
+    zod:
+      specifier: ^4.3.6
+      version: 4.3.6
+
 importers:
 
   .:
     dependencies:
       esbuild:
-        specifier: 0.27.3
+        specifier: 'catalog:'
         version: 0.27.3
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
+        specifier: 'catalog:'
         version: 0.18.2
       '@changesets/cli':
-        specifier: ^2.29.8
+        specifier: 'catalog:'
         version: 2.29.8(@types/node@25.2.3)
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       husky:
-        specifier: ^9.1.7
+        specifier: 'catalog:'
         version: 9.1.7
       lint-staged:
-        specifier: ^16.2.7
+        specifier: 'catalog:'
         version: 16.2.7
       oxfmt:
         specifier: ^0.33.0
@@ -37,56 +91,56 @@ importers:
         specifier: ^0.14.0
         version: 0.14.0
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       tsx:
-        specifier: ^4.21.0
+        specifier: 'catalog:'
         version: 4.21.0
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
 
   packages/openapi-core:
     dependencies:
       cosmiconfig:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0(typescript@5.9.3)
       esbuild:
-        specifier: ^0.27.3
+        specifier: 'catalog:'
         version: 0.27.3
       minimatch:
-        specifier: ^10.2.0
+        specifier: 'catalog:'
         version: 10.2.0
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
+        specifier: 'catalog:'
         version: 0.18.2
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/openapi-to-k6:
@@ -98,44 +152,44 @@ importers:
         specifier: workspace:*
         version: link:../openapi-to-typescript
       commander:
-        specifier: ^14.0.3
+        specifier: 'catalog:'
         version: 14.0.3
       cosmiconfig:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0(typescript@5.9.3)
       minimatch:
-        specifier: ^10.2.0
+        specifier: 'catalog:'
         version: 10.2.0
       prompts:
-        specifier: ^2.4.2
+        specifier: 'catalog:'
         version: 2.4.2
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
+        specifier: 'catalog:'
         version: 0.18.2
       '@types/k6':
         specifier: ^1.6.0
         version: 1.6.0
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       '@types/prompts':
-        specifier: ^2.4.9
+        specifier: 'catalog:'
         version: 2.4.9
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/openapi-to-typescript:
@@ -144,35 +198,35 @@ importers:
         specifier: workspace:*
         version: link:../openapi-core
       commander:
-        specifier: ^14.0.3
+        specifier: 'catalog:'
         version: 14.0.3
       cosmiconfig:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0(typescript@5.9.3)
       prompts:
-        specifier: ^2.4.2
+        specifier: 'catalog:'
         version: 2.4.2
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       '@types/prompts':
-        specifier: ^2.4.9
+        specifier: 'catalog:'
         version: 2.4.9
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/openapi-to-zod:
@@ -184,53 +238,53 @@ importers:
         specifier: workspace:*
         version: link:../openapi-to-typescript
       commander:
-        specifier: ^14.0.3
+        specifier: 'catalog:'
         version: 14.0.3
       cosmiconfig:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0(typescript@5.9.3)
       minimatch:
-        specifier: ^10.2.0
+        specifier: 'catalog:'
         version: 10.2.0
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
+        specifier: 'catalog:'
         version: 0.18.2
       '@changesets/cli':
-        specifier: ^2.29.8
+        specifier: 'catalog:'
         version: 2.29.8(@types/node@25.2.3)
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       '@types/prompts':
-        specifier: ^2.4.9
+        specifier: 'catalog:'
         version: 2.4.9
       husky:
-        specifier: ^9.1.7
+        specifier: 'catalog:'
         version: 9.1.7
       lint-staged:
-        specifier: ^16.2.7
+        specifier: 'catalog:'
         version: 16.2.7
       prompts:
-        specifier: ^2.4.2
+        specifier: 'catalog:'
         version: 2.4.2
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       tsx:
-        specifier: ^4.21.0
+        specifier: 'catalog:'
         version: 4.21.0
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
 
   packages/openapi-to-zod-playwright:
@@ -245,44 +299,44 @@ importers:
         specifier: workspace:*
         version: link:../openapi-to-zod
       commander:
-        specifier: ^14.0.3
+        specifier: 'catalog:'
         version: 14.0.3
       cosmiconfig:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0(typescript@5.9.3)
       minimatch:
-        specifier: ^10.2.0
+        specifier: 'catalog:'
         version: 10.2.0
       prompts:
-        specifier: ^2.4.2
+        specifier: 'catalog:'
         version: 2.4.2
       yaml:
-        specifier: ^2.8.2
+        specifier: 'catalog:'
         version: 2.8.2
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
+        specifier: 'catalog:'
         version: 0.18.2
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
       '@types/node':
-        specifier: ^25.2.3
+        specifier: 'catalog:'
         version: 25.2.3
       '@types/prompts':
-        specifier: ^2.4.9
+        specifier: 'catalog:'
         version: 2.4.9
       tsup:
-        specifier: ^8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
-        specifier: ^4.0.18
+        specifier: 'catalog:'
         version: 4.0.18(@types/node@25.2.3)(tsx@4.21.0)(yaml@2.8.2)
       zod:
-        specifier: ^4.3.6
+        specifier: 'catalog:'
         version: 4.3.6
 
 packages:

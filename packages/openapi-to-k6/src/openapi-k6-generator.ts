@@ -6,7 +6,7 @@ import { FileOperationError, LRUCache, loadOpenAPISpecCached } from "@cerios/ope
 import { TypeScriptGenerator } from "@cerios/openapi-to-typescript";
 
 import { K6ClientGenerationError } from "./errors";
-import { generateK6ClientCode, generateK6TypesCode, getEndpointStats } from "./generators/client-generator";
+import { generateK6ClientCode, generateK6TypesCode, getClientEndpointStats } from "./generators/client-generator";
 import { generateK6ServiceCode, getServiceEndpointStats } from "./generators/service-generator";
 import type { OpenApiK6GeneratorOptions } from "./types";
 
@@ -213,7 +213,7 @@ export class OpenApiK6Generator implements Generator {
 
 			// Show client stats if enabled
 			if (this.options.showStats) {
-				const stats = getEndpointStats(spec, this.options);
+				const stats = getClientEndpointStats(spec, this.options);
 				console.log(`    Paths: ${stats.totalPaths}, Operations: ${stats.includedOperations}/${stats.totalOperations}`);
 			}
 

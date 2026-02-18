@@ -20,11 +20,6 @@
  * ```
  */
 
-// Check for core dependency before any imports from it
-import { checkCoreDependency } from "./utils/dependency-check";
-
-checkCoreDependency();
-
 // Batch execution (from core)
 // Errors - re-exported from core for public API convenience
 export {

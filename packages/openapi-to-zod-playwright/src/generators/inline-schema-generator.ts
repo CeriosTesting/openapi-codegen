@@ -251,25 +251,6 @@ export function generateInlineRequestSchemas(
 }
 
 /**
- * Generate a response schema name from method name and status code
- * @param methodName - The method name (e.g., "getUsers")
- * @param statusCode - The HTTP status code (e.g., "200")
- * @param hasMultipleStatuses - Whether there are multiple success statuses
- * @returns Schema name like "GetUsersResponse" or "GetUsers200Response"
- */
-export function generateInlineResponseSchemaName(
-	methodName: string,
-	statusCode: string,
-	hasMultipleStatuses: boolean
-): string {
-	// Convert methodName to PascalCase for the type name
-	const pascalMethodName = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-	// Add status code suffix if there are multiple status codes
-	const statusSuffix = hasMultipleStatuses ? statusCode : "";
-	return `${pascalMethodName}${statusSuffix}Response`;
-}
-
-/**
  * Generate a request schema name from method name and content type
  * @param methodName - The method name (e.g., "postUsers")
  * @param contentType - The content type (e.g., "application/json")

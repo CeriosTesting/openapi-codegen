@@ -119,3 +119,71 @@ export function getResponseParseMethod(
 	// Unknown content type - use fallback
 	return { method: fallback, isUnknown: true };
 }
+
+/**
+ * Default preferred content types for response handling
+ */
+export const DEFAULT_PREFERRED_CONTENT_TYPES = ["application/json"];
+
+/**
+ * Normalizes a content type by removing parameters (like charset) and converting to lowercase
+ *
+ * @param contentType - The content type to normalize
+ * @returns The normalized content type
+ *
+ * @example
+ * normalizeContentType("application/json; charset=utf-8") // "application/json"
+ * normalizeContentType("Text/JSON") // "text/json"
+ */
+export function normalizeContentType(contentType: string): string {
+	return contentType.split(";")[0].trim().toLowerCase();
+}
+
+/**
+ * Selects the best content type from available options based on preference order
+ *
+ * This function tries each preferred content type in order and returns the first match.
+ * Matching is case-insensitive and ignores parameters like charset.
+ * If no preferred content type matches, returns the first available content type.
+ *
+ * @param availableContentTypes - Content types available in the response
+ * @param preferredContentTypes - Ordered list of preferred content types (default: ["application/json"])
+ * @returns The selected content type, or undefined if no content types are available
+ *
+ * @example
+ * // Returns "application/json" (preferred match)
+ * selectContentType(["text/plain", "application/json"], ["application/json", "text/json"])
+ *
+ * @example
+ * // Returns "text/json" (second preference matches)
+ * selectContentType(["text/json", "text/plain"], ["application/json", "text/json"])
+ *
+ * @example
+ * // Returns "text/plain" (first available, no preference match)
+ * selectContentType(["text/plain", "text/html"], ["application/json"])
+ */
+export function selectContentType(
+	availableContentTypes: string[],
+	preferredContentTypes: string[] = DEFAULT_PREFERRED_CONTENT_TYPES
+): string | undefined {
+	if (availableContentTypes.length === 0) {
+		return undefined;
+	}
+
+	// Try each preferred content type in order
+	for (const preferred of preferredContentTypes) {
+		// Check for exact match (case-insensitive, ignoring parameters like charset)
+		const match = availableContentTypes.find(available => {
+			const normalizedAvailable = normalizeContentType(available);
+			const normalizedPreferred = normalizeContentType(preferred);
+			return normalizedAvailable === normalizedPreferred;
+		});
+
+		if (match) {
+			return match;
+		}
+	}
+
+	// Fall back to first available content type
+	return availableContentTypes[0];
+}
