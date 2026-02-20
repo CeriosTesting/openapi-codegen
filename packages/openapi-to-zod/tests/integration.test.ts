@@ -1,8 +1,14 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Integration Tests", () => {
@@ -12,7 +18,7 @@ describe("Integration Tests", () => {
 		it("should generate TypeScript code that compiles without errors", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 			};
 
@@ -29,8 +35,8 @@ describe("Integration Tests", () => {
 
 		it("should generate circular references that compile", () => {
 			const options: OpenApiGeneratorOptions = {
-				input: TestUtils.getFixturePath("circular.yaml"),
-				output: outputPath,
+				input: TestUtils.getCoreFixturePath("references", "circular.yaml"),
+				outputTypes: outputPath,
 				mode: "normal",
 			};
 
@@ -51,7 +57,7 @@ describe("Integration Tests", () => {
 
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: validationPath,
+				outputTypes: validationPath,
 				mode: "normal",
 			};
 
@@ -76,7 +82,7 @@ describe("Integration Tests", () => {
 
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: rejectionPath,
+				outputTypes: rejectionPath,
 				mode: "normal",
 			};
 
@@ -105,7 +111,7 @@ describe("Integration Tests", () => {
 		it("should handle complete workflow from YAML to validated TypeScript", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				includeDescriptions: true,
 			};

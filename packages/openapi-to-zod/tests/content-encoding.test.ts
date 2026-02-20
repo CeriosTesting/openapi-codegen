@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Content Encoding and Media Type", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath("content-encoding.yaml"),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			mode: "normal",
 			showStats: false,
 			...options,

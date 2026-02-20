@@ -1,6 +1,13 @@
+// oxlint-disable typescript/no-unsafe-argument
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -14,7 +21,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 		it("handles basic property dependencies correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -34,17 +41,19 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const creditCardSchema = module.creditCardSchema;
 
 			// Valid: no credit card
-			expect(() => creditCardSchema.parse({ name: "John" })).not.toThrow();
+			expect(() => {
+				creditCardSchema.parse({ name: "John" });
+			}).not.toThrow();
 
 			// Valid: credit card with all dependencies
-			expect(() =>
+			expect(() => {
 				creditCardSchema.parse({
 					name: "John",
 					creditCard: "1234",
 					securityCode: "123",
 					billingZip: "12345",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: credit card without dependencies
 			try {
@@ -64,7 +73,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const schemaOutputPath = TestUtils.getOutputPath("schema-dependencies-enhanced.ts");
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: schemaOutputPath,
+				outputTypes: schemaOutputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -82,18 +91,20 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			const paymentWithAddressSchema = module.paymentWithAddressSchema;
 
 			// Valid: no credit card
-			expect(() => paymentWithAddressSchema.parse({ name: "John" })).not.toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse({ name: "John" });
+			}).not.toThrow();
 
 			// Valid: credit card with all dependency fields
-			expect(() =>
+			expect(() => {
 				paymentWithAddressSchema.parse({
 					name: "John",
 					creditCard: "1234",
 					billingAddress: "123 Main St",
 					city: "Springfield",
 					zipCode: "62701",
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: credit card without required dependency fields
 			try {
@@ -112,7 +123,7 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 		it("handles multiple dependent properties", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -134,12 +145,12 @@ describe("Dependencies & DependentRequired - Enhanced Features", () => {
 			}
 
 			// Valid: email with verification
-			expect(() =>
+			expect(() => {
 				multipleDependenciesSchema.parse({
 					email: "test@example.com",
 					emailVerified: true,
-				})
-			).not.toThrow();
+				});
+			}).not.toThrow();
 
 			// Invalid: email without verification
 			try {
@@ -178,7 +189,7 @@ components:
 			try {
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: specialOutputPath,
+					outputTypes: specialOutputPath,
 					mode: "normal",
 					showStats: false,
 				});
@@ -201,12 +212,12 @@ components:
 				}
 
 				// Valid: email with verification
-				expect(() =>
+				expect(() => {
 					specialPropsSchema.parse({
 						"user-email": "test@example.com",
 						"email-verified": true,
-					})
-				).not.toThrow();
+					});
+				}).not.toThrow();
 
 				// Invalid: email without verification
 				try {
@@ -247,12 +258,14 @@ components:
 			try {
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: edgeOutputPath,
+					outputTypes: edgeOutputPath,
 					mode: "normal",
 					showStats: false,
 				});
 
-				expect(() => generator.generate()).not.toThrow();
+				expect(() => {
+					generator.generate();
+				}).not.toThrow();
 
 				const output = readFileSync(edgeOutputPath, "utf-8");
 				expect(output).toContain("edgeCaseSchema");
@@ -297,7 +310,7 @@ components:
 				const startTime = Date.now();
 				const generator = new OpenApiGenerator({
 					input: testSpec,
-					output: perfOutputPath,
+					outputTypes: perfOutputPath,
 					mode: "normal",
 					showStats: false,
 				});

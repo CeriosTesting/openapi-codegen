@@ -1,5 +1,9 @@
+import {
+	extractPathParams,
+	generateHttpMethodName as generateMethodName,
+	sanitizeParamName,
+} from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-import { extractPathParams, generateMethodName, sanitizeParamName } from "../src/utils/method-naming";
 
 describe("Method Naming Utilities", () => {
 	describe("generateMethodName", () => {
@@ -44,6 +48,10 @@ describe("Method Naming Utilities", () => {
 			expect(generateMethodName("get", "/api/v0.1/users")).toBe("getApiV01Users");
 			expect(generateMethodName("post", "/api/v1.2.3/documents")).toBe("postApiV123Documents");
 			expect(generateMethodName("get", "/v2.0/health")).toBe("getV20Health");
+		});
+
+		it('should replace "@" with "At" in path segments', () => {
+			expect(generateMethodName("get", "/feeds/@channel/{channelId}")).toBe("getFeedsAtChannelByChannelId");
 		});
 	});
 	describe("extractPathParams", () => {

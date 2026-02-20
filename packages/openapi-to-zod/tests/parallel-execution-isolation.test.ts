@@ -1,6 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 
 /**
@@ -63,13 +65,17 @@ components:
 				(input, i) =>
 					new OpenApiGenerator({
 						input,
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						customDateTimeFormatRegex: patterns[i],
 					})
 			);
 
 			// Run all generators in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(
+				generators.map(async gen => {
+					return Promise.resolve(gen.generateString());
+				})
+			);
 
 			// Verify each output has its expected format
 			// Pattern 0: custom regex
@@ -110,13 +116,13 @@ components:
 				({ input, pattern }) =>
 					new OpenApiGenerator({
 						input,
-						output: "output.ts",
+						outputTypes: "output.ts",
 						customDateTimeFormatRegex: pattern,
 					})
 			);
 
 			// Run all in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Verify isolation
 			for (let i = 0; i < numGenerators; i++) {
@@ -158,12 +164,12 @@ components:
 
 			// Run multiple generators with different cache sizes in parallel
 			const generators = [
-				new OpenApiGenerator({ input: specWithPattern, output: "out1.ts", cacheSize: 10 }),
-				new OpenApiGenerator({ input: specWithPattern, output: "out2.ts", cacheSize: 100 }),
-				new OpenApiGenerator({ input: specWithPattern, output: "out3.ts", cacheSize: 1000 }),
+				new OpenApiGenerator({ input: specWithPattern, outputTypes: "out1.ts", cacheSize: 10 }),
+				new OpenApiGenerator({ input: specWithPattern, outputTypes: "out2.ts", cacheSize: 100 }),
+				new OpenApiGenerator({ input: specWithPattern, outputTypes: "out3.ts", cacheSize: 1000 }),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// All outputs should have the same pattern escaped correctly
 			for (const output of outputs) {
@@ -186,12 +192,12 @@ components:
 				(config, i) =>
 					new OpenApiGenerator({
 						input: specFiles[i],
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						...config,
 					})
 			);
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Verify each generator used its own configuration
 			expect(outputs[0]).toContain("z.string().regex(/^pattern-A$/");
@@ -208,22 +214,22 @@ components:
 			const generators = [
 				new OpenApiGenerator({
 					input: sameSpec,
-					output: "out1.ts",
+					outputTypes: "out1.ts",
 					customDateTimeFormatRegex: "^config-1$",
 				}),
 				new OpenApiGenerator({
 					input: sameSpec,
-					output: "out2.ts",
+					outputTypes: "out2.ts",
 					// No custom format
 				}),
 				new OpenApiGenerator({
 					input: sameSpec,
-					output: "out3.ts",
+					outputTypes: "out3.ts",
 					customDateTimeFormatRegex: "^config-3$",
 				}),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateString())));
 
 			// Each should have its own format
 			expect(outputs[0]).toContain("z.string().regex(/^config-1$/");
@@ -238,22 +244,22 @@ components:
 	});
 
 	describe("Interleaved creation and generation", () => {
-		it("should maintain isolation even when generators are created before any generation", async () => {
+		it("should maintain isolation even when generators are created before any generation", () => {
 			// Create all generators first (before any generation happens)
 			const generatorWithCustom = new OpenApiGenerator({
 				input: specFiles[0],
-				output: "output1.ts",
+				outputTypes: "output1.ts",
 				customDateTimeFormatRegex: "^custom-early$",
 			});
 
 			const generatorWithDefault = new OpenApiGenerator({
 				input: specFiles[1],
-				output: "output2.ts",
+				outputTypes: "output2.ts",
 			});
 
 			const generatorWithAnotherCustom = new OpenApiGenerator({
 				input: specFiles[2],
-				output: "output3.ts",
+				outputTypes: "output3.ts",
 				customDateTimeFormatRegex: "^custom-late$",
 			});
 

@@ -6,15 +6,15 @@
 	"specs": [
 		{
 			"input": "tests/fixtures/simple.yaml",
-			"output": "tests/output/seq-simple.ts"
+			"outputTypes": "tests/output/seq-simple.ts"
 		},
 		{
 			"input": "tests/fixtures/composition.yaml",
-			"output": "tests/output/seq-composition.ts"
+			"outputTypes": "tests/output/seq-composition.ts"
 		},
 		{
 			"input": "tests/fixtures/constraints.yaml",
-			"output": "tests/output/seq-constraints.ts"
+			"outputTypes": "tests/output/seq-constraints.ts"
 		}
 	],
 	"executionMode": "sequential"

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Operation Filtering", () => {
@@ -9,7 +11,7 @@ describe("Operation Filtering", () => {
 		it("should include only operations with specified tags", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: true,
 				operationFilters: {
 					includeTags: ["users"],
@@ -30,7 +32,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations with specified tags", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					excludeTags: ["internal", "admin"],
@@ -50,7 +52,7 @@ describe("Operation Filtering", () => {
 		it("should handle multiple tag matching", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: ["users", "products"],
@@ -68,7 +70,7 @@ describe("Operation Filtering", () => {
 		it("should include operations matching path patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includePaths: ["/users/**"],
@@ -84,7 +86,7 @@ describe("Operation Filtering", () => {
 		it("should support glob patterns for paths", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: true,
 				operationFilters: {
 					includePaths: ["/api/v1/**"],
@@ -103,7 +105,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations matching path patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					excludePaths: ["/admin/**", "/internal/**"],
@@ -121,7 +123,7 @@ describe("Operation Filtering", () => {
 		it("should include only specified HTTP methods", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeMethods: ["get"],
@@ -140,7 +142,7 @@ describe("Operation Filtering", () => {
 		it("should exclude specified HTTP methods", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					excludeMethods: ["delete"],
@@ -158,7 +160,7 @@ describe("Operation Filtering", () => {
 		it("should exclude deprecated operations when excludeDeprecated is true", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					excludeDeprecated: true,
@@ -176,7 +178,7 @@ describe("Operation Filtering", () => {
 		it("should include deprecated operations by default", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 			});
 
@@ -191,7 +193,7 @@ describe("Operation Filtering", () => {
 		it("should include operations matching operationId patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeOperationIds: ["getUser*"],
@@ -207,7 +209,7 @@ describe("Operation Filtering", () => {
 		it("should exclude operations matching operationId patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					excludeOperationIds: ["*Admin*", "*Internal*"],
@@ -226,7 +228,7 @@ describe("Operation Filtering", () => {
 		it("should apply multiple filters together", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: ["users"],
@@ -243,7 +245,7 @@ describe("Operation Filtering", () => {
 		it("should apply exclude after include (exclude wins)", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: ["users", "admin"],
@@ -262,7 +264,7 @@ describe("Operation Filtering", () => {
 		it("should treat empty arrays as no constraint", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: [],
@@ -282,7 +284,7 @@ describe("Operation Filtering", () => {
 		it("should include filter statistics in output when showStats is true", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: true,
 				operationFilters: {
 					includeTags: ["users"],
@@ -301,7 +303,7 @@ describe("Operation Filtering", () => {
 		it("should show filtered counts by dimension", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: true,
 				operationFilters: {
 					excludeDeprecated: true,
@@ -322,7 +324,7 @@ describe("Operation Filtering", () => {
 
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: ["nonexistent-tag"],
@@ -341,7 +343,7 @@ describe("Operation Filtering", () => {
 
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 				operationFilters: {
 					includeTags: ["users"],
@@ -360,7 +362,7 @@ describe("Operation Filtering", () => {
 		it("should include all operations when no filters are specified", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 			});
 

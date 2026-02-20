@@ -1,6 +1,12 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Schema Dependencies (OpenAPI 3.0)", () => {
@@ -10,7 +16,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should generate validation for schema dependencies", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +32,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should validate when dependent property is not present", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -39,13 +45,15 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 			const valid = {
 				name: "John Doe",
 			};
-			expect(() => paymentWithAddressSchema.parse(valid)).not.toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse(valid);
+			}).not.toThrow();
 		});
 
 		it("should validate when dependent property exists with all required fields", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -62,13 +70,15 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 				city: "Springfield",
 				zipCode: "62701",
 			};
-			expect(() => paymentWithAddressSchema.parse(valid)).not.toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse(valid);
+			}).not.toThrow();
 		});
 
 		it("should fail when dependent property exists but required fields are missing", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -84,7 +94,9 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 				billingAddress: "123 Main St",
 				// Missing city and zipCode
 			};
-			expect(() => paymentWithAddressSchema.parse(invalid1)).toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse(invalid1);
+			}).toThrow();
 
 			// Invalid: credit card with only one required field
 			const invalid2 = {
@@ -93,7 +105,9 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 				city: "Springfield",
 				// Missing billingAddress and zipCode
 			};
-			expect(() => paymentWithAddressSchema.parse(invalid2)).toThrow();
+			expect(() => {
+				paymentWithAddressSchema.parse(invalid2);
+			}).toThrow();
 		});
 	});
 
@@ -101,7 +115,7 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 		it("should handle both dependency types in the same schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("schema-dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -115,14 +129,18 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 				email: "test@example.com",
 				emailVerified: true,
 			};
-			expect(() => contactWithVerificationSchema.parse(valid1)).not.toThrow();
+			expect(() => {
+				contactWithVerificationSchema.parse(valid1);
+			}).not.toThrow();
 
 			// Valid: phone with schema dependency
 			const valid2 = {
 				phone: "+1234567890",
 				phoneVerified: true,
 			};
-			expect(() => contactWithVerificationSchema.parse(valid2)).not.toThrow();
+			expect(() => {
+				contactWithVerificationSchema.parse(valid2);
+			}).not.toThrow();
 
 			// Valid: both email and phone with their dependencies
 			const valid3 = {
@@ -132,19 +150,25 @@ describe("Schema Dependencies (OpenAPI 3.0)", () => {
 				phoneVerified: false,
 				verificationDate: "2025-12-07",
 			};
-			expect(() => contactWithVerificationSchema.parse(valid3)).not.toThrow();
+			expect(() => {
+				contactWithVerificationSchema.parse(valid3);
+			}).not.toThrow();
 
 			// Invalid: email without emailVerified
 			const invalid1 = {
 				email: "test@example.com",
 			};
-			expect(() => contactWithVerificationSchema.parse(invalid1)).toThrow();
+			expect(() => {
+				contactWithVerificationSchema.parse(invalid1);
+			}).toThrow();
 
 			// Invalid: phone without phoneVerified
 			const invalid2 = {
 				phone: "+1234567890",
 			};
-			expect(() => contactWithVerificationSchema.parse(invalid2)).toThrow();
+			expect(() => {
+				contactWithVerificationSchema.parse(invalid2);
+			}).toThrow();
 		});
 	});
 });

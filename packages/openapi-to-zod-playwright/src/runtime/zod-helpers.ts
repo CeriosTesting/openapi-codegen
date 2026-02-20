@@ -4,6 +4,16 @@
  */
 import { z } from "zod";
 
+/** Type guard to check if value is a record type */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+/** Type guard to check if value is a string */
+function isStringKey(key: unknown): key is string {
+	return typeof key === "string";
+}
+
 /**
  * Error thrown when Zod schema validation fails at runtime
  * Used by generated Playwright services for request/response validation
@@ -26,7 +36,7 @@ export class ZodValidationError extends Error {
 	}
 
 	/** Access validation issues from the underlying ZodError */
-	get issues(): z.ZodIssue[] {
+	get issues(): z.core.$ZodIssue[] {
 		return this.zodError.issues;
 	}
 }
@@ -57,12 +67,11 @@ export function formatZodErrorWithValues(error: z.ZodError, input: unknown): str
 	const formattedIssues = error.issues
 		.map(issue => {
 			const value = issue.path.reduce<unknown>(
-				(acc, key) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key as string] : undefined),
+				(acc, key) => (isRecord(acc) && isStringKey(key) ? acc[key] : undefined),
 				input
 			);
 			// Skip printing received value for objects/arrays (e.g., "Unrecognized key" errors)
-			const isObjectOrArray = typeof value === "object" && value !== null;
-			const receivedPart = isObjectOrArray ? "" : ` (received: ${JSON.stringify(value)})`;
+			const receivedPart = isRecord(value) ? "" : ` (received: ${JSON.stringify(value)})`;
 			return `✖ ${issue.message}${receivedPart}\n  → at ${formatZodErrorPath(issue.path)}`;
 		})
 		.join("\n");

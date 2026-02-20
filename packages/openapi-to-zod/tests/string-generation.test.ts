@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -12,7 +14,7 @@ describe("String Generation Methods", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: fixturePath,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();
@@ -34,7 +36,7 @@ describe("String Generation Methods", () => {
 
 	it("should generate schemas with output path provided", () => {
 		const output = generateOutput({
-			output: TestUtils.getOutputPath("with-output.ts"),
+			outputTypes: TestUtils.getOutputPath("with-output.ts"),
 		});
 
 		expect(output).toBeTruthy();

@@ -39,22 +39,20 @@ export interface PlaywrightOperationFilters extends OperationFilters {
  * Generator options for Playwright client generation
  *
  * File Splitting Architecture:
- * - Schemas (output): Always generated, contains Zod schemas and TypeScript types
+ * - Types (outputTypes): TypeScript type definitions
+ * - Schemas (outputZodSchemas): Optional, Zod schemas with z.ZodType<TypeAlias> syntax (when specified)
+ * - Combined (outputTypes without outputZodSchemas): Zod schemas + inferred TypeScript types
  * - Client (outputClient): Playwright API passthrough wrapper
  * - Service (outputService): Optional, type-safe validation layer
  */
-export interface OpenApiPlaywrightGeneratorOptions
-	extends Omit<OpenApiGeneratorOptions, "schemaType" | "operationFilters"> {
+export interface OpenApiPlaywrightGeneratorOptions extends Omit<
+	OpenApiGeneratorOptions,
+	"schemaType" | "operationFilters"
+> {
 	/**
 	 * Input OpenAPI specification file path (YAML or JSON)
 	 */
 	input: string;
-
-	/**
-	 * Output file path for schemas and types (always generated)
-	 * Contains Zod validation schemas and TypeScript type definitions
-	 */
-	output: string;
 
 	/**
 	 * Output file path for client class
@@ -222,15 +220,29 @@ export interface PlaywrightConfigFile {
 	/**
 	 * Global default options applied to all specs
 	 * Can be overridden by individual spec configurations
-	 * Note: File paths (input, output, outputClient, outputService) must be specified per-spec
+	 * Note: File paths (input, outputTypes/output, outputZodSchemas, outputClient, outputService) must be specified per-spec
 	 */
-	defaults?: Partial<Omit<OpenApiPlaywrightGeneratorOptions, "input" | "output" | "outputClient" | "outputService">>;
+	defaults?: Partial<
+		Omit<
+			OpenApiPlaywrightGeneratorOptions,
+			"input" | "outputTypes" | "outputZodSchemas" | "outputClient" | "outputService"
+		>
+	>;
 
 	/**
 	 * Array of OpenAPI specifications to process
-	 * Each spec must have input, output, and outputClient paths
+	 * Each spec must have input, outputClient, and at least one of:
+	 * - `outputTypes` (preferred) - generates types (and schemas when outputZodSchemas not set)
+	 * - `output` (deprecated alias for outputTypes)
+	 * - `outputZodSchemas` (optional) - when specified, schemas go here with z.ZodType<TypeAlias> syntax
 	 */
-	specs: OpenApiPlaywrightGeneratorOptions[];
+	specs: (Omit<OpenApiPlaywrightGeneratorOptions, "outputTypes"> & {
+		outputTypes?: string;
+		/**
+		 * @deprecated Use `outputTypes` instead.
+		 */
+		output?: string;
+	})[];
 
 	/**
 	 * Execution mode for batch processing
@@ -246,10 +258,10 @@ export interface PlaywrightConfigFile {
  * File Splitting Examples:
  *
  * 1. Schemas + Client (minimum required):
- *    { input: 'api.yaml', output: 'schemas.ts', outputClient: 'client.ts' }
+ *    { input: 'api.yaml', outputTypes: 'schemas.ts', outputClient: 'client.ts' }
  *
  * 2. Schemas + Client + Service (full setup):
- *    { input: 'api.yaml', output: 'schemas.ts', outputClient: 'client.ts', outputService: 'service.ts' }
+ *    { input: 'api.yaml', outputTypes: 'schemas.ts', outputClient: 'client.ts', outputService: 'service.ts' }
  *
  * @example
  * ```typescript
@@ -262,12 +274,12 @@ export interface PlaywrightConfigFile {
  *   },
  *   specs: [
  *     // Schemas + Client (minimum required)
- *     { input: 'api-v1.yaml', output: 'tests/schemas.ts', outputClient: 'tests/client.ts' },
+ *     { input: 'api-v1.yaml', outputTypes: 'tests/schemas.ts', outputClient: 'tests/client.ts' },
  *
  *     // Schemas + Client + Service (full setup)
  *     {
  *       input: 'api-v2.yaml',
- *       output: 'tests/schemas.ts',
+ *       outputTypes: 'tests/schemas.ts',
  *       outputClient: 'tests/client.ts',
  *       outputService: 'tests/service.ts'
  *     }

@@ -1,0 +1,234 @@
+openapi: 3.1.0
+info:
+  title: Edge Cases Test
+  version: 1.0.0
+components:
+  schemas:
+    # ============================================
+    # Empty/Minimal Schemas
+    # ============================================
+    EmptyObject:
+      type: object
+      description: Object with no properties defined
+
+    EmptyObjectWithMin:
+      type: object
+      minProperties: 1
+      description: Empty object that requires at least one property
+
+    OnlyAdditionalProps:
+      type: object
+      additionalProperties:
+        type: string
+      description: Object with no explicit properties, only additional
+
+    UnspecifiedArray:
+      type: array
+      description: Array without items type specified
+
+    UnknownTypeFallback:
+      description: Schema without type specified
+
+    # ============================================
+    # Deep Nullable
+    # ============================================
+    DeepNullable:
+      type: object
+      properties:
+        nullableArray:
+          type: array
+          nullable: true
+          items:
+            type: object
+            nullable: true
+            properties:
+              value:
+                type: string
+                nullable: true
+
+    # ============================================
+    # Boundary Values
+    # ============================================
+    ZeroMinMax:
+      type: number
+      minimum: 0
+      maximum: 0
+      description: Number that must be exactly zero
+
+    EqualMinMax:
+      type: string
+      minLength: 5
+      maxLength: 5
+      description: String with equal min and max length
+
+    LargeNumbers:
+      type: object
+      properties:
+        veryLarge:
+          type: number
+          maximum: 9999999999999
+        verySmall:
+          type: number
+          minimum: -9999999999999
+
+    # ============================================
+    # OpenAPI 3.1 Multiple Types
+    # ============================================
+    MultipleTypes:
+      type: [string, number]
+      description: Can be string or number (OpenAPI 3.1)
+
+    MultipleTypesWithNull:
+      type: [string, number, "null"]
+      description: Can be string, number, or null
+
+    # ============================================
+    # Deep Nesting
+    # ============================================
+    DeepNesting:
+      type: object
+      properties:
+        level1:
+          type: object
+          properties:
+            level2:
+              type: object
+              properties:
+                level3:
+                  type: object
+                  properties:
+                    level4:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+
+    # ============================================
+    # Special Property Names
+    # ============================================
+    SpecialPropertyNames:
+      type: object
+      properties:
+        "property-with-dash":
+          type: string
+        "property.with.dots":
+          type: string
+        "property$with$dollar":
+          type: string
+        "property_with_underscore":
+          type: string
+
+    # ============================================
+    # Enum Edge Cases
+    # ============================================
+    ValidEnum:
+      type: string
+      enum:
+        - value1
+        - value2
+
+    SingleValueEnum:
+      type: string
+      enum:
+        - onlyValue
+
+    MixedEnum:
+      description: Enum with both numeric and string values
+      enum:
+        - 0
+        - "none"
+        - 1
+        - "some"
+        - 2
+        - "many"
+
+    BooleanEnum:
+      type: boolean
+      enum:
+        - true
+        - false
+
+    FloatEnum:
+      type: number
+      enum:
+        - 0.0
+        - 0.5
+        - 1.0
+        - 1.5
+
+    EnumWithSpecialChars:
+      type: string
+      enum:
+        - "value-with-dash"
+        - "value.with.dot"
+        - "value with space"
+        - "value@special"
+
+    # ============================================
+    # Large/Complex Schemas
+    # ============================================
+    VeryLongString:
+      type: string
+      maxLength: 10000
+      description: String with very large max length
+
+    NestedArrays:
+      type: array
+      items:
+        type: array
+        items:
+          type: string
+
+    NullableEverything:
+      type: object
+      nullable: true
+      properties:
+        nullableString:
+          type: string
+          nullable: true
+        nullableNumber:
+          type: number
+          nullable: true
+        nullableObject:
+          type: object
+          nullable: true
+          properties:
+            nested:
+              type: string
+              nullable: true
+
+    # ============================================
+    # Type Aliases
+    # ============================================
+    StringAlias:
+      type: string
+      description: Simple string alias
+
+    # ============================================
+    # Discriminator with Many Variants
+    # ============================================
+    ManyVariants:
+      oneOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              const: variant1
+            value:
+              type: string
+        - type: object
+          properties:
+            type:
+              type: string
+              const: variant2
+            value:
+              type: number
+        - type: object
+          properties:
+            type:
+              type: string
+              const: variant3
+            value:
+              type: boolean
+      discriminator:
+        propertyName: type

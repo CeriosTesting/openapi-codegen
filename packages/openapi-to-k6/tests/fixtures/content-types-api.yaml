@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Content Types Test API
+  description: API for testing different content type handling
+  version: 1.0.0
+
+paths:
+  /login:
+    post:
+      operationId: login
+      summary: Login with form data
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /upload:
+    post:
+      operationId: uploadFile
+      summary: Upload a file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+
+  /data:
+    post:
+      operationId: createData
+      summary: Create data with JSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: number
+      responses:
+        "201":
+          description: Data created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+
+  /status:
+    get:
+      operationId: getStatus
+      summary: Get API status (no body)
+      responses:
+        "200":
+          description: Status response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string

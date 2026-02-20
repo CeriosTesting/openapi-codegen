@@ -1,8 +1,13 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
 import { execSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+
 import { beforeAll, describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Integration Tests for Cerios Company", () => {
@@ -22,7 +27,7 @@ describe("Integration Tests for Cerios Company", () => {
 		beforeAll(() => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemasFile,
+				outputTypes: schemasFile,
 				outputClient: clientFile,
 				outputService: serviceFile,
 				stripSchemaPrefix: "Messier.Libraries.Cerios.Entities.",

@@ -1,6 +1,9 @@
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Dotted Schema Names Handling", () => {
@@ -13,7 +16,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should convert dotted schema names to valid TypeScript identifiers", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 			});
 
@@ -40,7 +43,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should handle nested references with dots", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 			});
 
@@ -54,7 +57,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should maintain correct dependency order with dotted names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 			});
 
@@ -73,7 +76,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should generate valid TypeScript method names without dots", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 			});
 
@@ -92,7 +95,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should generate valid TypeScript types in service methods", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 				outputService: serviceOutputFile,
 			});
@@ -114,7 +117,7 @@ describe("Dotted Schema Names Handling", () => {
 		it("should import converted schema names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 				outputService: serviceOutputFile,
 			});
@@ -167,7 +170,7 @@ components:
 			try {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: testFile,
-					output: TestUtils.getOutputPath("multiple-dots.ts"),
+					outputTypes: TestUtils.getOutputPath("multiple-dots.ts"),
 					outputClient: TestUtils.getOutputPath("multiple-dots-client.ts"),
 				});
 
@@ -214,7 +217,7 @@ components:
 			try {
 				const generator = new OpenApiPlaywrightGenerator({
 					input: testFile,
-					output: TestUtils.getOutputPath("edge-dots.ts"),
+					outputTypes: TestUtils.getOutputPath("edge-dots.ts"),
 					outputClient: TestUtils.getOutputPath("edge-dots-client.ts"),
 				});
 
@@ -236,7 +239,7 @@ components:
 		it("should compile generated TypeScript without errors", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: schemaOutputFile,
+				outputTypes: schemaOutputFile,
 				outputClient: clientOutputFile,
 				outputService: serviceOutputFile,
 			});

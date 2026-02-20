@@ -1,6 +1,13 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
+// oxlint-disable typescript/no-unsafe-return
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Dependencies (OpenAPI 3.0)", () => {
@@ -10,7 +17,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should generate validation for dependencies", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -27,7 +34,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate credit card dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -78,7 +85,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate billing address dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -116,7 +123,7 @@ describe("Dependencies (OpenAPI 3.0)", () => {
 		it("should validate multiple dependencies", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("dependencies.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

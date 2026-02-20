@@ -1,4 +1,8 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
 
@@ -47,7 +51,7 @@ components:
 		try {
 			const generator = new OpenApiGenerator({
 				input: tempFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -365,7 +369,7 @@ components:
 		it("should throw error for RegExp with invalid pattern", () => {
 			// This will throw during RegExp construction
 			expect(() => {
-				// biome-ignore lint/complexity/useRegexLiterals: <testing purpose>
+				// oxlint-disable-next-line no-invalid-regexp
 				new RegExp("[unclosed");
 			}).toThrow(/invalid|unterminated/i);
 		});

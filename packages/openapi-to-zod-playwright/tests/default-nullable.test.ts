@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -17,7 +19,7 @@ describe("Default Nullable Option", () => {
 		it("should not add .nullable() to properties without annotation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -35,7 +37,7 @@ describe("Default Nullable Option", () => {
 		it("should still respect explicit nullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -49,7 +51,7 @@ describe("Default Nullable Option", () => {
 		it("should still respect explicit nullable: false", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -63,13 +65,13 @@ describe("Default Nullable Option", () => {
 		it("should be the default when option is not specified", () => {
 			const generatorDefault = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
 			const generatorExplicitFalse = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -89,7 +91,7 @@ describe("Default Nullable Option", () => {
 		it("should add .nullable() to properties without annotation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -110,7 +112,7 @@ describe("Default Nullable Option", () => {
 		it("should still respect explicit nullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -124,7 +126,7 @@ describe("Default Nullable Option", () => {
 		it("should still respect explicit nullable: false", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -140,14 +142,14 @@ describe("Default Nullable Option", () => {
 		it("should have more .nullable() calls with defaultNullable: true", () => {
 			const generatorTrue = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
 
 			const generatorFalse = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -165,14 +167,14 @@ describe("Default Nullable Option", () => {
 		it("should produce different outputs for the two settings", () => {
 			const generatorTrue = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
 
 			const generatorFalse = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -189,7 +191,7 @@ describe("Default Nullable Option", () => {
 		it("should work correctly with mode: strict", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "strict",
 				defaultNullable: true,
@@ -204,7 +206,7 @@ describe("Default Nullable Option", () => {
 		it("should work correctly with mode: loose", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "loose",
 				defaultNullable: false,
@@ -218,7 +220,7 @@ describe("Default Nullable Option", () => {
 		it("should work correctly with prefix and suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 				suffix: "Dto",
@@ -234,7 +236,7 @@ describe("Default Nullable Option", () => {
 		it("should work correctly with includeDescriptions", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				includeDescriptions: true,
 				defaultNullable: true,
@@ -253,14 +255,14 @@ describe("Default Nullable Option", () => {
 		it("should use defaultNullable in generated schemas for client", () => {
 			const generatorTrue = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				defaultNullable: true,
 			});
 
 			const generatorFalse = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				defaultNullable: false,
 			});
@@ -276,14 +278,14 @@ describe("Default Nullable Option", () => {
 		it("should use defaultNullable in generated schemas for service", () => {
 			const generatorTrue = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				defaultNullable: true,
 			});
 
 			const generatorFalse = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				defaultNullable: false,
 			});
@@ -302,7 +304,7 @@ describe("Default Nullable Option", () => {
 			const simpleApiFile = TestUtils.getFixturePath("simple-api.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: simpleApiFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -318,7 +320,7 @@ describe("Default Nullable Option", () => {
 			const simpleApiFile = TestUtils.getFixturePath("simple-api.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: simpleApiFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: false,
 			});
@@ -333,7 +335,7 @@ describe("Default Nullable Option", () => {
 			const circularFile = TestUtils.getFixturePath("circular-schemas.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: circularFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -349,7 +351,7 @@ describe("Default Nullable Option", () => {
 		it("should not make referenced enum schemas nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -364,7 +366,7 @@ describe("Default Nullable Option", () => {
 		it("should not make $ref properties nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -385,7 +387,7 @@ describe("Default Nullable Option", () => {
 		it("should still make primitive properties nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -402,7 +404,7 @@ describe("Default Nullable Option", () => {
 		it("should not make top-level enum schemas nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -417,7 +419,7 @@ describe("Default Nullable Option", () => {
 		it("should not make inline enum properties nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -440,7 +442,7 @@ describe("Default Nullable Option", () => {
 		it("should not make const/literal properties nullable with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -460,7 +462,7 @@ describe("Default Nullable Option", () => {
 		it("should NOT add .nullable() to top-level object schema definitions with defaultNullable: true", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -476,7 +478,7 @@ describe("Default Nullable Option", () => {
 		it("should add .nullable() to properties but not to the containing object schema", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				defaultNullable: true,
 			});
@@ -498,7 +500,7 @@ describe("Default Nullable Option", () => {
 		it("should produce correct schema format: properties nullable, schema not nullable", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				mode: "strict",
 				defaultNullable: true,

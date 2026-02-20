@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Type Aliases", () => {
@@ -9,7 +11,7 @@ describe("Type Aliases", () => {
 		it("should import types from @cerios/openapi-to-zod-playwright", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -25,7 +27,7 @@ describe("Type Aliases", () => {
 		it("should not define type aliases inline anymore", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -45,7 +47,7 @@ describe("Type Aliases", () => {
 		it("should use imported serializeParams function", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -61,7 +63,7 @@ describe("Type Aliases", () => {
 		it("should use ApiRequestContextOptions in method signatures", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -78,7 +80,7 @@ describe("Type Aliases", () => {
 			const fixtureWithParams = TestUtils.getFixturePath("query-params-api.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureWithParams,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -94,7 +96,7 @@ describe("Type Aliases", () => {
 			const fixtureWithForms = TestUtils.getFixturePath("multi-content-api.yaml");
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureWithForms,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -111,7 +113,7 @@ describe("Type Aliases", () => {
 		it("should import types from package in client file", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -125,7 +127,7 @@ describe("Type Aliases", () => {
 		it("should use types consistently across client and service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -146,7 +148,7 @@ describe("Type Aliases", () => {
 		it("should maintain all existing functionality with package imports", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});
@@ -164,7 +166,7 @@ describe("Type Aliases", () => {
 		it("should produce valid client class structure", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 				useOperationId: true,
 			});

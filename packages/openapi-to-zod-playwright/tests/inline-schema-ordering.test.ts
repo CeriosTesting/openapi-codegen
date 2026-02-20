@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Inline Schema Type Ordering", () => {
@@ -7,7 +9,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should place type immediately after its schema (not grouped at end)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -37,7 +39,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should match component schema generation pattern with blank lines between pairs", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -71,7 +73,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should not have separate types section header", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -86,7 +88,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should sort schemas alphabetically", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -110,7 +112,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should maintain schema-type pairs even with many schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -144,7 +146,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should maintain schema-type pairing with prefix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				prefix: "api",
 			});
@@ -163,7 +165,7 @@ describe("Inline Schema Type Ordering", () => {
 		it("should maintain schema-type pairing with suffix", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: TestUtils.getFixturePath("inline-response-schemas-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				suffix: "Dto",
 			});

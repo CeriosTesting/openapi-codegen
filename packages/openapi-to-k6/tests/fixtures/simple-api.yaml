@@ -1,0 +1,303 @@
+openapi: 3.0.3
+info:
+  title: Test API
+  description: A simple API for testing K6 client generation
+  version: 1.0.0
+
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List all users
+      description: Returns a paginated list of users
+      tags:
+        - users
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: X-Request-ID
+          in: header
+          description: Request tracking ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                  total:
+                    type: integer
+    post:
+      operationId: createUser
+      summary: Create a new user
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUserById
+      summary: Get user by ID
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+
+    put:
+      operationId: updateUser
+      summary: Update user
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+    delete:
+      operationId: deleteUser
+      summary: Delete user
+      deprecated: true
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: User deleted
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: User login
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expiresIn:
+                    type: integer
+
+  /organizations/{orgId}/members:
+    get:
+      operationId: getOrgMembers
+      summary: Get organization members
+      tags:
+        - organizations
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum:
+              - admin
+              - member
+              - viewer
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /dossiers:
+    get:
+      operationId: listDossiers
+      summary: List dossiers with filters
+      description: Returns a filtered list of dossiers using bracket notation parameters
+      tags:
+        - dossiers
+      parameters:
+        - name: filter[id]
+          in: query
+          description: Filter by ID to get a specific dossier
+          schema:
+            type: string
+        - name: filter[status]
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum:
+              - open
+              - closed
+              - pending
+        - name: page[number]
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+        - name: page[size]
+          in: query
+          description: Page size for pagination
+          schema:
+            type: integer
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+            - guest
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+            - guest
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+            - guest

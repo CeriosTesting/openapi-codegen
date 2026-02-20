@@ -1,5 +1,6 @@
+import { escapeJSDoc } from "@cerios/openapi-core";
+
 import type { OpenAPISchema } from "../types";
-import { escapeJSDoc } from "../utils/string-utils";
 
 export interface JSDocOptions {
 	includeDescriptions: boolean;
@@ -37,15 +38,13 @@ export function generateJSDoc(
 	// Add title if different from name (sanitized)
 	if (schema.title && typeof schema.title === "string" && (!name || schema.title !== name)) {
 		// Sanitize title to prevent JSDoc injection
-		const sanitizedTitle = escapeJSDoc(schema.title).replace(/@/g, "\\@");
-		parts.push(sanitizedTitle);
+		parts.push(escapeJSDoc(schema.title));
 	}
 
 	// Add description (sanitized to prevent injection)
 	if (schema.description && typeof schema.description === "string") {
 		// Escape @ symbols and other JSDoc tags to prevent injection
-		const sanitizedDesc = escapeJSDoc(schema.description).replace(/@/g, "\\@").replace(/\*\//g, "*\\/");
-		parts.push(sanitizedDesc);
+		parts.push(escapeJSDoc(schema.description));
 	}
 
 	// Add examples (with type safety)

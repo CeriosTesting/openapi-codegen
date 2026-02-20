@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Multi-Content-Type Support", () => {
@@ -9,7 +11,7 @@ describe("Multi-Content-Type Support", () => {
 		it("should generate service method for application/json", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -23,7 +25,7 @@ describe("Multi-Content-Type Support", () => {
 		it("should accept data parameter for JSON content type", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -37,7 +39,7 @@ describe("Multi-Content-Type Support", () => {
 		it("should pass options to client", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -56,7 +58,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -72,7 +74,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -88,7 +90,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -107,7 +109,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -123,7 +125,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -139,7 +141,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -158,7 +160,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -177,7 +179,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -197,7 +199,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -215,7 +217,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixture,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -235,7 +237,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -254,7 +256,7 @@ describe("Multi-Content-Type Support", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 

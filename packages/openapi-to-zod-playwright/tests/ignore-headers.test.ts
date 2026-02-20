@@ -1,5 +1,8 @@
+// oxlint-disable typescript/no-unsafe-member-access
 import { describe, expect, it, vi } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Ignore Headers Feature", () => {
@@ -9,7 +12,7 @@ describe("Ignore Headers Feature", () => {
 		it("should generate header parameter schemas when ignoreHeaders is not set", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -17,15 +20,16 @@ describe("Ignore Headers Feature", () => {
 			const output = generator.generateSchemasString();
 
 			// Should contain header parameter schemas
+			// With useOperationId: false, names are derived from path: /users GET -> GetUsers, /secure POST -> PostSecure
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("export const getUsersHeaderParamsSchema");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should not generate schemas for ignored headers with exact match", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization"],
@@ -38,15 +42,15 @@ describe("Ignore Headers Feature", () => {
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).not.toContain("Authorization");
 
-			// SecureEndpoint has Content-Type remaining, so schema should be generated
-			expect(output).toContain("SecureEndpointHeaderParams");
+			// SecureEndpoint (POST /secure with useOperationId=false -> PostSecure) has Content-Type remaining
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
 		it("should not generate any header schemas when ignoreHeaders is ['*']", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -62,7 +66,7 @@ describe("Ignore Headers Feature", () => {
 		it("should support glob patterns for ignoring headers", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-*"],
@@ -77,13 +81,13 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint has Authorization and Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should be case-insensitive when matching header names", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["authorization", "x-request-id"], // lowercase
@@ -98,14 +102,14 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint should have only Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
 		it("should handle multiple patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization", "X-Request-*"],
@@ -120,14 +124,14 @@ describe("Ignore Headers Feature", () => {
 			expect(output).not.toContain("X-Request-ID");
 
 			// SecureEndpoint should have Content-Type
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 		});
 
 		it("should handle empty array (no filtering)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: [],
@@ -137,7 +141,7 @@ describe("Ignore Headers Feature", () => {
 
 			// Should generate all header schemas
 			expect(output).toContain("GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 	});
 
@@ -145,7 +149,7 @@ describe("Ignore Headers Feature", () => {
 		it("should include header parameters in service methods when not ignored", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -156,13 +160,13 @@ describe("Ignore Headers Feature", () => {
 			// Should import and use header parameter types
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("headers?: GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should exclude ignored headers from service method signatures", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -175,15 +179,15 @@ describe("Ignore Headers Feature", () => {
 			expect(output).toContain("GetUsersHeaderParams");
 			expect(output).toContain("headers?: GetUsersHeaderParams");
 
-			// Should still have SecureEndpointHeaderParams (has Content-Type)
-			expect(output).toContain("SecureEndpointHeaderParams");
-			expect(output).toContain("headers?: SecureEndpointHeaderParams");
+			// Should still have PostSecureHeaderParams (has Content-Type)
+			expect(output).toContain("PostSecureHeaderParams");
+			expect(output).toContain("headers?: PostSecureHeaderParams");
 		});
 
 		it("should not include any header parameters when all are ignored", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -200,7 +204,7 @@ describe("Ignore Headers Feature", () => {
 		it("should not import header schemas that are completely filtered out", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -217,7 +221,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle methods with mixed parameters correctly", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -239,14 +243,14 @@ describe("Ignore Headers Feature", () => {
 		it("should not be affected by ignoreHeaders option", () => {
 			const generator1 = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
 
 			const generator2 = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -270,7 +274,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["NonExistentHeader"],
@@ -289,7 +293,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["*"],
@@ -308,7 +312,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: simpleFixture,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["Authorization"],
@@ -326,7 +330,7 @@ describe("Ignore Headers Feature", () => {
 
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-NonExistent"],
@@ -346,7 +350,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle operations with only ignored headers", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,
@@ -357,14 +361,14 @@ describe("Ignore Headers Feature", () => {
 
 			// postSecure has Content-Type remaining after filtering Authorization
 			expect(output).toContain("async postSecure(");
-			// Content-Type remains, so SecureEndpointHeaderParams should still be generated
-			expect(output).toContain("SecureEndpointHeaderParams");
+			// Content-Type remains, so PostSecureHeaderParams should still be generated
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should handle complex glob patterns", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: ["X-*", "Auth*"],
@@ -374,7 +378,7 @@ describe("Ignore Headers Feature", () => {
 
 			// GetUsers: All headers filtered (Authorization, X-API-Key, X-Request-ID)
 			// SecureEndpoint: Authorization filtered, but Content-Type remains
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 			expect(output).toContain("Content-Type");
 			expect(output).not.toContain("GetUsersHeaderParams");
 		});
@@ -382,7 +386,7 @@ describe("Ignore Headers Feature", () => {
 		it("should handle undefined ignoreHeaders gracefully", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 				ignoreHeaders: undefined,
@@ -392,13 +396,13 @@ describe("Ignore Headers Feature", () => {
 
 			// Should generate all headers normally
 			expect(output).toContain("GetUsersHeaderParams");
-			expect(output).toContain("SecureEndpointHeaderParams");
+			expect(output).toContain("PostSecureHeaderParams");
 		});
 
 		it("should preserve other parameters when headers are filtered", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "test.ts",
+				outputTypes: "test.ts",
 				outputClient: "client.ts",
 				outputService: "service.ts",
 				useOperationId: false,

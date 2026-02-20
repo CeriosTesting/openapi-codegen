@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("HTTP Methods", () => {
@@ -8,7 +10,7 @@ describe("HTTP Methods", () => {
 	function generateOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 			useOperationId: false,
 		});
@@ -18,7 +20,7 @@ describe("HTTP Methods", () => {
 	function generateServiceOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 			useOperationId: false,
 		});

@@ -1,38 +1,36 @@
-import { existsSync, unlinkSync } from "node:fs";
-import path from "node:path";
+import { createTestUtils, type FixtureCategory } from "../../../../fixtures/test-utils";
 import { OpenApiPlaywrightGenerator } from "../../src/openapi-playwright-generator";
 import type { OpenApiPlaywrightGeneratorOptions } from "../../src/types";
 
-export const outputDir = path.join(__dirname, "..", "output");
-export const fixturesDir = path.join(__dirname, "..", "fixtures");
+// Create base test utilities using the core factory
+const baseUtils = createTestUtils({
+	testDir: __dirname,
+	fixturesSubdir: "../fixtures",
+	outputSubdir: "../output",
+	configSubdir: "../fixtures/config-files",
+});
+
+// Export commonly used paths
+export const outputDir = baseUtils.outputDir;
+export const fixturesDir = baseUtils.fixturesDir;
 
 /**
  * Utility functions for testing the Playwright generator
  */
 export const TestUtils = {
-	getOutputPath(outputFileName: string): string {
-		// Normalize the filename to handle cross-platform path separators
-		// This ensures backslashes in test paths work on Linux/macOS
-		const normalizedFileName = outputFileName.replace(/\\/g, path.sep);
-		return path.join(outputDir, normalizedFileName);
-	},
+	...baseUtils,
 
-	getFixturePath(fixtureName: string): string {
-		const normalizedFileName = fixtureName.replace(/\\/g, path.sep);
-		return path.join(fixturesDir, normalizedFileName);
-	},
-
-	getConfigPath(configFileName: string): string {
-		return path.join(fixturesDir, "config-files", configFileName);
-	},
-
-	cleanupTestOutput(outputFileName: string): () => void {
-		return () => {
-			const outputFilePath = this.getOutputPath(outputFileName);
-			if (existsSync(outputFilePath)) {
-				unlinkSync(outputFilePath);
-			}
-		};
+	/**
+	 * Get path to a shared fixture from @cerios/openapi-to-zod
+	 * @param filename - The fixture filename
+	 * @returns Absolute path to the zod fixture
+	 */
+	getZodFixturePath(filename: string): string {
+		// Resolve relative to the zod package's fixtures directory
+		// Use dynamic require for test utilities
+		// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+		const path = require("node:path") as typeof import("node:path");
+		return path.join(__dirname, "..", "..", "..", "openapi-to-zod", "tests", "fixtures", filename);
 	},
 
 	/**
@@ -43,8 +41,29 @@ export const TestUtils = {
 	 */
 	generateClient(fixtureName: string, options?: Partial<OpenApiPlaywrightGeneratorOptions>): string {
 		const generator = new OpenApiPlaywrightGenerator({
-			input: this.getFixturePath(fixtureName),
-			output: "output.ts",
+			input: baseUtils.getFixturePath(fixtureName),
+			outputTypes: "output.ts",
+			outputClient: "client.ts",
+			...options,
+		});
+		return generator.generateSchemasString();
+	},
+
+	/**
+	 * Generate Playwright client code from a core fixture file
+	 * @param category - The fixture category in openapi-core
+	 * @param filename - The fixture filename
+	 * @param options - Partial generator options to merge with defaults
+	 * @returns Generated Playwright client string
+	 */
+	generateFromCoreFixture(
+		category: FixtureCategory,
+		filename: string,
+		options?: Partial<OpenApiPlaywrightGeneratorOptions>
+	): string {
+		const generator = new OpenApiPlaywrightGenerator({
+			input: baseUtils.getCoreFixturePath(category, filename),
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			...options,
 		});

@@ -1,54 +1,20 @@
+import {
+	constructFullPath,
+	extractPathParams,
+	generateHttpMethodName as generateMethodName,
+	generateOperationJSDoc,
+	getOperation,
+	HTTP_METHODS,
+	isPathItemLike,
+	normalizeBasePath,
+	sanitizeOperationId,
+	sanitizeParamName,
+	stripPathPrefix,
+} from "@cerios/openapi-core";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
-import { stripPathPrefix } from "@cerios/openapi-to-zod/internal";
+
 import type { PlaywrightOperationFilters } from "../types";
-import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
-import { generateOperationJSDoc } from "../utils/operation-jsdoc";
-
-/**
- * Normalizes a base path by ensuring it has a leading slash and no trailing slash
- * Returns undefined for empty strings, single slash, or undefined values
- * @param basePath - The base path to normalize
- * @returns Normalized base path or undefined
- */
-function normalizeBasePath(basePath?: string): string | undefined {
-	if (!basePath || basePath === "/" || basePath.trim() === "") {
-		return undefined;
-	}
-
-	let normalized = basePath.trim();
-	// Ensure leading slash
-	if (!normalized.startsWith("/")) {
-		normalized = `/${normalized}`;
-	}
-	// Remove trailing slash
-	if (normalized.endsWith("/")) {
-		normalized = normalized.slice(0, -1);
-	}
-
-	return normalized;
-}
-
-/**
- * Constructs the full path by combining base path with endpoint path
- * Ensures proper slash handling to avoid double slashes
- * @param basePath - The normalized base path (optional)
- * @param path - The endpoint path from OpenAPI spec
- * @returns The complete path
- */
-function constructFullPath(basePath: string | undefined, path: string): string {
-	if (!basePath) {
-		return path;
-	}
-
-	// Ensure path has leading slash
-	let normalizedPath = path.trim();
-	if (!normalizedPath.startsWith("/")) {
-		normalizedPath = `/${normalizedPath}`;
-	}
-
-	return basePath + normalizedPath;
-}
 
 interface EndpointInfo {
 	path: string;
@@ -87,10 +53,9 @@ export function generateClientClass(
 		let totalOperations = 0;
 		if (spec.paths) {
 			for (const pathItem of Object.values(spec.paths)) {
-				if (!pathItem || typeof pathItem !== "object") continue;
-				const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-				for (const method of methods) {
-					if (pathItem[method]) totalOperations++;
+				if (!isPathItemLike(pathItem)) continue;
+				for (const method of HTTP_METHODS) {
+					if (getOperation(pathItem, method)) totalOperations++;
 				}
 			}
 		}
@@ -145,15 +110,13 @@ function extractEndpoints(
 	}
 
 	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
+		if (!isPathItemLike(pathItem)) continue;
 
 		// Strip prefix from path for processing
 		const path = stripPathPrefix(originalPath, stripPrefix);
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-		for (const method of methods) {
-			const operation = pathItem[method];
+		for (const method of HTTP_METHODS) {
+			const operation = getOperation(pathItem, method);
 			if (!operation) continue;
 
 			// Apply operation filters
@@ -223,7 +186,8 @@ function generateClientMethod(endpoint: EndpointInfo, basePath?: string): string
 		deprecated: endpoint.deprecated,
 		method,
 		path: fullPath,
-		additionalTags: ["@returns Raw Playwright APIResponse"],
+		returns: "Raw Playwright APIResponse",
+		indent: "\t",
 	});
 
 	return `${jsdoc}

@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Zod Import Deduplication", () => {
 	function generateOutput(fixture: string, options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath(fixture),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();

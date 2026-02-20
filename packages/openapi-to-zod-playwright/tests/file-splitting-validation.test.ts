@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("File Splitting Validation", () => {
@@ -11,23 +13,27 @@ describe("File Splitting Validation", () => {
 		it("should accept schemas + client (no service)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: outputPath,
+				outputTypes: outputPath,
 				outputClient: clientPath,
 				// No outputService
 			});
 
-			expect(() => generator.generate()).not.toThrow();
+			expect(() => {
+				generator.generate();
+			}).not.toThrow();
 		});
 
 		it("should accept schemas + client + service", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: outputPath,
+				outputTypes: outputPath,
 				outputClient: clientPath,
 				outputService: TestUtils.getOutputPath("service.ts"),
 			});
 
-			expect(() => generator.generate()).not.toThrow();
+			expect(() => {
+				generator.generate();
+			}).not.toThrow();
 		});
 	});
 
@@ -35,7 +41,7 @@ describe("File Splitting Validation", () => {
 		it("should return only schemas and types (no client, no service)", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: outputPath,
+				outputTypes: outputPath,
 				outputClient: clientPath,
 			});
 
@@ -56,7 +62,7 @@ describe("File Splitting Validation", () => {
 		it("should not include Playwright imports in schemas-only output", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: outputPath,
+				outputTypes: outputPath,
 				outputClient: clientPath,
 			});
 

@@ -1,5 +1,5 @@
+import { stripPathPrefix, stripPrefix } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
-import { stripPathPrefix, stripPrefix } from "../src/utils/pattern-utils";
 
 describe("stripPrefix", () => {
 	describe("literal string matching", () => {

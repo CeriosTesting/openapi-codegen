@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("useOperationId Option", () => {
@@ -9,7 +11,7 @@ describe("useOperationId Option", () => {
 		it("should use operationId for method names when available", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true, // Explicit true
 			});
@@ -31,7 +33,7 @@ describe("useOperationId Option", () => {
 		it("should generate path-based names by default when option is omitted", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				// useOperationId not specified - should default to false
 			});
@@ -55,7 +57,7 @@ describe("useOperationId Option", () => {
 		it("should generate method names from path when useOperationId is false", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});
@@ -77,7 +79,7 @@ describe("useOperationId Option", () => {
 		it("should work the same way for service generator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: false,
 			});

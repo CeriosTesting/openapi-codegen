@@ -1,6 +1,12 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Pattern Properties", () => {
@@ -10,7 +16,7 @@ describe("Pattern Properties", () => {
 		it("should generate validation for pattern properties", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +32,7 @@ describe("Pattern Properties", () => {
 		it("should validate objects with pattern properties", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -42,19 +48,25 @@ describe("Pattern Properties", () => {
 				config_bar: "value2",
 				num_count: 42,
 			};
-			expect(() => dynamicConfigSchema.parse(valid)).not.toThrow();
+			expect(() => {
+				dynamicConfigSchema.parse(valid);
+			}).not.toThrow();
 
 			// Invalid: config_ properties must be strings
 			const invalid1 = {
 				name: "test",
 				config_foo: 123, // Should be string
 			};
-			expect(() => dynamicConfigSchema.parse(invalid1)).toThrow(); // Invalid: num_ properties must be numbers
+			expect(() => {
+				dynamicConfigSchema.parse(invalid1);
+			}).toThrow(); // Invalid: num_ properties must be numbers
 			const invalid2 = {
 				name: "test",
 				num_count: "not a number", // Should be number
 			};
-			expect(() => dynamicConfigSchema.parse(invalid2)).toThrow();
+			expect(() => {
+				dynamicConfigSchema.parse(invalid2);
+			}).toThrow();
 		});
 	});
 
@@ -62,7 +74,7 @@ describe("Pattern Properties", () => {
 		it("should generate validation for property name patterns", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -77,7 +89,7 @@ describe("Pattern Properties", () => {
 		it("should validate property names with pattern", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -92,19 +104,23 @@ describe("Pattern Properties", () => {
 				foo_bar: "baz",
 				CAPS: "value",
 			};
-			expect(() => stringKeysOnlySchema.parse(valid)).not.toThrow();
+			expect(() => {
+				stringKeysOnlySchema.parse(valid);
+			}).not.toThrow();
 
 			// Invalid: contains numbers
 			const invalid = {
 				foo123: "bar",
 			};
-			expect(() => stringKeysOnlySchema.parse(invalid)).toThrow();
+			expect(() => {
+				stringKeysOnlySchema.parse(invalid);
+			}).toThrow();
 		});
 
 		it("should validate property names with maxLength", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -118,19 +134,23 @@ describe("Pattern Properties", () => {
 				short: "value",
 				tenletters: "value",
 			};
-			expect(() => shortKeysOnlySchema.parse(valid)).not.toThrow();
+			expect(() => {
+				shortKeysOnlySchema.parse(valid);
+			}).not.toThrow();
 
 			// Invalid: key is too long
 			const invalid = {
 				thisiswaytoolong: "value",
 			};
-			expect(() => shortKeysOnlySchema.parse(invalid)).toThrow();
+			expect(() => {
+				shortKeysOnlySchema.parse(invalid);
+			}).toThrow();
 		});
 
 		it("should validate property names with minLength", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -144,13 +164,17 @@ describe("Pattern Properties", () => {
 				validkey: "value",
 				longerkey: "value",
 			};
-			expect(() => longKeysOnlySchema.parse(valid)).not.toThrow();
+			expect(() => {
+				longKeysOnlySchema.parse(valid);
+			}).not.toThrow();
 
 			// Invalid: key is too short
 			const invalid = {
 				foo: "value",
 			};
-			expect(() => longKeysOnlySchema.parse(invalid)).toThrow();
+			expect(() => {
+				longKeysOnlySchema.parse(invalid);
+			}).toThrow();
 		});
 	});
 
@@ -158,7 +182,7 @@ describe("Pattern Properties", () => {
 		it("should handle both pattern properties and property names", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("pattern-properties.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -173,21 +197,27 @@ describe("Pattern Properties", () => {
 				data_1: { value: 100 },
 				data_2: { value: 200 },
 			};
-			expect(() => combinedValidationSchema.parse(valid)).not.toThrow();
+			expect(() => {
+				combinedValidationSchema.parse(valid);
+			}).not.toThrow();
 
 			// Invalid: property name has uppercase
 			const invalid1 = {
 				id: "test",
 				DATA_1: { value: 100 },
 			};
-			expect(() => combinedValidationSchema.parse(invalid1)).toThrow();
+			expect(() => {
+				combinedValidationSchema.parse(invalid1);
+			}).toThrow();
 
 			// Invalid: data_ property doesn't match schema
 			const invalid2 = {
 				id: "test",
 				data_1: { value: "not a number" },
 			};
-			expect(() => combinedValidationSchema.parse(invalid2)).toThrow();
+			expect(() => {
+				combinedValidationSchema.parse(invalid2);
+			}).toThrow();
 		});
 	});
 });

@@ -82,6 +82,25 @@ components:
             total:
               type: number
 
+    # Repeated inline conflicts that previously emitted duplicate warning lines
+    RepeatedInlineConflictAllOf:
+      allOf:
+        - $ref: '#/components/schemas/BaseWithName'
+        - type: object
+          properties:
+            duplicateName:
+              type: string
+            name:
+              type: string
+              minLength: 1
+        - type: object
+          properties:
+            duplicateName:
+              type: number
+            name:
+              type: string
+              pattern: '^x'
+
     # === Optional Discriminator Tests ===
 
     # Schema where discriminator property is optional

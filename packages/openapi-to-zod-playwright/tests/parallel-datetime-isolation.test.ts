@@ -1,6 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
 
 /**
@@ -73,14 +75,14 @@ components:
 				(input, i) =>
 					new OpenApiPlaywrightGenerator({
 						input,
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						customDateTimeFormatRegex: patterns[i],
 					})
 			);
 
 			// Run all generators in parallel (generate schemas)
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify each output has its expected format
 			// Pattern 0: custom regex
@@ -121,14 +123,14 @@ components:
 				({ input, pattern }, i) =>
 					new OpenApiPlaywrightGenerator({
 						input,
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						customDateTimeFormatRegex: pattern,
 					})
 			);
 
 			// Run all in parallel
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify isolation
 			for (let i = 0; i < numGenerators; i++) {
@@ -159,13 +161,13 @@ components:
 				(config, i) =>
 					new OpenApiPlaywrightGenerator({
 						input: specFiles[i],
-						output: `output-${i}.ts`,
+						outputTypes: `output-${i}.ts`,
 						outputClient: `client-${i}.ts`,
 						...config,
 					})
 			);
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Verify each generator used its own configuration
 			expect(outputs[0]).toContain("z.string().regex(/^pattern-A$/");
@@ -182,25 +184,25 @@ components:
 			const generators = [
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out1.ts",
+					outputTypes: "out1.ts",
 					outputClient: "client1.ts",
 					customDateTimeFormatRegex: "^config-1$",
 				}),
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out2.ts",
+					outputTypes: "out2.ts",
 					outputClient: "client2.ts",
 					// No custom format
 				}),
 				new OpenApiPlaywrightGenerator({
 					input: sameSpec,
-					output: "out3.ts",
+					outputTypes: "out3.ts",
 					outputClient: "client3.ts",
 					customDateTimeFormatRegex: "^config-3$",
 				}),
 			];
 
-			const outputs = await Promise.all(generators.map(gen => Promise.resolve(gen.generateSchemasString())));
+			const outputs = await Promise.all(generators.map(async gen => Promise.resolve(gen.generateSchemasString())));
 
 			// Each should have its own format
 			expect(outputs[0]).toContain("z.string().regex(/^config-1$/");

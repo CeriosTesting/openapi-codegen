@@ -1,45 +1,28 @@
-import { existsSync, unlinkSync } from "node:fs";
-import path from "node:path";
+import { createTestUtils, type FixtureCategory } from "../../../../fixtures/test-utils";
 import { OpenApiGenerator } from "../../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../../src/types";
+
+// Create base test utilities using the core factory
+const baseUtils = createTestUtils({
+	testDir: __dirname,
+	fixturesSubdir: "../fixtures",
+	outputSubdir: "../output",
+	configSubdir: "../fixtures/config-files",
+});
 
 /**
  * Utility functions for testing the OpenAPI to Zod generator
  */
 export const TestUtils = {
-	getConfigPath(configFileName: string): string {
-		// Normalize the filename to handle cross-platform path separators
-		const normalizedFileName = configFileName.replace(/\\/g, path.sep);
-		return path.join(__dirname, "..", "fixtures", "config-files", normalizedFileName);
-	},
+	...baseUtils,
 
-	getOutputPath(outputFileName: string): string {
-		// Normalize the filename to handle cross-platform path separators
-		const normalizedFileName = outputFileName.replace(/\\/g, path.sep);
-		return path.join(__dirname, "..", "output", normalizedFileName);
-	},
-
-	getFixturePath(fixtureName: string): string {
-		// Normalize the filename to handle cross-platform path separators
-		const normalizedFileName = fixtureName.replace(/\\/g, path.sep);
-		return path.join(__dirname, "..", "fixtures", normalizedFileName);
-	},
-
-	getDistPath(distFileName: string): string {
-		// Normalize the filename to handle cross-platform path separators
-		const normalizedFileName = distFileName.replace(/\\/g, path.sep);
-		return path.join(__dirname, "..", "..", "dist", normalizedFileName);
-	},
-
-	cleanupTestOutput(outputFileNames: string[]): () => void {
-		return () => {
-			outputFileNames.forEach(fileName => {
-				const outputFilePath = this.getOutputPath(fileName);
-				if (existsSync(outputFilePath)) {
-					unlinkSync(outputFilePath);
-				}
-			});
-		};
+	/**
+	 * Get path to the test config directory for CLI tests
+	 * @param subPath - Optional sub-path within the config directory
+	 * @returns Absolute path to the test config directory
+	 */
+	getTestConfigDir(subPath?: string): string {
+		return baseUtils.getTestConfigDir(subPath);
 	},
 
 	/**
@@ -50,8 +33,28 @@ export const TestUtils = {
 	 */
 	generateFromFixture(fixtureName: string, options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
-			input: this.getFixturePath(fixtureName),
-			output: "output.ts", // Default dummy path for tests using generateString()
+			input: baseUtils.getFixturePath(fixtureName),
+			outputTypes: "output.ts", // Default dummy path for tests using generateString()
+			...options,
+		});
+		return generator.generateString();
+	},
+
+	/**
+	 * Generate Zod schemas from a core fixture file
+	 * @param category - The fixture category in openapi-core
+	 * @param filename - The fixture filename
+	 * @param options - Partial generator options to merge with defaults
+	 * @returns Generated Zod schema string
+	 */
+	generateFromCoreFixture(
+		category: FixtureCategory,
+		filename: string,
+		options?: Partial<OpenApiGeneratorOptions>
+	): string {
+		const generator = new OpenApiGenerator({
+			input: baseUtils.getCoreFixturePath(category, filename),
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();

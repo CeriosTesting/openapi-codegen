@@ -1,6 +1,11 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 
 /**
@@ -79,7 +84,7 @@ components:
 		it("should NOT have .nullable().shape pattern (which is invalid)", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -90,7 +95,7 @@ components:
 		it("should use inline shape directly for inline objects, not z.object().shape", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -102,7 +107,7 @@ components:
 		it("should place .nullable() after .extend() for nullable allOf", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -115,7 +120,7 @@ components:
 		it("should NOT add .nullable() for non-nullable allOf", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -164,7 +169,7 @@ components:
 		it("should use .extend(schema.shape) for ref-only allOf", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -175,7 +180,7 @@ components:
 		it("should apply .nullable() after the extend chain", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -215,7 +220,7 @@ components:
 		it("should simplify single-item allOf to direct reference", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -226,7 +231,7 @@ components:
 		it("should handle nullable single-item allOf correctly", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -284,7 +289,7 @@ components:
 		it("should chain multiple .extend() calls correctly", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -296,7 +301,7 @@ components:
 		it("should place .nullable() after all .extend() calls", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -307,7 +312,7 @@ components:
 		it("should NOT have invalid .nullable().shape pattern", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -357,7 +362,7 @@ components:
 		it("should handle nullable inline object with nested properties", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -397,7 +402,7 @@ components:
 		it("should handle empty inline object in allOf", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 			const output = generator.generateString();
 
@@ -455,7 +460,7 @@ components:
 		it("should generate schemas that parse valid data correctly", async () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: outputPath,
+				outputTypes: outputPath,
 				showStats: false,
 			});
 
@@ -464,17 +469,31 @@ components:
 			const { baseSchema, extendedSchema, nullableExtendedSchema } = await import(outputPath);
 
 			// Base schema should work
-			expect(() => baseSchema.parse({ id: "123" })).not.toThrow();
-			expect(() => baseSchema.parse({})).toThrow();
+			expect(() => {
+				baseSchema.parse({ id: "123" });
+			}).not.toThrow();
+			expect(() => {
+				baseSchema.parse({});
+			}).toThrow();
 
 			// Extended schema should require both fields
-			expect(() => extendedSchema.parse({ id: "123", name: "test" })).not.toThrow();
-			expect(() => extendedSchema.parse({ id: "123" })).toThrow();
-			expect(() => extendedSchema.parse({ name: "test" })).toThrow();
+			expect(() => {
+				extendedSchema.parse({ id: "123", name: "test" });
+			}).not.toThrow();
+			expect(() => {
+				extendedSchema.parse({ id: "123" });
+			}).toThrow();
+			expect(() => {
+				extendedSchema.parse({ name: "test" });
+			}).toThrow();
 
 			// Nullable extended should accept null
-			expect(() => nullableExtendedSchema.parse(null)).not.toThrow();
-			expect(() => nullableExtendedSchema.parse({ id: "123", name: "test" })).not.toThrow();
+			expect(() => {
+				nullableExtendedSchema.parse(null);
+			}).not.toThrow();
+			expect(() => {
+				nullableExtendedSchema.parse({ id: "123", name: "test" });
+			}).not.toThrow();
 		});
 	});
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Query Parameters", () => {
@@ -8,7 +10,7 @@ describe("Query Parameters", () => {
 	function generateClientOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			useOperationId: false,
 		});

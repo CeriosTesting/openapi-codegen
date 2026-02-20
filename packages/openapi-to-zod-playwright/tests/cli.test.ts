@@ -1,6 +1,10 @@
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
+// oxlint-disable typescript/no-unsafe-assignment
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const CLI_PATH = join(__dirname, "../dist/cli.js");
@@ -50,7 +54,7 @@ describe("CLI - Playwright", () => {
 			specs: [
 				{
 					input: inputPath,
-					output: outputPath,
+					outputTypes: outputPath,
 					outputClient: outputClientPath,
 					showStats: false,
 				},
@@ -111,5 +115,76 @@ describe("CLI - Playwright", () => {
 			expect(stderr).toContain("Validation errors:");
 			expect(stderr).toContain("specs");
 		}
+	});
+
+	it("should not duplicate error message for config validation errors", () => {
+		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
+
+		// Create config with both output keys set to different values
+		const invalidConfig = {
+			specs: [
+				{
+					input: "openapi.yaml",
+					output: "legacy.ts",
+					outputTypes: "new.ts",
+					outputClient: "client.ts",
+				},
+			],
+		};
+
+		writeFileSync(configPath, JSON.stringify(invalidConfig, null, 2), "utf-8");
+
+		try {
+			execSync(`node ${CLI_PATH} --config ${configPath}`, {
+				encoding: "utf-8",
+				cwd: TEST_DIR,
+				stdio: "pipe",
+			});
+			expect.fail("Should have thrown an error");
+		} catch (error: any) {
+			const stderr = error.stderr?.toString() || error.stdout?.toString() || error.message;
+
+			// Should contain the error message
+			expect(stderr).toContain("Invalid configuration file");
+			expect(stderr).toContain("outputTypes");
+			expect(stderr).toContain("deprecated 'output'");
+
+			// Should NOT contain "Stack trace:" for config validation errors
+			expect(stderr).not.toContain("Stack trace:");
+
+			// Count occurrences of "Invalid configuration file" - should be 1
+			const matches = stderr.match(/Invalid configuration file/g);
+			expect(matches).toHaveLength(1);
+		}
+	});
+
+	it("should warn and still generate when deprecated output is used", () => {
+		const configPath = join(TEST_DIR, "openapi-to-zod-playwright.config.json");
+		const inputPath = join(__dirname, "fixtures", "simple-api.yaml");
+		const outputPath = join(TEST_DIR, "schemas.ts");
+		const outputClientPath = join(TEST_DIR, "client.ts");
+
+		const config = {
+			specs: [
+				{
+					input: inputPath,
+					output: outputPath,
+					outputClient: outputClientPath,
+					showStats: false,
+				},
+			],
+		};
+
+		writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+		const output = execSync(`node ${CLI_PATH} --config ${configPath} 2>&1`, {
+			encoding: "utf-8",
+			cwd: TEST_DIR,
+		});
+
+		expect(output).toContain("Deprecation warning");
+		expect(output).toContain("'output' is deprecated");
+		expect(existsSync(outputPath)).toBe(true);
+		expect(existsSync(outputClientPath)).toBe(true);
 	});
 });

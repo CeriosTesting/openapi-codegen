@@ -85,7 +85,8 @@ export function generateConditionalCheck(schema: OpenAPISchema): string {
 		for (const [prop, propSchema] of Object.entries(schema.properties)) {
 			const propAccess = generatePropertyAccess(prop);
 			if (propSchema.type) {
-				conditions.push(`typeof ${propAccess} === "${propSchema.type}"`);
+				const schemaType = Array.isArray(propSchema.type) ? propSchema.type[0] : propSchema.type;
+				conditions.push(`typeof ${propAccess} === "${schemaType}"`);
 			}
 			if (propSchema.const !== undefined) {
 				const value = typeof propSchema.const === "string" ? `"${propSchema.const}"` : propSchema.const;
@@ -169,7 +170,7 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 						thenRequiredProps.length > 0
 							? `
 					const missingThenProps = ${JSON.stringify(thenRequiredProps)}.filter(p => obj[p] === undefined);
-					const message = missingThenProps.length > 0 
+					const message = missingThenProps.length > 0
 						? \`When condition is met, required properties are missing: \${missingThenProps.join(', ')}\`
 						: "When condition is met, validation constraints failed";
 					`
@@ -191,7 +192,7 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 						elseRequiredProps.length > 0
 							? `
 					const missingElseProps = ${JSON.stringify(elseRequiredProps)}.filter(p => obj[p] === undefined);
-					const message = missingElseProps.length > 0 
+					const message = missingElseProps.length > 0
 						? \`When condition is not met, required properties are missing: \${missingElseProps.join(', ')}\`
 						: "When condition is not met, validation constraints failed";
 					`
@@ -223,7 +224,7 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 						thenRequiredProps.length > 0
 							? `
 					const missingProps = ${JSON.stringify(thenRequiredProps)}.filter(p => obj[p] === undefined);
-					const message = missingProps.length > 0 
+					const message = missingProps.length > 0
 						? \`When condition is met, required properties are missing: \${missingProps.join(', ')}\`
 						: "When condition is met, validation constraints failed";
 					`
@@ -255,7 +256,7 @@ export function generateIfThenElse(schema: OpenAPISchema): string {
 					elseRequiredProps.length > 0
 						? `
 				const missingProps = ${JSON.stringify(elseRequiredProps)}.filter(p => obj[p] === undefined);
-				const message = missingProps.length > 0 
+				const message = missingProps.length > 0
 					? \`When condition is not met, required properties are missing: \${missingProps.join(', ')}\`
 					: "When condition is not met, validation constraints failed";
 				`

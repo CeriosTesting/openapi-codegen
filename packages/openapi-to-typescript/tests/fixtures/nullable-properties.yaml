@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Nullable Properties Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      operationId: getUsers
+      summary: Get all users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersResponse'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        middleName:
+          type: string
+          nullable: true
+        address:
+          $ref: '#/components/schemas/Address'
+          nullable: true
+      required:
+        - id
+        - name
+        - email
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+      required:
+        - street
+
+    UsersResponse:
+      type: object
+      properties:
+        skip:
+          type: integer
+        take:
+          type: integer
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              EmployeeId:
+                type: string
+              EmploymentEndDate:
+                type: string
+              EmailForDigitalDocuments:
+                type: string
+                nullable: true
+
+    NullableString:
+      type: string
+      nullable: true
+
+    NullableArray:
+      type: array
+      nullable: true
+      items:
+        type: string
+
+    NullableEnum:
+      type: string
+      nullable: true
+      enum:
+        - active
+        - inactive
+        - pending

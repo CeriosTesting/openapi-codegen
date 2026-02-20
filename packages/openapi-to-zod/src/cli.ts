@@ -1,10 +1,17 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, writeFileSync } from "node:fs";
+
+import {
+	CliOptionsError,
+	ConfigValidationError,
+	executeBatch,
+	findSpecFiles,
+	getBatchExitCode,
+	getRandomCeriosMessage,
+} from "@cerios/openapi-core";
 import { Command } from "commander";
 import prompts from "prompts";
-import { executeBatch, getBatchExitCode } from "./batch-executor";
-import { CliOptionsError } from "./errors";
+
 import { OpenApiGenerator } from "./openapi-generator";
 import type { ExecutionMode } from "./types";
 import { loadConfig, mergeConfigWithDefaults } from "./utils/config-loader";
@@ -30,11 +37,11 @@ Examples:
   $ openapi-to-zod --config custom.config.ts
 `
 	)
-	.action(async options => {
+	.action(async (options: { config?: string }) => {
 		try {
 			await executeConfigMode(options);
 		} catch (error) {
-			if (error instanceof CliOptionsError) {
+			if (error instanceof CliOptionsError || error instanceof ConfigValidationError) {
 				console.error(error.message);
 				process.exit(1);
 			}
@@ -60,53 +67,6 @@ program
 	});
 
 program.parse();
-
-/**
- * Find OpenAPI spec files in spec/ or specs/ folders
- * @returns Object with files (path + size) and totalCount
- */
-function findSpecFiles(): { files: Array<{ path: string; size: string }>; totalCount: number } {
-	const specFolders = ["spec", "specs"];
-	const validExtensions = [".yaml", ".yml", ".json"];
-	const excludePatterns = ["node_modules", ".git", "dist", "build", "coverage"];
-	const allFiles: Array<{ path: string; size: string }> = [];
-
-	for (const folder of specFolders) {
-		if (!existsSync(folder)) continue;
-
-		try {
-			const entries = readdirSync(folder, { recursive: true, encoding: "utf-8" });
-
-			for (const entry of entries) {
-				const fullPath = join(folder, entry as string);
-
-				// Skip if path contains excluded patterns
-				if (excludePatterns.some(pattern => fullPath.includes(pattern))) continue;
-
-				try {
-					const stats = statSync(fullPath);
-					if (!stats.isFile()) continue;
-
-					// Check if file has valid extension
-					const hasValidExt = validExtensions.some(ext => fullPath.endsWith(ext));
-					if (!hasValidExt) continue;
-
-					// Format file size
-					const sizeKB = (stats.size / 1024).toFixed(2);
-					allFiles.push({ path: fullPath.replace(/\\/g, "/"), size: `${sizeKB} KB` });
-				} catch {}
-			}
-		} catch {}
-	}
-
-	// Sort alphabetically
-	allFiles.sort((a, b) => a.path.localeCompare(b.path));
-
-	const totalCount = allFiles.length;
-	const files = allFiles.slice(0, 20);
-
-	return { files, totalCount };
-}
 
 /**
  * Execute config mode (only mode available)
@@ -143,12 +103,13 @@ async function initConfigFile(): Promise<void> {
 
 	const existingConfig = configFiles.find(f => existsSync(f));
 	if (existingConfig) {
-		const { overwrite } = await prompts({
+		const result = await prompts({
 			type: "confirm",
 			name: "overwrite",
 			message: `Config file '${existingConfig}' already exists. Overwrite?`,
 			initial: false,
 		});
+		const overwrite = Boolean((result as Record<string, unknown>).overwrite);
 
 		if (!overwrite) {
 			console.log("Initialization cancelled.");
@@ -173,7 +134,7 @@ async function initConfigFile(): Promise<void> {
 			{ title: "→ Enter manually...", value: "__MANUAL__" },
 		];
 
-		const inputResponse = await prompts({
+		const inputResponse: { input?: string } = await prompts({
 			type: "select",
 			name: "input",
 			message: "Select OpenAPI spec file (YAML or JSON):",
@@ -187,12 +148,12 @@ async function initConfigFile(): Promise<void> {
 
 		if (inputResponse.input === "__MANUAL__") {
 			// Manual entry
-			const manualResponse = await prompts({
+			const manualResponse: { input?: string } = await prompts({
 				type: "text",
 				name: "input",
 				message: "Input OpenAPI file path (YAML or JSON):",
 				initial: "openapi.{yaml,yml,json}",
-				validate: value => {
+				validate: (value: string) => {
 					if (value.length === 0) return "Input path is required";
 					if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 					return true;
@@ -210,12 +171,12 @@ async function initConfigFile(): Promise<void> {
 		}
 	} else {
 		// No files found, fall back to text input
-		const manualResponse = await prompts({
+		const manualResponse: { input?: string } = await prompts({
 			type: "text",
 			name: "input",
 			message: "Input OpenAPI file path (YAML or JSON):",
 			initial: "openapi.{yaml,yml,json}",
-			validate: value => {
+			validate: (value: string) => {
 				if (value.length === 0) return "Input path is required";
 				if (!existsSync(value)) return "⚠️  File does not exist. Continue anyway?";
 				return true;
@@ -230,13 +191,13 @@ async function initConfigFile(): Promise<void> {
 		inputPath = manualResponse.input;
 	}
 
-	const response = await prompts([
+	const response: { output?: string; format?: "ts" | "json"; includeDefaults?: boolean } = await prompts([
 		{
 			type: "text",
 			name: "output",
 			message: "Output TypeScript file path:",
 			initial: "src/schemas.ts",
-			validate: value => value.length > 0 || "Output path is required",
+			validate: (value: string) => value.length > 0 || "Output path is required",
 		},
 		{
 			type: "select",
@@ -285,7 +246,7 @@ export default defineConfig({
   specs: [
     {
       input: '${input}',
-      output: '${output}',
+      outputTypes: '${output}',
     },
   ],
 });
@@ -297,7 +258,7 @@ export default defineConfig({
   specs: [
     {
       input: '${input}',
-      output: '${output}',
+      outputTypes: '${output}',
     },
   ],
 });
@@ -305,11 +266,14 @@ export default defineConfig({
 		}
 	} else {
 		configFilename = "openapi-to-zod.config.json";
-		const jsonConfig: any = {
+		const jsonConfig: {
+			specs: Array<{ input: string; outputTypes: string | undefined }>;
+			defaults?: { mode: string; includeDescriptions: boolean; showStats: boolean };
+		} = {
 			specs: [
 				{
 					input,
-					output,
+					outputTypes: output,
 				},
 			],
 		};
@@ -333,19 +297,6 @@ export default defineConfig({
 	console.log("  1. Review and customize your config file if needed");
 	console.log("  2. Run 'openapi-to-zod' to generate schemas\n");
 
-	// Random fun messages
-	const ceriosMessages = [
-		"Things just got Cerios!",
-		"Getting Cerios about schemas!",
-		"Cerios business ahead!",
-		"Don't take it too Cerios-ly!",
-		"Time to get Cerios!",
-		"We're dead Cerios about types!",
-		"This is Cerios-ly awesome!",
-		"Cerios-ly, you're all set!",
-		"You are Cerios right now!",
-		"Cerios vibes only!",
-	];
-	const randomMessage = ceriosMessages[Math.floor(Math.random() * ceriosMessages.length)];
-	console.log(`${randomMessage}\n`);
+	// Random fun message
+	console.log(`${getRandomCeriosMessage()}\n`);
 }

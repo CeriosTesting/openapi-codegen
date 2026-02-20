@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
 	CircularReferenceError,
 	CliOptionsError,
@@ -7,7 +6,8 @@ import {
 	GeneratorError,
 	SchemaGenerationError,
 	SpecValidationError,
-} from "../src/errors";
+} from "@cerios/openapi-core";
+import { describe, expect, it } from "vitest";
 
 describe("Error Classes", () => {
 	describe("GeneratorError", () => {

@@ -1,0 +1,208 @@
+openapi: 3.0.0
+info:
+  title: Operation Filtering Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      operationId: getUsers
+      tags:
+        - users
+      summary: Get all users
+      responses:
+        '200':
+          description: List of users
+    post:
+      operationId: createUser
+      tags:
+        - users
+      summary: Create a new user
+      responses:
+        '201':
+          description: User created
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags:
+        - users
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+    put:
+      operationId: updateUser
+      tags:
+        - users
+      summary: Update user
+      responses:
+        '200':
+          description: User updated
+    delete:
+      operationId: deleteUser
+      tags:
+        - users
+      deprecated: true
+      summary: Delete user (deprecated)
+      responses:
+        '204':
+          description: User deleted
+
+  /admin/users:
+    get:
+      operationId: adminGetUsers
+      tags:
+        - admin
+      summary: Admin get all users
+      responses:
+        '200':
+          description: List of users
+
+  /posts:
+    get:
+      operationId: getPosts
+      tags:
+        - posts
+      summary: Get all posts
+      responses:
+        '200':
+          description: List of posts
+    post:
+      operationId: createPost
+      tags:
+        - posts
+      summary: Create a new post
+      responses:
+        '201':
+          description: Post created
+
+  /internal/metrics:
+    get:
+      operationId: getMetrics
+      tags:
+        - internal
+      summary: Internal metrics endpoint
+      responses:
+        '200':
+          description: Metrics data
+
+  /products:
+    get:
+      operationId: getProducts
+      summary: Get all products
+      tags:
+        - products
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+  /products/{id}:
+    get:
+      operationId: getProductById
+      summary: Get product by ID
+      tags:
+        - products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      summary: Get admin settings
+      tags:
+        - admin
+        - internal
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/items:
+    get:
+      operationId: getV1Items
+      summary: Get V1 items
+      tags:
+        - items
+      responses:
+        '200':
+          description: Success
+
+  /api/v2/items:
+    get:
+      operationId: getV2Items
+      summary: Get V2 items
+      tags:
+        - items
+      responses:
+        '200':
+          description: Success
+
+  /deprecated/old-endpoint:
+    get:
+      operationId: getOldEndpoint
+      summary: Old deprecated endpoint
+      deprecated: true
+      tags:
+        - legacy
+      responses:
+        '200':
+          description: Success
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number

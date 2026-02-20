@@ -1,21 +1,35 @@
-import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import {
+	extractPathParams,
 	type FallbackContentTypeParsing,
+	generateHttpMethodName as generateMethodName,
+	generateInlineResponseTypeName,
+	generateOperationJSDoc,
+	getOperation,
+	getOperationName,
 	getResponseParseMethod,
+	HTTP_METHODS,
+	isOpenAPIParameter,
+	isPathItemLike,
 	mergeParameters,
+	normalizeContentType,
+	type OpenAPIParameter,
+	type OpenAPISchema,
 	resolveRequestBodyRef,
 	resolveResponseRef,
+	sanitizeOperationId,
+	sanitizeParamName,
+	selectContentType,
+	shouldIgnoreHeader,
 	stripPathPrefix,
 	stripPrefix,
 	toCamelCase,
 	toPascalCase,
-} from "@cerios/openapi-to-zod/internal";
+} from "@cerios/openapi-core";
+import type { OpenAPISpec } from "@cerios/openapi-to-zod";
+
 import type { PlaywrightOperationFilters, ZodErrorFormat } from "../types";
-import { selectContentType } from "../utils/content-type-selector";
-import { shouldIgnoreHeader } from "../utils/header-filters";
-import { extractPathParams, generateMethodName, sanitizeOperationId, sanitizeParamName } from "../utils/method-naming";
 import { shouldIncludeOperation } from "../utils/operation-filters";
-import { generateOperationJSDoc } from "../utils/operation-jsdoc";
+
 import { generateInlineRequestSchemaName } from "./inline-schema-generator";
 
 interface ResponseInfo {
@@ -25,7 +39,7 @@ interface ResponseInfo {
 	description?: string;
 	hasBody: boolean;
 	contentType: string;
-	inlineSchema?: any; // For inline schemas (arrays, objects without $ref)
+	inlineSchema?: OpenAPISchema; // For inline schemas (arrays, objects without $ref)
 	inlineSchemaName?: string; // Generated name for inline schemas (e.g., "GetUsersResponse")
 }
 
@@ -34,8 +48,14 @@ interface RequestBodyInfo {
 	schema?: string;
 	schemaName?: string;
 	required: boolean;
-	inlineSchema?: any; // For inline schemas (objects without $ref)
+	inlineSchema?: OpenAPISchema; // For inline schemas (objects without $ref)
 	inlineSchemaName?: string; // Generated name for inline schemas (e.g., "PostUsersRequest")
+}
+
+/** OpenAPI request body structure */
+interface OpenAPIRequestBody {
+	content?: Record<string, { schema?: OpenAPISchema }>;
+	required?: boolean;
 }
 
 interface EndpointInfo {
@@ -43,8 +63,8 @@ interface EndpointInfo {
 	method: string;
 	methodName: string;
 	pathParams: string[];
-	parameters?: any[];
-	requestBody?: any;
+	parameters?: OpenAPIParameter[];
+	requestBody?: OpenAPIRequestBody;
 	requestBodyInfo?: RequestBodyInfo; // Parsed request body information
 	responses: ResponseInfo[];
 	queryParamSchemaName?: string; // Name of the generated query parameter schema
@@ -55,17 +75,10 @@ interface EndpointInfo {
 }
 
 /**
- * Strips charset and other parameters from content-type string
- */
-function stripContentTypeParams(contentType: string): string {
-	return contentType.split(";")[0].trim();
-}
-
-/**
  * Parse request body information including inline schema detection
  */
 function parseRequestBodyInfo(
-	requestBody: any,
+	requestBody: OpenAPIRequestBody | undefined,
 	methodName: string,
 	preferredContentTypes?: string[]
 ): RequestBodyInfo | undefined {
@@ -155,7 +168,7 @@ export function generateServiceClass(
 	operationFilters?: PlaywrightOperationFilters,
 	ignoreHeaders?: string[],
 	stripPrefix?: string,
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	preferredContentTypes?: string[],
 	prefix?: string,
 	suffix?: string,
@@ -236,15 +249,13 @@ function extractEndpoints(
 	}
 
 	for (const [originalPath, pathItem] of Object.entries(spec.paths)) {
-		if (!pathItem || typeof pathItem !== "object") continue;
+		if (!isPathItemLike(pathItem)) continue;
 
 		// Strip prefix from path for processing
 		const path = stripPathPrefix(originalPath, stripPrefix);
 
-		const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-		for (const method of methods) {
-			const operation = pathItem[method];
+		for (const method of HTTP_METHODS) {
+			const operation = getOperation(pathItem, method);
 			if (!operation) continue;
 
 			// Apply operation filters
@@ -275,8 +286,14 @@ function extractEndpoints(
 
 					if (!isSuccess) continue;
 
+					// Type assertion with proper interface for response object
+					const typedResponse = responseObj as {
+						description?: string;
+						content?: Record<string, { schema?: OpenAPISchema }>;
+					};
+
 					// Extract first content type only (Playwright handles content negotiation)
-					const content = (responseObj as any).content;
+					const content = typedResponse.content;
 
 					if (content && typeof content === "object") {
 						// Get available content types and select based on preference
@@ -288,15 +305,15 @@ function extractEndpoints(
 
 							if (typeof contentObj === "object" && contentObj) {
 								// Strip charset and parameters from content-type
-								const contentType = stripContentTypeParams(rawContentType);
+								const contentType = normalizeContentType(rawContentType);
 
 								let schemaRef: string | undefined;
 								let schemaName: string | undefined;
-								let inlineSchema: any;
+								let inlineSchema: OpenAPISchema | undefined;
 								const hasBody = statusCode !== "204";
 
-								if ((contentObj as any).schema) {
-									const schema = (contentObj as any).schema;
+								if (contentObj.schema) {
+									const schema = contentObj.schema;
 									schemaRef = schema.$ref;
 									if (schemaRef) {
 										// Extract schema name from $ref
@@ -312,7 +329,7 @@ function extractEndpoints(
 									statusCode,
 									schema: schemaRef,
 									schemaName,
-									description: (responseObj as any).description,
+									description: typedResponse.description,
 									hasBody,
 									contentType,
 									inlineSchema,
@@ -325,7 +342,7 @@ function extractEndpoints(
 							statusCode,
 							schema: undefined,
 							schemaName: undefined,
-							description: (responseObj as any).description,
+							description: typedResponse.description,
 							hasBody: false,
 							contentType: "application/json", // Default fallback
 						});
@@ -335,48 +352,33 @@ function extractEndpoints(
 
 			// Check if operation has query parameters (merge path-level and operation-level, resolve $refs)
 			let queryParamSchemaName: string | undefined;
-			const allParams = mergeParameters(pathItem.parameters, operation.parameters, spec);
-			const hasQueryParams = allParams.some((param: any) => param && typeof param === "object" && param.in === "query");
+			const pathItemParams = Array.isArray(pathItem.parameters) ? pathItem.parameters : undefined;
+			const allParams = mergeParameters(pathItemParams, operation.parameters, spec);
+			const hasQueryParams = allParams.some(param => isOpenAPIParameter(param) && param.in === "query");
 			if (hasQueryParams) {
 				// Generate schema name matching the base generator pattern
-				// The base generator uses operationId if present, path+method fallback otherwise
-				// We must use the same logic to reference the correct schema
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
-					const methodName = generateMethodName(method, path);
-					pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-				}
+				// Use getOperationName for consistent naming with @cerios/openapi-to-zod
+				const strippedPath = stripPathPrefix(path, stripPrefix);
+				const pascalOperationId = getOperationName(operation.operationId, method, strippedPath, useOperationId);
 				queryParamSchemaName = `${pascalOperationId}QueryParams`;
 			}
 
 			// Check if operation has header parameters (excluding ignored ones)
 			let headerParamSchemaName: string | undefined;
 			const hasHeaderParams = allParams.some(
-				(param: any) =>
-					param && typeof param === "object" && param.in === "header" && !shouldIgnoreHeader(param.name, ignoreHeaders)
+				param => isOpenAPIParameter(param) && param.in === "header" && !shouldIgnoreHeader(param.name, ignoreHeaders)
 			);
 			if (hasHeaderParams) {
 				// Generate schema name matching the base generator pattern
-				// The base generator uses operationId if present, path+method fallback otherwise
-				// We must use the same logic to reference the correct schema
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method (matches base generator's generateMethodNameFromPath)
-					const methodName = generateMethodName(method, path);
-					pascalOperationId = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-				}
-				headerParamSchemaName = `${pascalOperationId}HeaderParams`;
+				// Use getOperationName for consistent naming with @cerios/openapi-to-zod
+				const strippedPathForHeaders = stripPathPrefix(path, stripPrefix);
+				const pascalOperationIdForHeaders = getOperationName(
+					operation.operationId,
+					method,
+					strippedPathForHeaders,
+					useOperationId
+				);
+				headerParamSchemaName = `${pascalOperationIdForHeaders}HeaderParams`;
 			}
 
 			// Resolve requestBody $ref if present (e.g., $ref: '#/components/requestBodies/UserBody')
@@ -397,12 +399,24 @@ function extractEndpoints(
 			const hasMultipleStatuses = successResponses.length > 1;
 
 			// Generate inline schema names for responses that have inline schemas
+			// Use getOperationName for consistent naming with types/schemas files
 			for (const response of responses) {
 				if (response.inlineSchema && response.hasBody && !response.schemaName) {
 					// Generate name like "GetUsersResponse" or "GetUsers200Response"
-					const pascalMethodName = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-					const statusSuffix = hasMultipleStatuses ? response.statusCode : "";
-					response.inlineSchemaName = `${pascalMethodName}${statusSuffix}Response`;
+					// Use getOperationName to match the naming in schemas/types files
+					const strippedPathForResponse = stripPathPrefix(path, stripPrefix);
+					const pascalOperationName = getOperationName(
+						operation.operationId,
+						method,
+						strippedPathForResponse,
+						useOperationId
+					);
+					// Use core utility for consistent naming
+					response.inlineSchemaName = generateInlineResponseTypeName(
+						pascalOperationName,
+						response.statusCode,
+						hasMultipleStatuses
+					);
 				}
 			}
 
@@ -411,7 +425,7 @@ function extractEndpoints(
 				method: method.toUpperCase(),
 				methodName,
 				pathParams,
-				parameters: operation.parameters,
+				parameters: operation.parameters?.filter((p): p is OpenAPIParameter => isOpenAPIParameter(p)),
 				requestBody: resolvedRequestBody,
 				requestBodyInfo,
 				responses,
@@ -435,7 +449,7 @@ function generateSuccessMethods(
 	endpoint: EndpointInfo,
 	schemaImports: Set<string>,
 	ignoreHeaders?: string[],
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
@@ -502,26 +516,28 @@ function generateSuccessMethods(
  * Returns the schema code and type name
  */
 function generateInlineSchemaCode(
-	inlineSchema: any,
-	stripSchemaPrefix?: string,
+	inlineSchema: OpenAPISchema | undefined,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string
 ): { schemaCode: string; typeName: string } | null {
 	if (!inlineSchema) return null;
 
+	const schemaType = Array.isArray(inlineSchema.type) ? inlineSchema.type[0] : inlineSchema.type;
+
 	// Handle primitives
-	if (inlineSchema.type === "string") {
+	if (schemaType === "string") {
 		return { schemaCode: "z.string()", typeName: "string" };
 	}
-	if (inlineSchema.type === "number" || inlineSchema.type === "integer") {
+	if (schemaType === "number" || schemaType === "integer") {
 		return { schemaCode: "z.number()", typeName: "number" };
 	}
-	if (inlineSchema.type === "boolean") {
+	if (schemaType === "boolean") {
 		return { schemaCode: "z.boolean()", typeName: "boolean" };
 	}
 
 	// Handle arrays of refs
-	if (inlineSchema.type === "array" && inlineSchema.items?.$ref) {
+	if (schemaType === "array" && inlineSchema.items?.$ref) {
 		const refParts = inlineSchema.items.$ref.split("/");
 		const itemSchemaName = refParts[refParts.length - 1];
 		// Apply stripSchemaPrefix before converting to valid TypeScript identifiers
@@ -536,8 +552,8 @@ function generateInlineSchemaCode(
 	}
 
 	// Handle arrays of primitives
-	if (inlineSchema.type === "array" && inlineSchema.items?.type) {
-		const itemType = inlineSchema.items.type;
+	if (schemaType === "array" && inlineSchema.items?.type) {
+		const itemType = Array.isArray(inlineSchema.items.type) ? inlineSchema.items.type[0] : inlineSchema.items.type;
 		if (itemType === "string") {
 			return { schemaCode: "z.array(z.string())", typeName: "string[]" };
 		}
@@ -575,7 +591,7 @@ function generateServiceMethod(
 	schemaImports: Set<string>,
 	statusSuffix: string,
 	ignoreHeaders?: string[],
-	stripSchemaPrefix?: string,
+	stripSchemaPrefix?: string | string[],
 	prefix?: string,
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
@@ -597,9 +613,9 @@ function generateServiceMethod(
 	}
 
 	// Determine what parameters we need in options
-	const hasQueryParams = endpoint.parameters?.some((p: any) => p.in === "query");
+	const hasQueryParams = endpoint.parameters?.some(p => isOpenAPIParameter(p) && p.in === "query");
 	const hasHeaderParams = endpoint.parameters?.some(
-		(p: any) => p.in === "header" && !shouldIgnoreHeader(p.name, ignoreHeaders)
+		p => isOpenAPIParameter(p) && p.in === "header" && !shouldIgnoreHeader(p.name, ignoreHeaders)
 	);
 
 	// Extract request content-type info if we have a request body (use first content type)
@@ -608,7 +624,7 @@ function generateServiceMethod(
 	if (requestBody?.content) {
 		const firstContentType = Object.keys(requestBody.content)[0];
 		if (firstContentType) {
-			requestContentType = stripContentTypeParams(firstContentType);
+			requestContentType = normalizeContentType(firstContentType);
 			hasRequestBody = true;
 		}
 	}
@@ -643,7 +659,7 @@ function generateServiceMethod(
 		}
 
 		// Add request body based on content-type
-		if (hasRequestBody && requestContentType) {
+		if (hasRequestBody && requestContentType && requestBody) {
 			const isRequired = requestBody.required === true;
 			const optionalMarker = isRequired ? "" : "?";
 
@@ -761,7 +777,7 @@ function generateServiceMethod(
 		}
 
 		// Validate request body (for application/json with a schema ref or inline schema)
-		if (hasRequestBody && requestContentType === "application/json") {
+		if (hasRequestBody && requestContentType === "application/json" && requestBody) {
 			const requestBodyInfo = endpoint.requestBodyInfo;
 			const isRequired = requestBody.required === true;
 
@@ -817,6 +833,8 @@ function generateServiceMethod(
 		const strippedName = stripPrefix(response.schemaName, stripSchemaPrefix);
 		// Apply prefix/suffix to match the generated schema names
 		const schemaVar = `${toCamelCase(strippedName, { prefix, suffix })}Schema`;
+		// Add schema import for response validation
+		schemaImports.add(`${response.schemaName}Schema`);
 
 		// Determine parse method based on content type
 		const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
@@ -932,17 +950,12 @@ function generateServiceMethod(
 	}
 	// Note: No else clause - void methods don't need a return statement
 
-	// Build JSDoc tags
-	const additionalTags: string[] = [];
-
-	// Add content-type and status info
+	// Build JSDoc info
 	const contentTypeInfo = requestContentType ? ` [${requestContentType}]` : "";
 	const statusInfo = response ? ` (${statusCode})` : "";
 
-	// Add @returns tag ONLY if there's a body with a meaningful return type
-	if (response?.hasBody && returnTypeName) {
-		additionalTags.push(`@returns ${returnTypeName}`);
-	}
+	// Determine return type for JSDoc (ONLY if there's a body with a meaningful return type)
+	const returnsAnnotation = response?.hasBody && returnTypeName ? returnTypeName : undefined;
 
 	const jsdoc = generateOperationJSDoc({
 		summary: endpoint.summary,
@@ -950,7 +963,8 @@ function generateServiceMethod(
 		deprecated: endpoint.deprecated,
 		method,
 		path: `${path}${contentTypeInfo}${statusInfo}`,
-		additionalTags,
+		returns: returnsAnnotation,
+		indent: "\t",
 	});
 
 	return `${jsdoc}

@@ -1,94 +1,111 @@
-import { cosmiconfig } from "cosmiconfig";
+import {
+	BaseDefaultsSchema,
+	BaseGeneratorOptionsSchema,
+	mergeCliWithConfig as coreMergeCliWithConfig,
+	createConfigLoader,
+	ExecutionModeSchema,
+	type FormatZodErrorsOptions,
+	RegexPatternSchema,
+	RequestResponseOptionsSchema,
+} from "@cerios/openapi-core";
 import { z } from "zod";
-import type { ConfigFile, OpenApiGeneratorOptions } from "../types";
-import { OperationFiltersSchema, RequestResponseOptionsSchema } from "./config-schemas";
-import { formatConfigValidationError } from "./config-validation";
-import { createTypeScriptLoader } from "./typescript-loader";
 
-const OpenApiGeneratorOptionsSchema = z.strictObject({
+import type { ConfigFile, OpenApiGeneratorOptions } from "../types";
+
+/**
+ * Zod-specific options schema - extends base generator options
+ */
+const ZodSpecificOptionsSchema = z.strictObject({
 	mode: z.enum(["strict", "normal", "loose"]).optional(),
-	input: z.string(),
-	output: z.string(),
-	includeDescriptions: z.boolean().optional(),
 	useDescribe: z.boolean().optional(),
-	defaultNullable: z.boolean().optional(),
 	emptyObjectBehavior: z.enum(["strict", "loose", "record"]).optional(),
 	schemaType: z.enum(["all", "request", "response"]).optional(),
-	prefix: z.string().optional(),
-	suffix: z.string().optional(),
-	stripSchemaPrefix: z.string().optional(),
-	showStats: z.boolean().optional(),
 	request: RequestResponseOptionsSchema.optional(),
 	response: RequestResponseOptionsSchema.optional(),
-	name: z.string().optional(),
-	operationFilters: OperationFiltersSchema.optional(),
-	cacheSize: z.number().positive().optional(),
-	batchSize: z.number().positive().optional(),
-	customDateTimeFormatRegex: z
-		.union([
-			z.string().refine(
-				pattern => {
-					try {
-						new RegExp(pattern);
-						return true;
-					} catch {
-						return false;
-					}
-				},
-				{ message: "Must be a valid regular expression pattern" }
-			),
-			z.instanceof(RegExp),
-		])
-		.optional(),
+	customDateTimeFormatRegex: RegexPatternSchema.optional(),
+	outputZodSchemas: z.string().optional(),
+	enumFormat: z.enum(["union", "const-object"]).optional(),
+	typeAssertionThreshold: z.number().int().gte(0).optional(),
 });
 
-const ConfigFileSchema = z.strictObject({
-	defaults: z
-		.strictObject({
-			mode: z.enum(["strict", "normal", "loose"]).optional(),
-			includeDescriptions: z.boolean().optional(),
-			useDescribe: z.boolean().optional(),
-			defaultNullable: z.boolean().optional(),
-			emptyObjectBehavior: z.enum(["strict", "loose", "record"]).optional(),
-			schemaType: z.enum(["all", "request", "response"]).optional(),
-			prefix: z.string().optional(),
-			suffix: z.string().optional(),
-			stripSchemaPrefix: z.string().optional(),
-			showStats: z.boolean().optional(),
-			request: RequestResponseOptionsSchema.optional(),
-			response: RequestResponseOptionsSchema.optional(),
-			operationFilters: OperationFiltersSchema.optional(),
-			cacheSize: z.number().positive().optional(),
-			batchSize: z.number().positive().optional(),
-			customDateTimeFormatRegex: z
-				.union([
-					z.string().refine(
-						pattern => {
-							try {
-								new RegExp(pattern);
-								return true;
-							} catch {
-								return false;
-							}
-						},
-						{ message: "Must be a valid regular expression pattern" }
-					),
-					z.instanceof(RegExp),
-				])
-				.optional(),
-		})
-		.optional(),
-	specs: z
-		.array(OpenApiGeneratorOptionsSchema)
-		.min(1, {
-			message:
-				"Configuration must include at least one specification. Each specification should have 'input' and 'output' paths.",
-		})
-		.refine(specs => specs.every(spec => spec.input && spec.output), {
-			message: "Each specification must have both 'input' and 'output' paths defined",
-		}),
-	executionMode: z.enum(["parallel", "sequential"]).optional(),
+/**
+ * Full generator options schema - base + Zod-specific
+ * Uses .extend() instead of deprecated .merge() for Zod v4 compatibility
+ */
+const OpenApiGeneratorOptionsSchema = BaseGeneratorOptionsSchema.extend({
+	...ZodSpecificOptionsSchema.shape,
+	outputTypes: z.string().optional(),
+	output: z.string().optional(),
+}).superRefine((spec, ctx) => {
+	const hasOutputTypes = Boolean(spec.outputTypes);
+	const hasOutput = Boolean(spec.output);
+	const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
+
+	// When outputZodSchemas is specified, outputTypes is required for TypeScript types
+	if (hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
+		ctx.addIssue({
+			code: "custom",
+			path: ["outputTypes"],
+			message: "When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions.",
+		});
+	}
+
+	// Standard validation when outputZodSchemas is not used
+	if (!hasOutputZodSchemas && !hasOutputTypes && !hasOutput) {
+		ctx.addIssue({
+			code: "custom",
+			path: ["outputTypes"],
+			message: "Each spec must specify an output file path using 'outputTypes' (preferred) or deprecated 'output'.",
+		});
+	}
+
+	if (hasOutputTypes && hasOutput && spec.outputTypes !== spec.output) {
+		ctx.addIssue({
+			code: "custom",
+			path: ["output"],
+			message: "Invalid configuration: 'outputTypes' and deprecated 'output' are both set but have different values.",
+		});
+	}
 });
+
+/**
+ * Defaults schema - base defaults + Zod-specific options (no input/outputTypes/name)
+ * Uses .extend() instead of deprecated .merge() for Zod v4 compatibility
+ */
+const ZodDefaultsSchema = BaseDefaultsSchema.extend({
+	...ZodSpecificOptionsSchema.shape,
+});
+
+/**
+ * Config file schema
+ */
+const ConfigFileSchema = z.strictObject({
+	defaults: ZodDefaultsSchema.optional(),
+	specs: z.array(OpenApiGeneratorOptionsSchema).min(1, {
+		message:
+			"Configuration must include at least one specification. Each specification should have 'input' and 'outputTypes' paths.",
+	}),
+	executionMode: ExecutionModeSchema.optional(),
+});
+
+// Custom error messages for user-friendly validation errors
+const errorMessages: FormatZodErrorsOptions = {
+	missingFieldMessages: {
+		input: "Each spec must specify the path to your OpenAPI specification file.",
+		outputTypes: "Each spec must specify an output file path for generated Zod schemas.",
+	},
+	unrecognizedKeyMessages: {},
+	requiredFieldsHelp: "All required fields are present (specs array with input/outputTypes)",
+};
+
+// Create config loader using factory from core
+const configLoader = createConfigLoader<ConfigFile>(
+	{
+		packageName: "openapi-to-zod",
+		errorMessages,
+	},
+	ConfigFileSchema
+);
 
 /**
  * Load and validate configuration file
@@ -98,44 +115,7 @@ const ConfigFileSchema = z.strictObject({
  * @returns Validated ConfigFile object
  * @throws Error if config file not found, invalid, or contains unknown properties
  */
-export async function loadConfig(configPath?: string): Promise<ConfigFile> {
-	const explorer = cosmiconfig("openapi-to-zod", {
-		searchPlaces: ["openapi-to-zod.config.ts", "openapi-to-zod.config.json", "package.json"],
-		loaders: {
-			".ts": createTypeScriptLoader(),
-		},
-	});
-
-	let result: Awaited<ReturnType<typeof explorer.load>> | Awaited<ReturnType<typeof explorer.search>>;
-
-	if (configPath) {
-		// Load from explicit path (overrides auto-discovery)
-		result = await explorer.load(configPath);
-	} else {
-		// Auto-discover config file starting from cwd
-		result = await explorer.search();
-	}
-
-	if (!result || !result.config) {
-		throw new Error(
-			configPath
-				? `Config file not found at: ${configPath}`
-				: "No config file found. Searched for: openapi-to-zod.config.ts, openapi-to-zod.config.json, package.json (openapi-to-zod key)\nRun 'openapi-to-zod init' to create a new config file."
-		);
-	}
-
-	// Strict validation using Zod schema
-	try {
-		const validatedConfig = ConfigFileSchema.parse(result.config);
-		return validatedConfig;
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			const errorMessage = formatConfigValidationError(error, result.filepath, configPath);
-			throw new Error(errorMessage);
-		}
-		throw error;
-	}
-}
+export const loadConfig = configLoader.loadConfig;
 
 /**
  * Merge global defaults with per-spec configuration
@@ -150,8 +130,46 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 	}
 
 	const defaults = config.defaults || {};
+	let warnedDeprecatedOutput = false;
 
 	return config.specs.map(spec => {
+		// oxlint-disable-next-line typescript/no-deprecated
+		const output = spec.output;
+		const outputTypes = spec.outputTypes;
+		const resolvedOutputTypes = outputTypes ?? output;
+		const hasOutputZodSchemas = Boolean(spec.outputZodSchemas);
+
+		// When outputZodSchemas is specified, outputTypes is required
+		if (hasOutputZodSchemas && resolvedOutputTypes === undefined) {
+			throw new Error(
+				"When 'outputZodSchemas' is specified, 'outputTypes' is required for TypeScript type definitions."
+			);
+		}
+
+		// Standard validation when outputZodSchemas is not used
+		if (!hasOutputZodSchemas && resolvedOutputTypes === undefined) {
+			throw new Error("Each spec must define 'outputTypes' (preferred) or deprecated 'output'.");
+		}
+
+		if (output && outputTypes && output !== outputTypes) {
+			throw new Error("Invalid configuration: 'outputTypes' and deprecated 'output' cannot have different values.");
+		}
+
+		// Type guard: resolvedOutputTypes is guaranteed non-undefined by validation checks above
+		if (!resolvedOutputTypes) {
+			throw new Error("Internal error: outputTypes should be defined after validation");
+		}
+
+		if (output && !warnedDeprecatedOutput) {
+			console.warn(
+				"[openapi-to-zod] Deprecation warning: 'output' is deprecated and will be removed in a future release. Use 'outputTypes' instead."
+			);
+			warnedDeprecatedOutput = true;
+		}
+
+		// oxlint-disable-next-line typescript/no-deprecated
+		const { output: _deprecatedOutput, ...specWithoutDeprecatedOutput } = spec;
+
 		// Deep merge: spec options override defaults
 		const merged: OpenApiGeneratorOptions = {
 			// Apply defaults first
@@ -159,15 +177,18 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			includeDescriptions: defaults.includeDescriptions,
 			useDescribe: defaults.useDescribe,
 			defaultNullable: defaults.defaultNullable,
+			useOperationId: defaults.useOperationId,
 			emptyObjectBehavior: defaults.emptyObjectBehavior,
 			schemaType: defaults.schemaType,
 			prefix: defaults.prefix,
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
+			enumFormat: defaults.enumFormat,
 
-			// Override with spec-specific values (including required input/output)
-			...spec,
+			// Override with spec-specific values
+			...specWithoutDeprecatedOutput,
+			outputTypes: resolvedOutputTypes,
 		};
 		return merged;
 	});
@@ -185,9 +206,5 @@ export function mergeCliWithConfig(
 	specConfig: OpenApiGeneratorOptions,
 	cliOptions: Partial<OpenApiGeneratorOptions>
 ): OpenApiGeneratorOptions {
-	// CLI options override everything
-	return {
-		...specConfig,
-		...Object.fromEntries(Object.entries(cliOptions).filter(([_, v]) => v !== undefined)),
-	} as OpenApiGeneratorOptions;
+	return coreMergeCliWithConfig(specConfig, cliOptions);
 }

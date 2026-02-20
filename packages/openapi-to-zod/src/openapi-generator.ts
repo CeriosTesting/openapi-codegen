@@ -1,26 +1,111 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, normalize } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, normalize, relative } from "node:path";
+
+import {
+	analyzeSchemaUsage,
+	ConfigurationError,
+	createFilterStatistics,
+	detectCircularReferences,
+	expandTransitiveReferences,
+	extractSchemaRefs,
+	type FilterStatistics,
+	formatFilterStatistics,
+	getOperationName,
+	LRUCache,
+	loadOpenAPISpec,
+	mergeParameters,
+	resolveRefName,
+	type SchemaContext,
+	SchemaGenerationError,
+	SpecValidationError,
+	shouldIncludeOperation,
+	stripPathPrefix,
+	stripPrefix,
+	toCamelCase,
+	toPascalCase,
+	validateFilters,
+} from "@cerios/openapi-core";
+import { TypeScriptGenerator } from "@cerios/openapi-to-typescript";
 import { minimatch } from "minimatch";
-import { parse } from "yaml";
-import { ConfigurationError, FileOperationError, SchemaGenerationError, SpecValidationError } from "./errors";
+
 import { generateEnum } from "./generators/enum-generator";
 import { generateJSDoc } from "./generators/jsdoc-generator";
 import { PropertyGenerator } from "./generators/property-generator";
 import type { OpenAPISchema, OpenAPISpec, OpenApiGeneratorOptions, ResolvedOptions } from "./types";
-import { LRUCache } from "./utils/lru-cache";
-import { resolveRef, toCamelCase, toPascalCase } from "./utils/name-utils";
-import {
-	createFilterStatistics,
-	type FilterStatistics,
-	formatFilterStatistics,
-	shouldIncludeOperation,
-	validateFilters,
-} from "./utils/operation-filters";
-import { stripPathPrefix, stripPrefix } from "./utils/pattern-utils";
-import { mergeParameters } from "./utils/ref-resolver";
 import { buildDateTimeValidation } from "./validators/string-validator";
 
-type SchemaContext = "request" | "response" | "both";
+/**
+ * OpenAPI operation structure for path methods
+ */
+interface OpenAPIOperation {
+	operationId?: string;
+	parameters?: unknown[];
+	requestBody?: {
+		content?: Record<string, { schema?: unknown }>;
+	};
+	responses?: Record<
+		string,
+		{
+			content?: Record<string, { schema?: unknown }>;
+		}
+	>;
+	[key: string]: unknown;
+}
+
+/**
+ * OpenAPI path item with HTTP method operations
+ */
+interface OpenAPIPathItem {
+	parameters?: unknown[];
+	get?: OpenAPIOperation;
+	post?: OpenAPIOperation;
+	put?: OpenAPIOperation;
+	patch?: OpenAPIOperation;
+	delete?: OpenAPIOperation;
+	head?: OpenAPIOperation;
+	options?: OpenAPIOperation;
+	[key: string]: unknown;
+}
+
+/** HTTP methods that can have operations */
+type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options";
+
+/** Array of HTTP methods for iteration */
+const HTTP_METHODS: HttpMethod[] = ["get", "post", "put", "patch", "delete", "head", "options"];
+
+/**
+ * Resolved parameter after $ref resolution - matches OpenAPIParameter structure
+ */
+interface ResolvedParameter {
+	name: string;
+	in: "query" | "header" | "path" | "cookie";
+	description?: string;
+	required?: boolean;
+	schema?: OpenAPISchema & { $ref?: string };
+	deprecated?: boolean;
+	style?: string;
+	explode?: boolean;
+}
+
+/**
+ * Type guard to check if a value is a valid resolved parameter
+ */
+function isResolvedParameter(param: unknown): param is ResolvedParameter {
+	return (
+		typeof param === "object" &&
+		param !== null &&
+		"name" in param &&
+		typeof (param as Record<string, unknown>).name === "string" &&
+		"in" in param
+	);
+}
+
+/**
+ * Type guard to check if a value is a valid OpenAPIPathItem
+ */
+function isOpenAPIPathItem(value: unknown): value is OpenAPIPathItem {
+	return typeof value === "object" && value !== null;
+}
 
 export class OpenApiGenerator {
 	private schemas: Map<string, string> = new Map();
@@ -38,6 +123,12 @@ export class OpenApiGenerator {
 	private patternCache: LRUCache<string, string>;
 	/** Instance-level date-time validation string for parallel-safe execution */
 	private dateTimeValidation: string;
+	/** Track total allOf conflicts detected across all schemas */
+	private allOfConflictCount = 0;
+	/** Track schemas involved in circular dependency chains */
+	private circularDependencies: Set<string> = new Set();
+	/** Separate schemas mode - when outputZodSchemas is specified */
+	private separateSchemasMode: boolean;
 
 	constructor(options: OpenApiGeneratorOptions) {
 		// Validate input path early
@@ -45,10 +136,16 @@ export class OpenApiGenerator {
 			throw new ConfigurationError("Input path is required", { providedOptions: options });
 		}
 
+		// Determine if we're in separate schemas mode
+		this.separateSchemasMode = Boolean(options.outputZodSchemas);
+
 		this.options = {
 			mode: options.mode || "normal",
 			input: options.input,
-			output: options.output,
+			outputTypes: options.outputTypes,
+			outputZodSchemas: options.outputZodSchemas,
+			enumFormat: options.enumFormat,
+			typeAssertionThreshold: options.typeAssertionThreshold ?? 0,
 			includeDescriptions: options.includeDescriptions ?? true,
 			useDescribe: options.useDescribe ?? false,
 			defaultNullable: options.defaultNullable ?? false,
@@ -58,6 +155,7 @@ export class OpenApiGenerator {
 			suffix: options.suffix,
 			stripSchemaPrefix: options.stripSchemaPrefix,
 			stripPathPrefix: options.stripPathPrefix,
+			useOperationId: options.useOperationId ?? true,
 			showStats: options.showStats ?? true,
 			request: options.request,
 			response: options.response,
@@ -74,63 +172,8 @@ export class OpenApiGenerator {
 		// Build date-time validation string (parallel-safe, no global state)
 		this.dateTimeValidation = buildDateTimeValidation(this.options.customDateTimeFormatRegex);
 
-		// Validate input file exists
-		try {
-			const fs = require("node:fs");
-			if (!fs.existsSync(this.options.input)) {
-				throw new FileOperationError(`Input file not found: ${this.options.input}`, this.options.input);
-			}
-		} catch (error) {
-			if (error instanceof FileOperationError) {
-				throw error;
-			}
-			// If fs.existsSync fails for another reason, continue and let readFileSync throw
-		}
-
-		try {
-			const content = readFileSync(this.options.input, "utf-8");
-
-			// Try parsing as YAML first (works for both YAML and JSON)
-			try {
-				this.spec = parse(content);
-			} catch (yamlError) {
-				// If YAML parsing fails, try JSON
-				try {
-					this.spec = JSON.parse(content);
-				} catch {
-					if (yamlError instanceof Error) {
-						const errorMessage = [
-							`Failed to parse OpenAPI specification from: ${this.options.input}`,
-							"",
-							`Error: ${yamlError.message}`,
-							"",
-							"Please ensure:",
-							"  - The file exists and is readable",
-							"  - The file contains valid YAML or JSON syntax",
-							"  - The file is a valid OpenAPI 3.x specification",
-						].join("\n");
-						throw new SpecValidationError(errorMessage, {
-							filePath: this.options.input,
-							originalError: yamlError.message,
-						});
-					}
-					throw yamlError;
-				}
-			}
-		} catch (error) {
-			if (error instanceof SpecValidationError) {
-				throw error;
-			}
-			if (error instanceof Error) {
-				const errorMessage = [
-					`Failed to read OpenAPI specification from: ${this.options.input}`,
-					"",
-					`Error: ${error.message}`,
-				].join("\n");
-				throw new SpecValidationError(errorMessage, { filePath: this.options.input, originalError: error.message });
-			}
-			throw error;
-		}
+		// Load and parse the OpenAPI specification using core utility
+		this.spec = loadOpenAPISpec(this.options.input);
 
 		this.validateSpec();
 
@@ -139,7 +182,7 @@ export class OpenApiGenerator {
 		this.responseOptions = this.resolveOptionsForContext("response");
 
 		// Analyze schema usage to determine context (request/response/both)
-		this.analyzeSchemaUsage();
+		this.initializeSchemaUsage();
 
 		// Initialize property generator with context
 		// We'll update this dynamically based on schema context during generation
@@ -159,17 +202,31 @@ export class OpenApiGenerator {
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			dateTimeValidation: this.dateTimeValidation,
 			patternCache: this.patternCache,
+			separateTypesFile: this.separateSchemasMode,
 		});
 	}
 
 	/**
 	 * Generate schemas as a string (without writing to file)
+	 * When separateSchemasMode is active, generates Zod schemas with explicit type annotations
 	 * @returns The generated TypeScript code as a string
 	 */
 	generateString(): string {
 		if (!this.spec.components?.schemas) {
 			throw new SpecValidationError("No schemas found in OpenAPI spec", { filePath: this.options.input });
 		}
+
+		// When outputZodSchemas is specified, generate Zod schemas with explicit type annotations
+		if (this.separateSchemasMode) {
+			return this.generateSeparateSchemasString();
+		}
+
+		// Pre-analyze schemas to detect circular dependencies BEFORE generation
+		// This allows us to use z.lazy() for references to circular deps
+		this.analyzeCircularDependencies();
+
+		// Update property generator context with circular dependencies
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
 
 		// Generate schemas and track dependencies
 		for (const [name, schema] of Object.entries(this.spec.components.schemas)) {
@@ -248,14 +305,307 @@ export class OpenApiGenerator {
 	}
 
 	/**
-	 * Generate the complete output file
+	 * Generate the complete output file(s)
+	 * When separateSchemasMode is active, generates both types and schemas files
 	 */
 	generate(): void {
-		const output = this.generateString();
-		const normalizedOutput = normalize(this.options.output);
-		this.ensureDirectoryExists(normalizedOutput);
-		writeFileSync(normalizedOutput, output);
-		console.log(`  ✓ Generated ${normalizedOutput}`);
+		if (this.separateSchemasMode) {
+			// Generate both types and schemas files
+			const typesContent = this.generateTypesString();
+			const schemasContent = this.generateString();
+
+			// Write types file
+			const normalizedTypes = normalize(this.options.outputTypes);
+			this.ensureDirectoryExists(normalizedTypes);
+			writeFileSync(normalizedTypes, typesContent, "utf-8");
+			console.log(`  ✓ Generated ${normalizedTypes}`);
+
+			// Write schemas file (outputZodSchemas is guaranteed by separateSchemasMode check)
+			if (!this.options.outputZodSchemas) {
+				throw new Error("Internal error: outputZodSchemas should be defined in separateSchemasMode");
+			}
+			const outputZodSchemas = this.options.outputZodSchemas;
+			const normalizedSchemas = normalize(outputZodSchemas);
+			this.ensureDirectoryExists(normalizedSchemas);
+			writeFileSync(normalizedSchemas, schemasContent, "utf-8");
+			console.log(`  ✓ Generated ${normalizedSchemas}`);
+		} else {
+			// Original behavior - single file with z.infer
+			const output = this.generateString();
+			const normalizedOutput = normalize(this.options.outputTypes);
+			this.ensureDirectoryExists(normalizedOutput);
+			writeFileSync(normalizedOutput, output);
+			console.log(`  ✓ Generated ${normalizedOutput}`);
+		}
+	}
+
+	/**
+	 * Generate Zod schemas with explicit type annotations (for outputZodSchemas mode)
+	 * Generates schemas like: `export const userSchema: z.ZodType<User> = z.object({...})`
+	 * @returns The generated Zod schemas TypeScript code
+	 */
+	private generateSeparateSchemasString(): string {
+		// Guard: schemas must exist (checked in generateString before calling this)
+		const schemas = this.spec.components?.schemas;
+		if (!schemas) {
+			return "";
+		}
+
+		// Guard: outputZodSchemas must exist (we're in separateSchemasMode)
+		if (!this.options.outputZodSchemas) {
+			throw new Error("Internal error: outputZodSchemas should be defined in separateSchemasMode");
+		}
+		const outputZodSchemas = this.options.outputZodSchemas;
+
+		// Pre-analyze schemas to detect circular dependencies
+		this.analyzeCircularDependencies();
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
+
+		// Generate schemas and track dependencies
+		for (const [name, schema] of Object.entries(schemas)) {
+			if (this.options.operationFilters && this.schemaUsageMap.size > 0 && !this.schemaUsageMap.has(name)) {
+				continue;
+			}
+			this.generateComponentSchema(name, schema);
+		}
+
+		// Generate query and header parameter schemas
+		this.generateQueryParameterSchemas();
+		this.generateHeaderParameterSchemas();
+
+		// Validate filters
+		validateFilters(this.filterStats, this.options.operationFilters);
+
+		// Sort schemas
+		const orderedSchemaNames = this.topologicalSort();
+
+		// Build output
+		const output: string[] = ["// Auto-generated by @cerios/openapi-to-zod", "// Do not edit this file manually", ""];
+
+		// Add statistics
+		if (this.options.showStats === true) {
+			output.push(...this.generateStats());
+			output.push("");
+		}
+
+		// Add Zod import
+		output.push('import { z } from "zod";');
+
+		// Calculate relative import path for types
+		const typesImportPath = this.calculateRelativeImportPath(outputZodSchemas, this.options.outputTypes);
+
+		// Collect all type names that need to be imported
+		const typeNames: string[] = [];
+		for (const name of orderedSchemaNames) {
+			const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+			const typeName = toPascalCase(strippedName);
+			typeNames.push(typeName);
+		}
+
+		// Add type imports
+		if (typeNames.length > 0) {
+			output.push(`import type { ${typeNames.join(", ")} } from "${typesImportPath}";`);
+		}
+		output.push("");
+
+		// Add schemas with explicit type annotations
+		output.push("// Schemas");
+		for (const name of orderedSchemaNames) {
+			const schemaCode = this.schemas.get(name);
+			if (schemaCode) {
+				const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
+				const typeName = toPascalCase(strippedName);
+				const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
+
+				// Pass schema definition for complexity calculation (may be undefined for query/header schemas)
+				const schemaDefinition = this.isRecordObject(schemas[name]) ? schemas[name] : undefined;
+				const transformedCode = this.addExplicitTypeAnnotation(schemaCode, schemaName, typeName, schemaDefinition);
+				output.push(transformedCode);
+				output.push("");
+			}
+		}
+
+		return output.join("\n");
+	}
+
+	/**
+	 * Generate TypeScript types as a string (for outputZodSchemas mode)
+	 * Uses @cerios/openapi-to-typescript internally
+	 * @returns The generated TypeScript types code
+	 */
+	generateTypesString(): string {
+		const tsGenerator = new TypeScriptGenerator({
+			input: this.options.input,
+			outputTypes: this.options.outputTypes,
+			includeDescriptions: this.options.includeDescriptions,
+			defaultNullable: this.options.defaultNullable,
+			prefix: this.options.prefix,
+			suffix: this.options.suffix,
+			stripSchemaPrefix: this.options.stripSchemaPrefix,
+			stripPathPrefix: this.options.stripPathPrefix,
+			operationFilters: this.options.operationFilters,
+			showStats: this.options.showStats,
+			enumFormat: this.options.enumFormat ?? "const-object",
+		});
+
+		return tsGenerator.generateString();
+	}
+
+	/**
+	 * Add explicit type annotation to a schema declaration
+	 * Transforms: `export const userSchema = z.object({...})`
+	 * To: `export const userSchema: z.ZodType<User> = z.object({...})` (annotation)
+	 * Or: `export const userSchema = z.object({...}) as unknown as z.ZodType<User>` (double assertion)
+	 *
+	 * Uses double assertion via `unknown` when typeAssertionThreshold is set and schema complexity
+	 * meets or exceeds the threshold. This completely bypasses TypeScript's structural checking
+	 * to avoid "Type instantiation is excessively deep" errors on very large schemas.
+	 *
+	 * Also removes any `export type X = z.infer<...>` lines since types
+	 * are imported from the separate types file.
+	 */
+	private addExplicitTypeAnnotation(
+		schemaCode: string,
+		schemaName: string,
+		typeName: string,
+		schemaDefinition?: Record<string, unknown>
+	): string {
+		// Remove any z.infer type exports since types come from the types file
+		const code = schemaCode.replace(/\nexport type \w+ = z\.infer<typeof \w+>;/g, "");
+
+		// Handle JSDoc comments - they should come before the export
+		const jsdocMatch = code.match(/^(\/\*\*[\s\S]*?\*\/\n)?/);
+		const jsdoc = jsdocMatch?.[1] || "";
+		const codeWithoutJsdoc = code.slice(jsdoc.length);
+
+		// Determine if we should use assertion syntax based on complexity threshold
+		const threshold = this.options.typeAssertionThreshold ?? 0;
+		const useAssertion =
+			threshold > 0 && schemaDefinition && this.calculateSchemaComplexity(schemaDefinition) >= threshold;
+
+		// Standard pattern - replace export with typed version
+		// This works for both regular schemas and enum schemas
+		const pattern = new RegExp(`export const ${schemaName} = `);
+		if (pattern.test(codeWithoutJsdoc)) {
+			let schemaBody = codeWithoutJsdoc.replace(pattern, "");
+			if (useAssertion) {
+				// Remove trailing semicolon for assertion syntax
+				schemaBody = schemaBody.replace(/;$/, "");
+				// Double assertion via unknown: completely bypasses TypeScript's structural checking
+				// This avoids "Type instantiation is excessively deep" even for very large schemas
+				return `${jsdoc}export const ${schemaName} = ${schemaBody} as unknown as z.ZodType<${typeName}>;`;
+			}
+			// Annotation syntax: export const xSchema: z.ZodType<X> = z.object({...})
+			return `${jsdoc}export const ${schemaName}: z.ZodType<${typeName}> = ${schemaBody}`;
+		}
+
+		return code;
+	}
+
+	/**
+	 * Type guard to check if a value is a Record<string, unknown>
+	 */
+	private isRecordObject(value: unknown): value is Record<string, unknown> {
+		return typeof value === "object" && value !== null && !Array.isArray(value);
+	}
+
+	/**
+	 * Calculate the complexity of a schema for threshold comparison
+	 * Complexity formula: properties + (nested levels * 10) + (array/union members * 2)
+	 */
+	private calculateSchemaComplexity(schema: Record<string, unknown>, depth = 0): number {
+		if (!schema || typeof schema !== "object") {
+			return 0;
+		}
+
+		let complexity = depth * 10; // Base cost for nesting
+
+		// Handle $ref
+		if (schema.$ref) {
+			// Referenced schemas contribute fixed complexity (avoid infinite recursion)
+			return complexity + 5;
+		}
+
+		// Count properties
+		const properties = schema.properties;
+		if (this.isRecordObject(properties)) {
+			const propCount = Object.keys(properties).length;
+			complexity += propCount;
+
+			// Recursively calculate nested property complexity
+			for (const prop of Object.values(properties)) {
+				if (this.isRecordObject(prop)) {
+					complexity += this.calculateSchemaComplexity(prop, depth + 1);
+				}
+			}
+		}
+
+		// Handle allOf
+		const allOf = schema.allOf;
+		if (Array.isArray(allOf)) {
+			complexity += allOf.length * 2;
+			for (const subSchema of allOf) {
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
+				}
+			}
+		}
+
+		// Handle oneOf
+		const oneOf = schema.oneOf;
+		if (Array.isArray(oneOf)) {
+			complexity += oneOf.length * 2;
+			for (const subSchema of oneOf) {
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
+				}
+			}
+		}
+
+		// Handle anyOf
+		const anyOf = schema.anyOf;
+		if (Array.isArray(anyOf)) {
+			complexity += anyOf.length * 2;
+			for (const subSchema of anyOf) {
+				if (this.isRecordObject(subSchema)) {
+					complexity += this.calculateSchemaComplexity(subSchema, depth + 1);
+				}
+			}
+		}
+
+		// Handle array items
+		const items = schema.items;
+		if (this.isRecordObject(items)) {
+			complexity += 2; // Array cost
+			complexity += this.calculateSchemaComplexity(items, depth + 1);
+		}
+
+		// Handle additionalProperties
+		const additionalProps = schema.additionalProperties;
+		if (this.isRecordObject(additionalProps)) {
+			complexity += 2; // Record cost
+			complexity += this.calculateSchemaComplexity(additionalProps, depth + 1);
+		}
+
+		return complexity;
+	}
+
+	/**
+	 * Calculate relative import path from schema file to types file
+	 */
+	private calculateRelativeImportPath(fromPath: string, toPath: string): string {
+		const fromDir = dirname(normalize(fromPath));
+		const toFile = normalize(toPath).replace(/\.[tj]s$/, ""); // Remove extension
+
+		let relativePath = relative(fromDir, toFile);
+
+		// Ensure path starts with ./ or ../
+		if (!relativePath.startsWith(".") && !relativePath.startsWith("..")) {
+			relativePath = `./${relativePath}`;
+		}
+
+		// Normalize path separators for cross-platform compatibility
+		return relativePath.replace(/\\/g, "/");
 	}
 
 	/**
@@ -273,20 +623,20 @@ export class OpenApiGenerator {
 	}
 
 	/**
-	 * Analyze schema usage across the OpenAPI spec to determine if schemas
-	 * are used in request, response, or both contexts
+	 * Initialize schema usage map using core utilities with operation filtering
+	 * This is a wrapper around core's analyzeSchemaUsage that adds operation filtering
 	 */
-	private analyzeSchemaUsage(): void {
-		const requestSchemas = new Set<string>();
-		const responseSchemas = new Set<string>();
+	private initializeSchemaUsage(): void {
+		// If we have operation filters, we need to track stats and filter manually
+		if (this.options.operationFilters && this.spec.paths) {
+			const requestSchemas = new Set<string>();
+			const responseSchemas = new Set<string>();
 
-		// Analyze paths section if available
-		if (this.spec.paths) {
 			for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-				const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-				for (const method of methods) {
-					const operation = (pathItem as any)[method];
-					if (typeof operation !== "object" || !operation) continue;
+				if (!isOpenAPIPathItem(pathItem)) continue;
+				for (const method of HTTP_METHODS) {
+					const operation = pathItem[method];
+					if (!operation) continue;
 
 					// Track total operations
 					this.filterStats.totalOperations++;
@@ -300,22 +650,19 @@ export class OpenApiGenerator {
 					this.filterStats.includedOperations++;
 
 					// Check request bodies
-					if (
-						"requestBody" in operation &&
-						operation.requestBody &&
-						typeof operation.requestBody === "object" &&
-						"content" in operation.requestBody &&
-						operation.requestBody.content
-					) {
-						for (const mediaType of Object.values(operation.requestBody.content)) {
-							if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
-								this.extractSchemaRefs(mediaType.schema, requestSchemas);
+					if (operation.requestBody && typeof operation.requestBody === "object") {
+						const reqBody = operation.requestBody;
+						if (reqBody.content && typeof reqBody.content === "object") {
+							for (const mediaType of Object.values(reqBody.content)) {
+								if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
+									extractSchemaRefs(mediaType.schema as OpenAPISchema, requestSchemas);
+								}
 							}
 						}
 					}
 
 					// Check responses
-					if ("responses" in operation && operation.responses && typeof operation.responses === "object") {
+					if (operation.responses && typeof operation.responses === "object") {
 						for (const response of Object.values(operation.responses)) {
 							if (
 								response &&
@@ -326,7 +673,7 @@ export class OpenApiGenerator {
 							) {
 								for (const mediaType of Object.values(response.content)) {
 									if (mediaType && typeof mediaType === "object" && "schema" in mediaType && mediaType.schema) {
-										this.extractSchemaRefs(mediaType.schema, responseSchemas);
+										extractSchemaRefs(mediaType.schema as OpenAPISchema, responseSchemas);
 									}
 								}
 							}
@@ -334,186 +681,54 @@ export class OpenApiGenerator {
 					}
 
 					// Check parameters
-					if ("parameters" in operation && Array.isArray(operation.parameters)) {
+					if (operation.parameters && Array.isArray(operation.parameters)) {
 						for (const param of operation.parameters) {
-							if (param && typeof param === "object" && "schema" in param && param.schema) {
-								this.extractSchemaRefs(param.schema, requestSchemas);
+							if (isResolvedParameter(param) && param.schema) {
+								extractSchemaRefs(param.schema as OpenAPISchema, requestSchemas);
 							}
 						}
 					}
 				}
 			}
 
-			// Expand to include all transitively referenced schemas
-			this.expandTransitiveReferences(requestSchemas);
-			this.expandTransitiveReferences(responseSchemas);
-		}
+			// Expand transitive references to include all indirectly referenced schemas
+			expandTransitiveReferences(requestSchemas, this.spec);
+			expandTransitiveReferences(responseSchemas, this.spec);
 
-		// Fallback: analyze readOnly/writeOnly properties if paths not available
-		if (!this.spec.paths || (requestSchemas.size === 0 && responseSchemas.size === 0)) {
-			for (const [name, schema] of Object.entries(this.spec.components?.schemas || {})) {
-				const hasReadOnly = this.hasReadOnlyProperties(schema);
-				const hasWriteOnly = this.hasWriteOnlyProperties(schema);
-
-				if (hasWriteOnly && !hasReadOnly) {
-					requestSchemas.add(name);
-				} else if (hasReadOnly && !hasWriteOnly) {
-					responseSchemas.add(name);
+			// Build usage map from filtered operations
+			for (const [name] of Object.entries(this.spec.components?.schemas || {})) {
+				if (requestSchemas.has(name) && responseSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "both");
+				} else if (requestSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "request");
+				} else if (responseSchemas.has(name)) {
+					this.schemaUsageMap.set(name, "response");
 				}
 			}
-		}
 
-		// Build usage map with circular reference detection
-		for (const [name] of Object.entries(this.spec.components?.schemas || {})) {
-			if (requestSchemas.has(name) && responseSchemas.has(name)) {
+			// Detect circular references and mark as "both"
+			const circularSchemas = detectCircularReferences(this.spec);
+			for (const name of circularSchemas) {
 				this.schemaUsageMap.set(name, "both");
-			} else if (requestSchemas.has(name)) {
-				this.schemaUsageMap.set(name, "request");
-			} else if (responseSchemas.has(name)) {
-				this.schemaUsageMap.set(name, "response");
 			}
-			// Unreferenced schemas are not added to map (will use root typeMode)
-		}
+		} else {
+			// Use core's analyzeSchemaUsage when no operation filters
+			const analysis = analyzeSchemaUsage(this.spec);
+			this.schemaUsageMap = analysis.usageMap;
 
-		// Detect circular references and mark entire chain as "both"
-		this.detectCircularReferences();
-	}
-
-	/**
-	 * Expand a set of schemas to include all transitively referenced schemas
-	 */
-	private expandTransitiveReferences(schemas: Set<string>): void {
-		const toProcess = Array.from(schemas);
-		const processed = new Set<string>();
-
-		while (toProcess.length > 0) {
-			const schemaName = toProcess.pop();
-			if (!schemaName || processed.has(schemaName)) continue;
-
-			processed.add(schemaName);
-
-			const schema = this.spec.components?.schemas?.[schemaName];
-			if (schema) {
-				const refs = new Set<string>();
-				this.extractSchemaRefs(schema, refs);
-
-				for (const ref of refs) {
-					if (!schemas.has(ref)) {
-						schemas.add(ref);
-						toProcess.push(ref);
+			// Track operation stats when no filters
+			if (this.spec.paths) {
+				for (const pathItem of Object.values(this.spec.paths)) {
+					if (!isOpenAPIPathItem(pathItem)) continue;
+					for (const method of HTTP_METHODS) {
+						const operation = pathItem[method];
+						if (typeof operation === "object" && operation) {
+							this.filterStats.totalOperations++;
+							this.filterStats.includedOperations++;
+						}
 					}
 				}
 			}
-		}
-	}
-
-	/**
-	 * Extract schema names from $ref and nested structures
-	 */
-	private extractSchemaRefs(schema: any, refs: Set<string>): void {
-		if (!schema) return;
-
-		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
-			refs.add(refName);
-		}
-
-		if (schema.allOf) {
-			for (const subSchema of schema.allOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.oneOf) {
-			for (const subSchema of schema.oneOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.anyOf) {
-			for (const subSchema of schema.anyOf) {
-				this.extractSchemaRefs(subSchema, refs);
-			}
-		}
-
-		if (schema.items) {
-			this.extractSchemaRefs(schema.items, refs);
-		}
-
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				this.extractSchemaRefs(prop, refs);
-			}
-		}
-	}
-
-	/**
-	 * Check if schema has readOnly properties
-	 */
-	private hasReadOnlyProperties(schema: OpenAPISchema): boolean {
-		if (schema.readOnly) return true;
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				if (this.hasReadOnlyProperties(prop)) return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Check if schema has writeOnly properties
-	 */
-	private hasWriteOnlyProperties(schema: OpenAPISchema): boolean {
-		if (schema.writeOnly) return true;
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				if (this.hasWriteOnlyProperties(prop)) return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Detect circular references and mark them as "both" context for safety
-	 */
-	private detectCircularReferences(): void {
-		const visited = new Set<string>();
-		const recursionStack = new Set<string>();
-
-		const detectCycle = (name: string): boolean => {
-			if (recursionStack.has(name)) {
-				// Found a cycle - mark all schemas in the cycle as "both"
-				return true;
-			}
-
-			if (visited.has(name)) {
-				return false;
-			}
-
-			visited.add(name);
-			recursionStack.add(name);
-
-			const schema = this.spec.components?.schemas?.[name];
-			if (schema) {
-				const refs = new Set<string>();
-				this.extractSchemaRefs(schema, refs);
-
-				for (const ref of refs) {
-					if (detectCycle(ref)) {
-						// Mark this schema as "both" since it's part of a circular chain
-						this.schemaUsageMap.set(name, "both");
-						recursionStack.delete(name);
-						return true;
-					}
-				}
-			}
-
-			recursionStack.delete(name);
-			return false;
-		};
-
-		for (const name of Object.keys(this.spec.components?.schemas || {})) {
-			detectCycle(name);
 		}
 	}
 
@@ -549,7 +764,7 @@ export class OpenApiGenerator {
 	 */
 	private validateSchemaRefs(schemaName: string, schema: OpenAPISchema, allSchemas: string[], path = ""): void {
 		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
+			const refName = resolveRefName(schema.$ref);
 			if (!allSchemas.includes(refName)) {
 				throw new SpecValidationError(
 					`Invalid reference${path ? ` at '${path}'` : ""}: ` +
@@ -629,11 +844,11 @@ export class OpenApiGenerator {
 		// Apply stripSchemaPrefix to get cleaner schema names
 		const strippedName = stripPrefix(name, this.options.stripSchemaPrefix);
 		const schemaName = `${toCamelCase(strippedName, { prefix: this.options.prefix, suffix: this.options.suffix })}Schema`;
-		const jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
+		let jsdoc = generateJSDoc(schema, name, { includeDescriptions: resolvedOptions.includeDescriptions });
 
 		// For allOf with single $ref, track dependency manually since we simplify it
 		if (schema.allOf && schema.allOf.length === 1 && schema.allOf[0].$ref) {
-			const refName = resolveRef(schema.allOf[0].$ref);
+			const refName = resolveRefName(schema.allOf[0].$ref);
 			this.schemaDependencies.get(name)?.add(refName);
 		}
 
@@ -654,11 +869,34 @@ export class OpenApiGenerator {
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			dateTimeValidation: this.dateTimeValidation,
 			patternCache: this.patternCache,
+			separateTypesFile: this.separateSchemasMode,
 		});
+
+		// Set circular dependencies for the new property generator instance
+		this.propertyGenerator.setCircularDependencies(this.circularDependencies);
+
+		// Clear conflicts before generating to track per-schema conflicts
+		this.propertyGenerator.clearAllOfConflicts();
 
 		// Check if this is just a simple $ref (alias)
 		// Pass isTopLevel=true for top-level schema generation to prevent defaultNullable from applying
 		const zodSchema = this.propertyGenerator.generatePropertySchema(schema, name, true);
+
+		// Check for allOf conflicts and add JSDoc warning if any
+		const allOfConflicts = this.propertyGenerator.getAllOfConflicts();
+		if (allOfConflicts.length > 0) {
+			this.allOfConflictCount += allOfConflicts.length;
+			// Add warning JSDoc for conflicts
+			const conflictWarning = this.generateConflictJSDoc(allOfConflicts);
+			if (jsdoc) {
+				// Append to existing JSDoc - insert before closing */
+				jsdoc = jsdoc.replace(/ \*\/\n$/, `\n${conflictWarning} */\n`);
+			} else {
+				// Create new JSDoc block with just the warning
+				jsdoc = `/**\n${conflictWarning} */\n`;
+			}
+		}
+
 		const zodSchemaCode = `${jsdoc}export const ${schemaName} = ${zodSchema};`;
 
 		// Track dependencies from discriminated unions
@@ -691,12 +929,10 @@ export class OpenApiGenerator {
 		}
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem || typeof pathItem !== "object") continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = pathItem[method];
 				if (!operation) continue;
 
 				// Apply operation filters (stats already tracked in analyzeSchemaUsage)
@@ -709,26 +945,20 @@ export class OpenApiGenerator {
 
 				// Filter for query parameters only
 				const queryParams = allParams.filter(
-					(param: any) => param && typeof param === "object" && param.in === "query"
+					(param): param is ResolvedParameter => isResolvedParameter(param) && param.in === "query"
 				);
 
 				if (queryParams.length === 0) {
 					continue;
 				}
 
-				// Generate schema name from operationId or path+method fallback
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					// Use toPascalCase only for kebab-case IDs, simple capitalization for camelCase
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method
-					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
-					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
-					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
-				}
+				const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
+				const pascalOperationId = getOperationName(
+					operation.operationId,
+					method,
+					strippedPath,
+					this.options.useOperationId
+				);
 				const schemaName = `${pascalOperationId}QueryParams`; // Initialize dependencies for this schema
 				if (!this.schemaDependencies.has(schemaName)) {
 					this.schemaDependencies.set(schemaName, new Set());
@@ -776,7 +1006,7 @@ export class OpenApiGenerator {
 
 					// Track dependencies from schema references
 					if (paramSchema.$ref) {
-						const refName = resolveRef(paramSchema.$ref);
+						const refName = resolveRefName(paramSchema.$ref);
 						this.schemaDependencies.get(schemaName)?.add(refName);
 					}
 				}
@@ -794,13 +1024,10 @@ export class OpenApiGenerator {
 					})
 					.join(",\n");
 
-				const schemaCode = `z.${zodMethod}({\n${propsCode}\n})`; // Apply prefix/suffix to the operation name only, then add QueryParams and Schema
-				const operationName = pascalOperationId; // Already PascalCase
-				const prefixedName = this.options.prefix
-					? `${toPascalCase(this.options.prefix)}${operationName}`
-					: operationName;
-				const suffixedName = this.options.suffix ? `${prefixedName}${toPascalCase(this.options.suffix)}` : prefixedName;
-				const camelCaseSchemaName = `${suffixedName.charAt(0).toLowerCase() + suffixedName.slice(1)}QueryParamsSchema`;
+				const schemaCode = `z.${zodMethod}({\n${propsCode}\n})`;
+				// Apply prefix/suffix using toCamelCase for consistent naming with how generateString generates the type inference
+				const operationName = pascalOperationId;
+				const camelCaseSchemaName = `${toCamelCase(operationName, { prefix: this.options.prefix, suffix: this.options.suffix })}QueryParamsSchema`;
 
 				// Generate JSDoc - use operationId if available, otherwise use method + path
 				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
@@ -811,54 +1038,6 @@ export class OpenApiGenerator {
 				this.needsZodImport = true;
 			}
 		}
-	}
-
-	/**
-	 * Generate a PascalCase method name from HTTP method and path
-	 * Used as fallback when operationId is not available
-	 * @internal
-	 */
-	private generateMethodNameFromPath(method: string, path: string): string {
-		// Convert path to PascalCase
-		// e.g., GET /users/{userId}/posts -> GetUsersByUserIdPosts
-		// e.g., GET /api/v0.1/users -> GetApiV01Users
-		const segments = path
-			.split("/")
-			.filter(Boolean)
-			.map(segment => {
-				if (segment.startsWith("{") && segment.endsWith("}")) {
-					// Path parameter - convert to "ByParamName"
-					const paramName = segment.slice(1, -1);
-					return `By${this.capitalizeSegment(paramName)}`;
-				}
-				// Regular segment - capitalize and handle special characters
-				return this.capitalizeSegment(segment);
-			})
-			.join("");
-
-		// Capitalize first letter of method
-		const capitalizedMethod = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-		return `${capitalizedMethod}${segments}`;
-	}
-
-	/**
-	 * Capitalizes a path segment, handling special characters like dashes, underscores, and dots
-	 * @internal
-	 */
-	private capitalizeSegment(str: string): string {
-		// Handle kebab-case, snake_case, and dots
-		if (str.includes("-") || str.includes("_") || str.includes(".")) {
-			return str
-				.split(/[-_.]/)
-				.map(part => {
-					if (!part) return "";
-					return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-				})
-				.join("");
-		}
-
-		// Regular word - just capitalize first letter
-		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/**
@@ -893,12 +1072,10 @@ export class OpenApiGenerator {
 		}
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem || typeof pathItem !== "object") continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"];
-
-			for (const method of methods) {
-				const operation = (pathItem as any)[method];
+			for (const method of HTTP_METHODS) {
+				const operation = pathItem[method];
 				if (!operation) continue;
 
 				// Apply operation filters
@@ -911,26 +1088,21 @@ export class OpenApiGenerator {
 
 				// Filter for header parameters only, excluding ignored ones
 				const headerParams = allParams.filter(
-					(param: any) =>
-						param && typeof param === "object" && param.in === "header" && !this.shouldIgnoreHeader(param.name)
+					(param): param is ResolvedParameter =>
+						isResolvedParameter(param) && param.in === "header" && !this.shouldIgnoreHeader(param.name)
 				);
 
 				if (headerParams.length === 0) {
 					continue;
 				}
 
-				// Generate schema name from operationId or path+method fallback
-				let pascalOperationId: string;
-				if (operation.operationId) {
-					pascalOperationId = operation.operationId.includes("-")
-						? toPascalCase(operation.operationId)
-						: operation.operationId.charAt(0).toUpperCase() + operation.operationId.slice(1);
-				} else {
-					// Fallback: generate name from path + method
-					// Apply stripPathPrefix if configured (for consistency with Playwright service generator)
-					const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
-					pascalOperationId = this.generateMethodNameFromPath(method, strippedPath);
-				}
+				const strippedPath = stripPathPrefix(path, this.options.stripPathPrefix);
+				const pascalOperationId = getOperationName(
+					operation.operationId,
+					method,
+					strippedPath,
+					this.options.useOperationId
+				);
 				const schemaName = `${pascalOperationId}HeaderParams`;
 
 				// Initialize dependencies for this schema
@@ -964,7 +1136,7 @@ export class OpenApiGenerator {
 
 					// Track dependencies from schema references (if any)
 					if (paramSchema.$ref) {
-						const refName = resolveRef(paramSchema.$ref);
+						const refName = resolveRefName(paramSchema.$ref);
 						this.schemaDependencies.get(schemaName)?.add(refName);
 					}
 				}
@@ -985,12 +1157,9 @@ export class OpenApiGenerator {
 				const schemaCode = `z.${zodMethod}({\n${propsCode}\n})`;
 
 				// Apply prefix/suffix to the operation name only, then add HeaderParams and Schema
+				// Use toCamelCase for consistent naming with how generateString generates the type inference
 				const operationName = pascalOperationId;
-				const prefixedName = this.options.prefix
-					? `${toPascalCase(this.options.prefix)}${operationName}`
-					: operationName;
-				const suffixedName = this.options.suffix ? `${prefixedName}${toPascalCase(this.options.suffix)}` : prefixedName;
-				const camelCaseSchemaName = `${suffixedName.charAt(0).toLowerCase() + suffixedName.slice(1)}HeaderParamsSchema`;
+				const camelCaseSchemaName = `${toCamelCase(operationName, { prefix: this.options.prefix, suffix: this.options.suffix })}HeaderParamsSchema`;
 
 				// Generate JSDoc - use operationId if available, otherwise use method + path
 				const jsdocOperationName = operation.operationId || `${method.toUpperCase()} ${path}`;
@@ -1006,10 +1175,10 @@ export class OpenApiGenerator {
 	/**
 	 * Generate Zod type for a query parameter schema
 	 */
-	private generateQueryParamType(schema: OpenAPISchema, param: any): string {
+	private generateQueryParamType(schema: OpenAPISchema, param: ResolvedParameter): string {
 		// Handle references
 		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
+			const refName = resolveRefName(schema.$ref);
 			// Apply stripSchemaPrefix to referenced schema names
 			const strippedRefName = stripPrefix(refName, this.options.stripSchemaPrefix);
 			const schemaName = toCamelCase(strippedRefName, { prefix: this.options.prefix, suffix: this.options.suffix });
@@ -1019,13 +1188,13 @@ export class OpenApiGenerator {
 		// Handle enums
 		if (schema.enum) {
 			// Check if all values are booleans
-			const allBooleans = schema.enum.every((v: any) => typeof v === "boolean");
+			const allBooleans = schema.enum.every((v: unknown) => typeof v === "boolean");
 			if (allBooleans) {
 				return "z.boolean()";
 			}
 
 			// Check if all values are strings
-			const allStrings = schema.enum.every((v: any) => typeof v === "string");
+			const allStrings = schema.enum.every((v: unknown) => typeof v === "string");
 			if (allStrings) {
 				const enumValues = schema.enum.map(v => `"${v}"`).join(", ");
 				return `z.enum([${enumValues}])`;
@@ -1033,11 +1202,11 @@ export class OpenApiGenerator {
 
 			// For numeric or mixed enums, use z.union with z.literal
 			const literalValues = schema.enum
-				.map((v: any) => {
+				.map((v: unknown) => {
 					if (typeof v === "string") {
 						return `z.literal("${v}")`;
 					}
-					return `z.literal(${v})`;
+					return `z.literal(${String(v)})`;
 				})
 				.join(", ");
 			return `z.union([${literalValues}])`;
@@ -1154,10 +1323,15 @@ export class OpenApiGenerator {
 
 			// Visit dependencies first for non-alias schemas
 			const deps = this.schemaDependencies.get(name);
+			let dependsOnCircular = false;
 			if (deps && deps.size > 0) {
 				for (const dep of deps) {
 					if (this.schemas.has(dep) || this.types.has(dep)) {
 						visit(dep);
+						// If this dependency is circular, we also need to be deferred
+						if (circularDeps.has(dep)) {
+							dependsOnCircular = true;
+						}
 					}
 				}
 			}
@@ -1165,9 +1339,13 @@ export class OpenApiGenerator {
 			visiting.delete(name);
 			visited.add(name);
 
-			// Don't add circular dependencies yet - they need special handling
-			if (!circularDeps.has(name)) {
+			// Don't add circular dependencies or schemas that depend on them yet
+			// They need special handling and will be added at the end
+			if (!circularDeps.has(name) && !dependsOnCircular) {
 				sorted.push(name);
+			} else if (dependsOnCircular && !circularDeps.has(name)) {
+				// Mark schemas that depend on circular deps as needing to be deferred
+				circularDeps.add(name);
 			}
 		};
 
@@ -1179,10 +1357,11 @@ export class OpenApiGenerator {
 
 		// Add circular dependencies at the end (before aliases)
 		// This ensures they come after their non-circular dependencies
+		// Note: circular deps ARE in visited (they complete their visit cycle),
+		// but they were excluded from sorted. We need to add them now.
 		for (const name of circularDeps) {
-			if (!visited.has(name)) {
+			if (!sorted.includes(name)) {
 				sorted.push(name);
-				visited.add(name);
 			}
 		}
 
@@ -1216,6 +1395,7 @@ export class OpenApiGenerator {
 			`//   Circular references: ${stats.withCircularRefs}`,
 			`//   Discriminated unions: ${stats.withDiscriminators}`,
 			`//   With constraints: ${stats.withConstraints}`,
+			`//   AllOf conflicts: ${this.allOfConflictCount}`,
 		];
 
 		// Add filter statistics if filtering was used
@@ -1230,5 +1410,136 @@ export class OpenApiGenerator {
 		output.push(`//   Generated at: ${new Date().toISOString()}`);
 
 		return output;
+	}
+
+	/**
+	 * Pre-analyze schemas to detect circular dependencies before code generation.
+	 * This allows the property generator to use z.lazy() for forward references.
+	 */
+	private analyzeCircularDependencies(): void {
+		if (!this.spec.components?.schemas) return;
+
+		// First pass: collect all schema dependencies without generating code
+		const dependencies = new Map<string, Set<string>>();
+
+		const collectDependencies = (name: string, schema: OpenAPISchema, visited = new Set<string>()): Set<string> => {
+			if (visited.has(name)) return new Set();
+			visited.add(name);
+
+			const deps = new Set<string>();
+
+			// Handle $ref
+			if (schema.$ref) {
+				const refName = resolveRefName(schema.$ref);
+				deps.add(refName);
+			}
+
+			// Handle allOf
+			if (schema.allOf) {
+				for (const item of schema.allOf) {
+					const itemDeps = collectDependencies(`${name}_allOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle oneOf
+			if (schema.oneOf) {
+				for (const item of schema.oneOf) {
+					const itemDeps = collectDependencies(`${name}_oneOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle anyOf
+			if (schema.anyOf) {
+				for (const item of schema.anyOf) {
+					const itemDeps = collectDependencies(`${name}_anyOf`, item, new Set(visited));
+					for (const dep of itemDeps) deps.add(dep);
+				}
+			}
+
+			// Handle properties
+			if (schema.properties) {
+				for (const propSchema of Object.values(schema.properties)) {
+					const propDeps = collectDependencies(`${name}_prop`, propSchema, new Set(visited));
+					for (const dep of propDeps) deps.add(dep);
+				}
+			}
+
+			// Handle array items
+			if (schema.items) {
+				const itemDeps = collectDependencies(`${name}_items`, schema.items, new Set(visited));
+				for (const dep of itemDeps) deps.add(dep);
+			}
+
+			// Handle additionalProperties
+			if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+				const addDeps = collectDependencies(`${name}_additional`, schema.additionalProperties, new Set(visited));
+				for (const dep of addDeps) deps.add(dep);
+			}
+
+			return deps;
+		};
+
+		// Collect dependencies for all schemas
+		for (const [name, schema] of Object.entries(this.spec.components.schemas)) {
+			// Skip schemas not referenced by filtered operations when operation filters are active
+			if (this.options.operationFilters && this.schemaUsageMap.size > 0 && !this.schemaUsageMap.has(name)) {
+				continue;
+			}
+			dependencies.set(name, collectDependencies(name, schema));
+		}
+
+		// Second pass: detect circular dependencies using DFS
+		const visited = new Set<string>();
+		const visiting = new Set<string>();
+
+		const detectCircular = (name: string, path: string[] = []): void => {
+			if (visited.has(name)) return;
+
+			if (visiting.has(name)) {
+				// Found a cycle - mark all schemas in the cycle as circular
+				const cycleStart = path.indexOf(name);
+				if (cycleStart >= 0) {
+					for (let i = cycleStart; i < path.length; i++) {
+						this.circularDependencies.add(path[i]);
+					}
+				}
+				this.circularDependencies.add(name);
+				return;
+			}
+
+			visiting.add(name);
+			path.push(name);
+
+			const deps = dependencies.get(name);
+			if (deps) {
+				for (const dep of deps) {
+					if (dependencies.has(dep)) {
+						detectCircular(dep, [...path]);
+					}
+				}
+			}
+
+			visiting.delete(name);
+			visited.add(name);
+		};
+
+		for (const name of dependencies.keys()) {
+			detectCircular(name, []);
+		}
+	}
+
+	/**
+	 * Generate JSDoc warning for allOf conflicts
+	 * @param conflicts Array of conflict description strings
+	 * @returns JSDoc formatted warning string
+	 */
+	private generateConflictJSDoc(conflicts: string[]): string {
+		const lines = [" * @warning allOf property conflicts detected:"];
+		for (const conflict of conflicts) {
+			lines.push(` * - ${conflict}`);
+		}
+		return `${lines.join("\n")}\n`;
 	}
 }

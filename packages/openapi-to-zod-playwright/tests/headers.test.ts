@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Headers", () => {
@@ -8,7 +10,7 @@ describe("Headers", () => {
 	function generateOutput(): string {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			useOperationId: false,
 		});
@@ -59,7 +61,7 @@ describe("Headers", () => {
 		function generateServiceOutput(): string {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				useOperationId: true,
 			});
@@ -117,7 +119,7 @@ describe("Headers", () => {
 			expect(serviceOutput).not.toContain("GetUsersHeaderParams.parse");
 			expect(serviceOutput).not.toContain("SecureEndpointHeaderParams.parse");
 			expect(serviceOutput).not.toContain("getUsersHeaderParamsSchema.parse");
-			expect(serviceOutput).not.toContain("secureEndpointHeaderParamsSchema.parse");
+			expect(serviceOutput).not.toContain("SecureEndpointHeaderParamsSchema.parse");
 		});
 	});
 });

@@ -1,15 +1,15 @@
-import { describe, expect, it } from "vitest";
-import type { OpenAPISchema } from "../../src/types";
 import {
-	addDescription,
 	escapeDescription,
 	escapeJSDoc,
 	escapePattern,
 	getPrimaryType,
 	hasMultipleTypes,
 	isNullable,
-	wrapNullable,
-} from "../../src/utils/string-utils";
+} from "@cerios/openapi-core";
+import { describe, expect, it } from "vitest";
+
+import type { OpenAPISchema } from "../../src/types";
+import { addDescription, wrapNullable } from "../../src/utils/string-utils";
 
 describe("String Utilities", () => {
 	describe("escapeDescription", () => {
@@ -61,7 +61,7 @@ describe("String Utilities", () => {
 
 		it("should not double-escape already escaped forward slashes", () => {
 			// Pattern from JSON: "^\\w+\\/[-+.\\w]+$" becomes "^\w+\\/[-+.\w]+$" after JSON parsing
-			// The \/ should not become \\/
+			// The \/ should stay as \/ (outside character class)
 			expect(escapePattern("^\\w+\\/[-+.\\w]+$")).toBe("^\\w+\\/[-+.\\w]+$");
 		});
 
@@ -75,9 +75,36 @@ describe("String Utilities", () => {
 			expect(() => new RegExp(escaped)).not.toThrow();
 		});
 
-		it("should escape unescaped forward slashes while preserving escaped ones", () => {
-			// Mix of escaped and unescaped forward slashes
+		it("should escape unescaped forward slashes while preserving escaped ones outside char class", () => {
+			// Mix of escaped and unescaped forward slashes outside character classes
 			expect(escapePattern("a/b\\/c/d")).toBe("a\\/b\\/c\\/d");
+		});
+
+		it("should UNESCAPE already escaped forward slashes INSIDE character classes", () => {
+			// Escaped slashes inside [...] should be unescaped since they don't need escaping there
+			expect(escapePattern("[a\\/b]")).toBe("[a/b]");
+			expect(escapePattern("[\\w\\/-]")).toBe("[\\w/-]");
+			expect(escapePattern("[\\w.\\/-]")).toBe("[\\w./-]");
+		});
+
+		it("should handle URL pattern from YAML with pre-escaped slashes in char class", () => {
+			// Pattern from YAML: "^https?:\\/\\/[\\w.-]+(\\/[\\w.\\/-]*)?$"
+			// After YAML parsing: "^https?:\/\/[\w.-]+(\/[\w.\/-]*)?$"
+			// The \/ inside [\w.\/-] should become / but the \/ outside should stay
+			const yamlPattern = "^https?:\\/\\/[\\w.-]+(\\/[\\w.\\/-]*)?$";
+			const escaped = escapePattern(yamlPattern);
+			expect(escaped).toBe("^https?:\\/\\/[\\w.-]+(\\/[\\w./-]*)?$");
+			expect(() => new RegExp(escaped)).not.toThrow();
+		});
+
+		it("should handle API path pattern from YAML with pre-escaped slashes in char class", () => {
+			// Pattern from YAML: "^\\/api\\/v\\d+\\/[\\w\\/]+$"
+			// After YAML parsing: "^\/api\/v\d+\/[\w\/]+$"
+			// The \/ inside [\w\/] should become /
+			const yamlPattern = "^\\/api\\/v\\d+\\/[\\w\\/]+$";
+			const escaped = escapePattern(yamlPattern);
+			expect(escaped).toBe("^\\/api\\/v\\d+\\/[\\w/]+$");
+			expect(() => new RegExp(escaped)).not.toThrow();
 		});
 
 		it("should handle pattern with multiple unescaped forward slashes", () => {
@@ -94,6 +121,37 @@ describe("String Utilities", () => {
 
 		it("should handle pattern with only escaped forward slash", () => {
 			expect(escapePattern("\\/")).toBe("\\/");
+		});
+
+		it("should NOT escape forward slashes inside character classes", () => {
+			// Forward slashes inside [...] don't need escaping
+			expect(escapePattern("[a/b]")).toBe("[a/b]");
+			expect(escapePattern("[\\w/]+")).toBe("[\\w/]+");
+			expect(escapePattern("[\\w./-]")).toBe("[\\w./-]");
+		});
+
+		it("should escape forward slashes outside character classes but not inside", () => {
+			// Mixed: slashes inside character class stay, slashes outside get escaped
+			expect(escapePattern("^/path/[a/b]+$")).toBe("^\\/path\\/[a/b]+$");
+			expect(escapePattern("^https://[\\w.-]+(/[\\w./-]*)?$")).toBe("^https:\\/\\/[\\w.-]+(\\/[\\w./-]*)?$");
+		});
+
+		it("should handle URL pattern with character class containing slash", () => {
+			// Real-world pattern: URL with path characters including /
+			const urlPattern = "^https?://[\\w.-]+(/[\\w./-]*)?$";
+			const escaped = escapePattern(urlPattern);
+			expect(escaped).toBe("^https?:\\/\\/[\\w.-]+(\\/[\\w./-]*)?$");
+			expect(() => new RegExp(escaped)).not.toThrow();
+		});
+
+		it("should handle escaped brackets (not character classes)", () => {
+			// \\[ is an escaped bracket, not a character class
+			expect(escapePattern("\\[/\\]")).toBe("\\[\\/\\]");
+		});
+
+		it("should handle nested-looking patterns correctly", () => {
+			// After first ] we're outside the character class
+			expect(escapePattern("[a]/[b]")).toBe("[a]\\/[b]");
 		});
 	});
 

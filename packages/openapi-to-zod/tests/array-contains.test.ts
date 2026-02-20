@@ -1,6 +1,13 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
+// oxlint-disable typescript/no-unsafe-return
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Array Contains", () => {
@@ -10,7 +17,7 @@ describe("Array Contains", () => {
 		it("should generate validation for contains", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("array-contains.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -26,7 +33,7 @@ describe("Array Contains", () => {
 		it("should validate arrays with at least one matching item", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("array-contains.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -56,7 +63,7 @@ describe("Array Contains", () => {
 		it("should validate min and max contains constraints", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("array-contains.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -91,7 +98,7 @@ describe("Array Contains", () => {
 		it("should validate minimum contains constraint", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("array-contains.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -122,7 +129,7 @@ describe("Array Contains", () => {
 		it("should validate enum-based contains", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("array-contains.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("OpenApiPlaywrightGenerator", () => {
@@ -10,7 +12,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "api-service.ts",
+			outputTypes: "api-service.ts",
 			outputClient: "api-client.ts",
 		});
 
@@ -47,7 +49,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const clientOutput = generator.generateClientString();
@@ -64,7 +66,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const serviceOutput = generator.generateServiceString();
@@ -84,7 +86,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const serviceOutput = generator.generateServiceString();
@@ -100,7 +102,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const serviceOutput = generator.generateServiceString();
@@ -116,7 +118,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const clientOutput = generator.generateClientString();
@@ -131,7 +133,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -151,7 +153,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -171,7 +173,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "api-service.ts",
+				outputTypes: "api-service.ts",
 				outputClient: "api-client.ts",
 			});
 
@@ -190,7 +192,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -209,7 +211,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -232,7 +234,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 				new OpenApiPlaywrightGenerator({
 					useOperationId: false,
 					input: TestUtils.getFixturePath("non-existent.yaml"),
-					output: TestUtils.getOutputPath("test.ts"),
+					outputTypes: TestUtils.getOutputPath("test.ts"),
 					outputClient: "client.ts",
 				});
 			}).toThrow(/Input file not found/);
@@ -243,7 +245,7 @@ describe("OpenApiPlaywrightGenerator", () => {
 				new OpenApiPlaywrightGenerator({
 					useOperationId: false,
 					input: "",
-					output: TestUtils.getOutputPath("test.ts"),
+					outputTypes: TestUtils.getOutputPath("test.ts"),
 					outputClient: "client.ts",
 				});
 			}).toThrow(/Input path is required/);
@@ -252,8 +254,8 @@ describe("OpenApiPlaywrightGenerator", () => {
 		it("should throw SpecValidationError for invalid YAML", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
-				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-				output: TestUtils.getOutputPath("test.ts"),
+				input: TestUtils.getZodFixturePath("invalid-yaml.yaml"),
+				outputTypes: TestUtils.getOutputPath("test.ts"),
 				outputClient: "client.ts",
 			});
 
@@ -266,14 +268,14 @@ describe("OpenApiPlaywrightGenerator", () => {
 			const yamlGenerator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: TestUtils.getFixturePath("simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				showStats: false,
 			});
 			const jsonGenerator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
 				input: TestUtils.getFixturePath("simple-api.json"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				showStats: false,
 			});
@@ -296,8 +298,8 @@ describe("OpenApiPlaywrightGenerator", () => {
 		it("should throw error for invalid JSON files", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				useOperationId: false,
-				input: TestUtils.getFixturePath("invalid-json.txt"),
-				output: "output.ts",
+				input: TestUtils.getZodFixturePath("invalid-json.txt"),
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 

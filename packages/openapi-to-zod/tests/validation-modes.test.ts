@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Validation Modes", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath("simple.yaml"),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();
@@ -38,7 +40,7 @@ describe("Validation Modes", () => {
 		it("should apply strict mode to all object schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				mode: "strict",
 			});
 			const output = generator.generateString();
@@ -58,7 +60,7 @@ describe("Validation Modes", () => {
 		it("should apply loose mode to all object schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				mode: "loose",
 			});
 			const output = generator.generateString();
@@ -71,7 +73,7 @@ describe("Validation Modes", () => {
 		it("should apply the same mode to nested objects", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("complex.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				mode: "strict",
 			});
 			const output = generator.generateString();

@@ -1,21 +1,24 @@
 import { execSync } from "node:child_process";
 import { existsSync, unlinkSync } from "node:fs";
+
 import { afterAll, describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Comprehensive Compilation Tests", () => {
 	const outputFiles: string[] = [];
 
 	// Helper to track and generate output
-	function generateAndTrack(name: string, options: Omit<OpenApiGeneratorOptions, "output">): void {
+	function generateAndTrack(name: string, options: Omit<OpenApiGeneratorOptions, "outputTypes">): void {
 		const outputPath = TestUtils.getOutputPath(`compilation-${name}.ts`);
 		outputFiles.push(outputPath);
 
 		const generator = new OpenApiGenerator({
 			...options,
-			output: outputPath,
+			outputTypes: outputPath,
 		});
 		generator.generate();
 	}
@@ -151,7 +154,7 @@ describe("Comprehensive Compilation Tests", () => {
 	describe("Complex Fixtures", () => {
 		it("should generate circular references", () => {
 			generateAndTrack("circular", {
-				input: TestUtils.getFixturePath("circular.yaml"),
+				input: TestUtils.getCoreFixturePath("references", "circular.yaml"),
 			});
 		});
 

@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
 import type { OpenApiPlaywrightGeneratorOptions, PlaywrightConfigFile } from "../src/types";
 import { loadConfig, mergeCliWithConfig, mergeConfigWithDefaults } from "../src/utils/config-loader";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Config Loading - Playwright", () => {
@@ -53,11 +55,11 @@ describe("Config Loading - Playwright", () => {
 			await expect(loadConfig(configPath)).rejects.toThrow(/Invalid configuration file|Unrecognized key.*schemaType/);
 		});
 
-		it("should accept useOperationId option in config", async () => {
+		it("should accept useOperationId option in config", () => {
 			const config: PlaywrightConfigFile = {
 				specs: [
-					{ input: "api.yaml", output: "api.ts", outputClient: "client.ts", useOperationId: true },
-					{ input: "api2.yaml", output: "api2.ts", outputClient: "client2.ts", useOperationId: false },
+					{ input: "api.yaml", outputTypes: "api.ts", outputClient: "client.ts", useOperationId: true },
+					{ input: "api2.yaml", outputTypes: "api2.ts", outputClient: "client2.ts", useOperationId: false },
 				],
 			};
 
@@ -78,8 +80,8 @@ describe("Config Loading - Playwright", () => {
 					validateServiceRequest: false,
 				},
 				specs: [
-					{ input: "api.yaml", output: "api.ts", outputClient: "client.ts" },
-					{ input: "api2.yaml", output: "api2.ts", outputClient: "client2.ts", mode: "normal" },
+					{ input: "api.yaml", outputTypes: "api.ts", outputClient: "client.ts" },
+					{ input: "api2.yaml", outputTypes: "api2.ts", outputClient: "client2.ts", mode: "normal" },
 				],
 			};
 
@@ -98,7 +100,7 @@ describe("Config Loading - Playwright", () => {
 
 		it("should handle config without defaults", () => {
 			const config: PlaywrightConfigFile = {
-				specs: [{ input: "api.yaml", output: "api.ts", outputClient: "client.ts", mode: "loose" }],
+				specs: [{ input: "api.yaml", outputTypes: "api.ts", outputClient: "client.ts", mode: "loose" }],
 			};
 
 			const merged = mergeConfigWithDefaults(config);
@@ -118,7 +120,7 @@ describe("Config Loading - Playwright", () => {
 				specs: [
 					{
 						input: "api.yaml",
-						output: "api.ts",
+						outputTypes: "api.ts",
 						prefix: "api",
 						mode: "normal",
 						outputClient: "api-client.ts",
@@ -145,12 +147,12 @@ describe("Config Loading - Playwright", () => {
 				specs: [
 					{
 						input: "api.yaml",
-						output: "api.ts",
+						outputTypes: "api.ts",
 						outputClient: "client.ts",
 					},
 					{
 						input: "api2.yaml",
-						output: "api2.ts",
+						outputTypes: "api2.ts",
 						validateServiceRequest: false,
 						outputClient: "api2-client.ts",
 					},
@@ -171,8 +173,8 @@ describe("Config Loading - Playwright", () => {
 					emptyObjectBehavior: "record",
 				},
 				specs: [
-					{ input: "api.yaml", output: "api.ts", outputClient: "client.ts" },
-					{ input: "api2.yaml", output: "api2.ts", outputClient: "client2.ts", emptyObjectBehavior: "strict" },
+					{ input: "api.yaml", outputTypes: "api.ts", outputClient: "client.ts" },
+					{ input: "api2.yaml", outputTypes: "api2.ts", outputClient: "client2.ts", emptyObjectBehavior: "strict" },
 				],
 			};
 
@@ -181,13 +183,60 @@ describe("Config Loading - Playwright", () => {
 			expect(merged[0].emptyObjectBehavior).toBe("record");
 			expect(merged[1].emptyObjectBehavior).toBe("strict");
 		});
+
+		it("should accept deprecated output and normalize to outputTypes", () => {
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const config = {
+				specs: [{ input: "api.yaml", output: "api.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			const merged = mergeConfigWithDefaults(config);
+
+			expect(merged).toHaveLength(1);
+			expect(merged[0].outputTypes).toBe("api.ts");
+			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("'output' is deprecated"));
+
+			warnSpy.mockRestore();
+		});
+
+		it("should allow output and outputTypes when values are equal", () => {
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const config = {
+				specs: [{ input: "api.yaml", output: "api.ts", outputTypes: "api.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			const merged = mergeConfigWithDefaults(config);
+
+			expect(merged[0].outputTypes).toBe("api.ts");
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+
+			warnSpy.mockRestore();
+		});
+
+		it("should throw when output and outputTypes differ", () => {
+			const config = {
+				specs: [{ input: "api.yaml", output: "legacy.ts", outputTypes: "new.ts", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			expect(() => mergeConfigWithDefaults(config)).toThrow(/cannot have different values/i);
+		});
+
+		it("should throw when both output and outputTypes are missing", () => {
+			const config = {
+				specs: [{ input: "api.yaml", outputClient: "client.ts" }],
+			} as PlaywrightConfigFile;
+
+			expect(() => mergeConfigWithDefaults(config)).toThrow(/must define 'outputTypes'.*deprecated 'output'/i);
+		});
 	});
 
 	describe("mergeCliWithConfig", () => {
 		it("should override config options with CLI options", () => {
 			const specConfig: OpenApiPlaywrightGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				outputClient: "client.ts",
 				mode: "normal",
 				includeDescriptions: true,
@@ -209,7 +258,7 @@ describe("Config Loading - Playwright", () => {
 		it("should ignore undefined CLI options", () => {
 			const specConfig: OpenApiPlaywrightGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				outputClient: "client.ts",
 				mode: "normal",
 				showStats: true,
@@ -229,7 +278,7 @@ describe("Config Loading - Playwright", () => {
 		it("should handle empty CLI options", () => {
 			const specConfig: OpenApiPlaywrightGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				outputClient: "client.ts",
 				mode: "loose",
 			};
@@ -243,7 +292,7 @@ describe("Config Loading - Playwright", () => {
 		it("should handle Playwright-specific CLI options", () => {
 			const specConfig: OpenApiPlaywrightGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: false,
 			};
@@ -264,7 +313,7 @@ describe("Config Loading - Playwright", () => {
 		it("should override emptyObjectBehavior via CLI", () => {
 			const specConfig: OpenApiPlaywrightGeneratorOptions = {
 				input: "api.yaml",
-				output: "api.ts",
+				outputTypes: "api.ts",
 				outputClient: "client.ts",
 				emptyObjectBehavior: "loose",
 			};
@@ -289,7 +338,7 @@ describe("Config Loading - Playwright", () => {
 				specs: [
 					{
 						input: "api.yaml",
-						output: "api.ts",
+						outputTypes: "api.ts",
 						outputClient: "client.ts",
 						mode: "strict",
 						suffix: "model",

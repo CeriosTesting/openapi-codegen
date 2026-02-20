@@ -1,5 +1,11 @@
+// oxlint-disable typescript/no-unsafe-type-assertion
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
 
 const FIXTURES_DIR = resolve(__dirname, "fixtures");
@@ -9,7 +15,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseAsync for response validation by default", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 			});
 
@@ -25,7 +31,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseAsync for request validation with standard format", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				zodErrorFormat: "standard",
@@ -42,7 +48,7 @@ describe("zodErrorFormat option", () => {
 		it("should import parseWithPrettifyError from package", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettify",
 			});
@@ -56,7 +62,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseWithPrettifyError for response validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettify",
 			});
@@ -73,7 +79,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseWithPrettifyError for request validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				zodErrorFormat: "prettify",
@@ -89,7 +95,7 @@ describe("zodErrorFormat option", () => {
 		it("should NOT contain prettifyWithValues helper", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettify",
 			});
@@ -104,7 +110,7 @@ describe("zodErrorFormat option", () => {
 		it("should import parseWithPrettifyErrorWithValues from package", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettifyWithValues",
 			});
@@ -120,7 +126,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseWithPrettifyErrorWithValues for validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettifyWithValues",
 			});
@@ -134,7 +140,7 @@ describe("zodErrorFormat option", () => {
 		it("should use parseWithPrettifyErrorWithValues for request validation", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				zodErrorFormat: "prettifyWithValues",
@@ -150,7 +156,7 @@ describe("zodErrorFormat option", () => {
 		it("should NOT contain simple prettify helper", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettifyWithValues",
 			});
@@ -167,7 +173,7 @@ describe("zodErrorFormat option", () => {
 		it("should NOT import z from zod when using prettify format with named inline schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputTypes: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
 				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
 				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
 				zodErrorFormat: "prettify",
@@ -187,7 +193,7 @@ describe("zodErrorFormat option", () => {
 		it("should NOT import z from zod when using prettifyWithValues format with named inline schemas", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "simple-api.yaml"),
-				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputTypes: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
 				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
 				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
 				zodErrorFormat: "prettifyWithValues",
@@ -209,7 +215,7 @@ describe("zodErrorFormat option", () => {
 			// were not imported when zodErrorFormat was set to prettify/prettifyWithValues
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "form-api.yaml"),
-				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputTypes: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
 				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
 				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
 				zodErrorFormat: "prettify",
@@ -232,7 +238,7 @@ describe("zodErrorFormat option", () => {
 		it("should include runtime type imports alongside prettifyWithValues helper", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "form-api.yaml"),
-				output: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
+				outputTypes: resolve(FIXTURES_DIR, "../output/test-schemas.ts"),
 				outputClient: resolve(FIXTURES_DIR, "../output/test-client.ts"),
 				outputService: resolve(FIXTURES_DIR, "../output/test-service.ts"),
 				zodErrorFormat: "prettifyWithValues",
@@ -259,7 +265,7 @@ describe("zodErrorFormat option", () => {
 		it("should use correct format for query param validation with prettify", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "query-params-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				zodErrorFormat: "prettify",
@@ -275,7 +281,7 @@ describe("zodErrorFormat option", () => {
 		it("should use correct format for header param validation with prettifyWithValues", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "headers-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				validateServiceRequest: true,
 				zodErrorFormat: "prettifyWithValues",
@@ -293,7 +299,7 @@ describe("zodErrorFormat option", () => {
 		it("should use correct format for inline schemas with prettify", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "inline-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettify",
 			});
@@ -307,7 +313,7 @@ describe("zodErrorFormat option", () => {
 		it("should use correct format for inline schemas with prettifyWithValues", () => {
 			const generator = new OpenApiPlaywrightGenerator({
 				input: resolve(FIXTURES_DIR, "inline-schema-api.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				outputClient: "client.ts",
 				zodErrorFormat: "prettifyWithValues",
 			});

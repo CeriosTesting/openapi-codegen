@@ -1,8 +1,12 @@
-// Check for core dependency before any imports from it
-import { checkCoreDependency } from "./utils/dependency-check";
-
-checkCoreDependency();
-
+// Errors - re-exported from core for public API convenience
+export {
+	CircularReferenceError,
+	CliOptionsError,
+	ConfigValidationError,
+	FileOperationError,
+	MissingDependencyError,
+	SpecValidationError,
+} from "@cerios/openapi-core";
 // Re-export commonly used types from @cerios/openapi-to-zod for convenience
 export type {
 	CommonSchemaOptions,
@@ -14,16 +18,7 @@ export type {
 	RequestOptions,
 	ResponseOptions,
 } from "@cerios/openapi-to-zod";
-export {
-	CircularReferenceError,
-	ClientGenerationError,
-	CliOptionsError,
-	ConfigValidationError,
-	FileOperationError,
-	MissingDependencyError,
-	OpenApiPlaywrightGeneratorError,
-	SpecValidationError,
-} from "./errors";
+export { ClientGenerationError } from "./errors";
 export { OpenApiPlaywrightGenerator } from "./openapi-playwright-generator";
 // Runtime exports for generated code
 export type {
@@ -42,9 +37,5 @@ export {
 	parseWithPrettifyError,
 	parseWithPrettifyErrorWithValues,
 } from "./runtime/zod-helpers";
-export type {
-	OpenApiPlaywrightGeneratorOptions,
-	PlaywrightConfigFile,
-	PlaywrightOperationFilters,
-} from "./types";
+export type { OpenApiPlaywrightGeneratorOptions, PlaywrightConfigFile, PlaywrightOperationFilters } from "./types";
 export { defineConfig } from "./types";

@@ -1,6 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 
 describe("defaultNullable option", () => {
@@ -66,7 +68,7 @@ components:
 		it("should not add .nullable() to properties without explicit nullable annotation", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -81,7 +83,7 @@ components:
 		it("should still add .nullable() when explicitly set to true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -93,7 +95,7 @@ components:
 		it("should not add .nullable() when explicitly set to false", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: false,
 			});
 			const output = generator.generateString();
@@ -107,7 +109,7 @@ components:
 		it("should add .nullable() to properties without explicit nullable annotation", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -120,7 +122,7 @@ components:
 		it("should still respect explicit nullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -132,7 +134,7 @@ components:
 		it("should respect explicit nullable: false and NOT add .nullable()", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -144,7 +146,7 @@ components:
 		it("should add .nullable() to implicit fields in NullableTest schema", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -162,7 +164,7 @@ components:
 		it("should default to false (strict mode - only explicit nullable)", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				// defaultNullable not specified - should default to false
 			});
 			const output = generator.generateString();
@@ -177,7 +179,7 @@ components:
 		it("should NOT add .nullable() to top-level object schema definitions with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -192,7 +194,7 @@ components:
 		it("should add .nullable() to properties but not to the containing object schema", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -212,7 +214,7 @@ components:
 		it("should produce correct output format with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: specPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -286,7 +288,7 @@ components:
 		it("should add .nullable() to $ref schemas when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -300,7 +302,7 @@ components:
 		it("should add .nullable() to explicitly nullable refs", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -312,7 +314,7 @@ components:
 		it("should still add .nullable() to primitive properties with defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: refSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -365,7 +367,7 @@ components:
 		it("should not add .nullable() to inline enum properties when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -378,7 +380,7 @@ components:
 		it("should add .nullable() to explicitly nullable enum properties", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -390,7 +392,7 @@ components:
 		it("should still add .nullable() to regular string properties", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -402,7 +404,7 @@ components:
 		it("should not add .nullable() to top-level enum schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: enumSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -447,7 +449,7 @@ components:
 		it("should not add .nullable() to const properties when defaultNullable: true", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -459,7 +461,7 @@ components:
 		it("should add .nullable() to explicitly nullable const properties", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -471,7 +473,7 @@ components:
 		it("should still add .nullable() to regular string properties", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();
@@ -483,7 +485,7 @@ components:
 		it("should not add .nullable() to top-level const schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: constSpecPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				defaultNullable: true,
 			});
 			const output = generator.generateString();

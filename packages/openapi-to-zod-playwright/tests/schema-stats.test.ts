@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Schema Statistics", () => {
@@ -8,7 +10,7 @@ describe("Schema Statistics", () => {
 	it("should NOT include statistics in schema file when showStats is false", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			showStats: false,
 		});
@@ -24,7 +26,7 @@ describe("Schema Statistics", () => {
 	it("should include statistics in schema file when showStats is true", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 			showStats: true,
 		});

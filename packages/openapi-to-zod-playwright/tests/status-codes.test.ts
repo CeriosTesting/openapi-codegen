@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiPlaywrightGenerator } from "../src/openapi-playwright-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Status Codes", () => {
@@ -9,7 +11,7 @@ describe("Status Codes", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		return generator.generateClientString();
@@ -19,7 +21,7 @@ describe("Status Codes", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		return generator.generateServiceString();
@@ -43,7 +45,7 @@ describe("Status Codes", () => {
 		const generator = new OpenApiPlaywrightGenerator({
 			useOperationId: false,
 			input: fixtureFile,
-			output: "output.ts",
+			outputTypes: "output.ts",
 			outputClient: "client.ts",
 		});
 		const schemasOutput = generator.generateSchemasString();

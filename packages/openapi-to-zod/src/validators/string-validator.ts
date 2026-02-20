@@ -1,6 +1,7 @@
+import { escapePattern, type LRUCache } from "@cerios/openapi-core";
+
 import type { OpenAPISchema } from "../types";
-import type { LRUCache } from "../utils/lru-cache";
-import { addDescription, escapePattern } from "../utils/string-utils";
+import { addDescription } from "../utils/string-utils";
 
 /**
  * Context for string validation generation (parallel-safe)

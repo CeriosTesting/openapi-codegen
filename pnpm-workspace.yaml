@@ -1,0 +1,25 @@
+packages:
+  - "packages/*"
+
+catalog:
+  "@arethetypeswrong/cli": "^0.18.2"
+  "@changesets/cli": "^2.29.8"
+  "@types/node": "^25.2.3"
+  "@types/prompts": "^2.4.9"
+  commander: "^14.0.3"
+  cosmiconfig: "^9.0.0"
+  esbuild: "^0.27.3"
+  husky: "^9.1.7"
+  lint-staged: "^16.2.7"
+  minimatch: "^10.2.0"
+  prompts: "^2.4.2"
+  tsup: "^8.5.1"
+  tsx: "^4.21.0"
+  typescript: "^5.9.3"
+  vitest: "^4.0.18"
+  yaml: "^2.8.2"
+  zod: "^4.3.6"
+
+settings:
+  autoInstallPeers: true
+  strictPeerDependencies: false

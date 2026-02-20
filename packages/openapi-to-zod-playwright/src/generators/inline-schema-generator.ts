@@ -1,11 +1,6 @@
+import { LRUCache, type OpenAPISchema, toCamelCase, toPascalCase } from "@cerios/openapi-core";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
-import {
-	buildDateTimeValidation,
-	LRUCache,
-	PropertyGenerator,
-	type PropertyGeneratorContext,
-	toCamelCase,
-} from "@cerios/openapi-to-zod/internal";
+import { buildDateTimeValidation, PropertyGenerator, type PropertyGeneratorContext } from "@cerios/openapi-to-zod";
 
 /**
  * Information about an inline response schema
@@ -14,7 +9,7 @@ export interface InlineSchemaInfo {
 	/** Generated schema name (e.g., "GetUsersResponse") */
 	schemaName: string;
 	/** The raw OpenAPI schema definition */
-	schema: any;
+	schema: OpenAPISchema;
 	/** Method name this schema belongs to */
 	methodName: string;
 	/** HTTP status code */
@@ -32,7 +27,7 @@ export interface InlineRequestSchemaInfo {
 	/** Generated schema name (e.g., "PostUsersRequest") */
 	schemaName: string;
 	/** The raw OpenAPI schema definition */
-	schema: any;
+	schema: OpenAPISchema;
 	/** Method name this schema belongs to */
 	methodName: string;
 	/** Content type (e.g., "application/json") */
@@ -48,7 +43,7 @@ export interface InlineRequestSchemaInfo {
  */
 export interface InlineSchemaGeneratorOptions {
 	spec: OpenAPISpec;
-	stripSchemaPrefix?: string;
+	stripSchemaPrefix?: string | string[];
 	prefix?: string;
 	suffix?: string;
 	defaultNullable?: boolean;
@@ -56,6 +51,15 @@ export interface InlineSchemaGeneratorOptions {
 	includeDescriptions?: boolean;
 	useDescribe?: boolean;
 	emptyObjectBehavior?: "strict" | "loose" | "record";
+	/** When true, skip generating z.infer type exports (used in separate schemas mode) */
+	skipTypeInference?: boolean;
+	/**
+	 * Whether types are in a separate file from schemas.
+	 * When true: Uses z.ZodType<TypeAlias> syntax for schema definitions
+	 * When false: Uses z.infer in the same file
+	 * @default false
+	 */
+	separateTypesFile?: boolean;
 }
 
 /**
@@ -69,7 +73,7 @@ function createPropertyGeneratorContext(
 		spec: options.spec,
 		schemaDependencies: new Map(), // Empty - inline schemas don't track dependencies
 		schemaType, // request schemas exclude readOnly, response schemas exclude writeOnly
-		mode: (options.mode as "strict" | "normal" | "loose") ?? "normal",
+		mode: options.mode ?? "normal",
 		includeDescriptions: options.includeDescriptions ?? false,
 		useDescribe: options.useDescribe ?? false,
 		namingOptions: {
@@ -81,6 +85,7 @@ function createPropertyGeneratorContext(
 		emptyObjectBehavior: options.emptyObjectBehavior ?? "loose",
 		dateTimeValidation: buildDateTimeValidation(),
 		patternCache: new LRUCache<string, string>(100),
+		separateTypesFile: options.separateTypesFile ?? false,
 	};
 }
 
@@ -90,7 +95,7 @@ function createPropertyGeneratorContext(
  */
 function generateInlineSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions,
 	schemaType: "request" | "response"
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
@@ -111,12 +116,13 @@ function generateInlineSchema(
 
 		// Generate schema variable name with prefix/suffix
 		const schemaVarName = `${toCamelCase(schemaName, { prefix: options.prefix, suffix: options.suffix })}Schema`;
-		// Type name doesn't get prefix/suffix
-		const typeName = schemaName;
+		// Type name uses PascalCase for proper sanitization (handles path params like {companyId})
+		const typeName = toPascalCase(schemaName);
 
 		return {
 			schemaCode: `export const ${schemaVarName} = ${zodCode};`,
-			typeCode: `export type ${typeName} = z.infer<typeof ${schemaVarName}>;`,
+			// Skip type inference when in separate schemas mode (types come from separate file)
+			typeCode: options.skipTypeInference ? "" : `export type ${typeName} = z.infer<typeof ${schemaVarName}>;`,
 			schemaVarName,
 		};
 	} catch (error) {
@@ -133,7 +139,7 @@ function generateInlineSchema(
  */
 export function generateInlineResponseSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
 	return generateInlineSchema(schemaName, inlineSchema, options, "response");
@@ -146,7 +152,7 @@ export function generateInlineResponseSchema(
  */
 export function generateInlineRequestSchema(
 	schemaName: string,
-	inlineSchema: any,
+	inlineSchema: OpenAPISchema,
 	options: InlineSchemaGeneratorOptions
 ): { schemaCode: string; typeCode: string; schemaVarName: string } | null {
 	return generateInlineSchema(schemaName, inlineSchema, options, "request");
@@ -175,7 +181,10 @@ export function generateInlineResponseSchemas(
 		if (result) {
 			// Output schema immediately followed by its type (matching component generation pattern)
 			outputBlocks.push(result.schemaCode);
-			outputBlocks.push(result.typeCode);
+			// Only add type code if not in separate schemas mode
+			if (result.typeCode) {
+				outputBlocks.push(result.typeCode);
+			}
 			outputBlocks.push(""); // Empty line between schema/type pairs
 		}
 	}
@@ -222,7 +231,10 @@ export function generateInlineRequestSchemas(
 		if (result) {
 			// Output schema immediately followed by its type (matching component generation pattern)
 			outputBlocks.push(result.schemaCode);
-			outputBlocks.push(result.typeCode);
+			// Only add type code if not in separate schemas mode
+			if (result.typeCode) {
+				outputBlocks.push(result.typeCode);
+			}
 			outputBlocks.push(""); // Empty line between schema/type pairs
 		}
 	}
@@ -244,25 +256,6 @@ export function generateInlineRequestSchemas(
 		"",
 		...outputBlocks,
 	].join("\n");
-}
-
-/**
- * Generate a response schema name from method name and status code
- * @param methodName - The method name (e.g., "getUsers")
- * @param statusCode - The HTTP status code (e.g., "200")
- * @param hasMultipleStatuses - Whether there are multiple success statuses
- * @returns Schema name like "GetUsersResponse" or "GetUsers200Response"
- */
-export function generateInlineResponseSchemaName(
-	methodName: string,
-	statusCode: string,
-	hasMultipleStatuses: boolean
-): string {
-	// Convert methodName to PascalCase for the type name
-	const pascalMethodName = methodName.charAt(0).toUpperCase() + methodName.slice(1);
-	// Add status code suffix if there are multiple status codes
-	const statusSuffix = hasMultipleStatuses ? statusCode : "";
-	return `${pascalMethodName}${statusSuffix}Response`;
 }
 
 /**

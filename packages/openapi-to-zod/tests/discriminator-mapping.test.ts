@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("Discriminator Mapping", () => {
 	function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 		const generator = new OpenApiGenerator({
 			input: TestUtils.getFixturePath("discriminator-mapping.yaml"),
-			output: "output.ts",
+			outputTypes: "output.ts",
 			...options,
 		});
 		return generator.generateString();

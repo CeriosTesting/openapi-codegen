@@ -1,0 +1,100 @@
+openapi: 3.0.0
+info:
+  title: Mutual Circular Reference Test API
+  description: Tests the case where two schemas reference each other through allOf, which caused a bug where schemas were missing from output
+  version: 1.0.0
+paths:
+  /dossiers:
+    get:
+      summary: Get all dossiers
+      operationId: getDossiers
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetDossierResponse'
+components:
+  schemas:
+    GetDossierResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dossier'
+
+    # DossierBase is the base schema without relations
+    DossierBase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+            - open
+            - closed
+
+    # Dossier extends DossierBase with relations via allOf
+    # It references AbsenceCourse which references back to Dossier
+    # This is a mutual circular dependency: Dossier -> AbsenceCourse -> Dossier
+    Dossier:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DossierBase'
+        - type: object
+          properties:
+            # AbsenceCourses array references AbsenceCourse which references Dossier
+            absenceCourses:
+              description: The absence courses associated with the dossier
+              type: array
+              items:
+                $ref: '#/components/schemas/AbsenceCourse'
+            createdBy:
+              $ref: '#/components/schemas/User'
+
+    # AbsenceCourseBase is the base schema without relations
+    AbsenceCourseBase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    # AbsenceCourse extends AbsenceCourseBase and references back to Dossier
+    # This creates the circular dependency
+    AbsenceCourse:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/AbsenceCourseBase'
+        - type: object
+          properties:
+            # This references back to Dossier, creating the circular reference
+            dossier:
+              $ref: '#/components/schemas/Dossier'
+              nullable: true
+
+    # User is also part of circular reference: Dossier -> User -> Dossier
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        assignedDossiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dossier'

@@ -8,12 +8,12 @@
 		{
 			"name": "simple-api",
 			"input": "tests/fixtures/simple.yaml",
-			"output": "tests/output/simple-from-config.ts"
+			"outputTypes": "tests/output/simple-from-config.ts"
 		},
 		{
 			"name": "complex-api",
 			"input": "tests/fixtures/complex.yaml",
-			"output": "tests/output/complex-from-config.ts",
+			"outputTypes": "tests/output/complex-from-config.ts",
 			"mode": "normal",
 			"prefix": "api"
 		}

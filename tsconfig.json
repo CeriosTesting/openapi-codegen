@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"target": "es2019",
+		"module": "commonjs",
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"@cerios/openapi-core": ["packages/openapi-core/src"],
+			"@cerios/openapi-to-typescript": ["packages/openapi-to-typescript/src"],
+			"@cerios/openapi-to-zod": ["packages/openapi-to-zod/src"],
+			"@cerios/openapi-to-zod-playwright": ["packages/openapi-to-zod-playwright/src"],
+			"@cerios/openapi-to-k6": ["packages/openapi-to-k6/src"]
+		}
+	},
+	"references": [
+		{ "path": "packages/openapi-core" },
+		{ "path": "packages/openapi-to-typescript" },
+		{ "path": "packages/openapi-to-zod" },
+		{ "path": "packages/openapi-to-zod-playwright" },
+		{ "path": "packages/openapi-to-k6" }
+	],
+	"include": []
+}

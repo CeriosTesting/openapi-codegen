@@ -1,0 +1,86 @@
+{
+	"name": "@cerios/openapi-to-k6",
+	"version": "0.0.0",
+	"description": "Generate type-safe K6 HTTP clients from OpenAPI specifications with TypeScript types",
+	"keywords": [
+		"api-client",
+		"cerios",
+		"generator",
+		"k6",
+		"load-testing",
+		"openapi",
+		"performance-testing",
+		"typescript"
+	],
+	"homepage": "https://github.com/CeriosTesting/openapi-to-zod#readme",
+	"bugs": {
+		"url": "https://github.com/CeriosTesting/openapi-to-zod/issues"
+	},
+	"license": "MIT",
+	"author": "Ronald Veth - Cerios",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/CeriosTesting/openapi-to-zod.git",
+		"directory": "packages/openapi-to-k6"
+	},
+	"bin": {
+		"openapi-to-k6": "./dist/cli.js"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "commonjs",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"scripts": {
+		"build": "tsup",
+		"compile": "tsc --noEmit",
+		"dev": "tsup --watch",
+		"pack": "pnpm pack --pack-destination=../..",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@cerios/openapi-core": "workspace:*",
+		"@cerios/openapi-to-typescript": "workspace:*",
+		"commander": "catalog:",
+		"cosmiconfig": "catalog:",
+		"minimatch": "catalog:",
+		"prompts": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "catalog:",
+		"@types/k6": "^1.6.0",
+		"@types/node": "catalog:",
+		"@types/prompts": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"@types/k6": ">=0.52.0"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

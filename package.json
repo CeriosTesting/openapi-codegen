@@ -1,29 +1,37 @@
 {
 	"private": true,
-	"workspaces": ["packages/*"],
+	"author": "Ronald Veth - Cerios",
 	"scripts": {
-		"build": "npm run build --workspaces --if-present",
-		"test": "npm run test --workspaces --if-present",
-		"check": "biome check --write",
-		"check-versions": "tsx scripts/check-dependency-versions.ts",
-		"lint": "biome lint",
-		"compile": "npm run compile --workspaces --if-present",
-		"dev": "npm run dev --workspaces --if-present",
-		"update-deps": "npx npm-check-updates -u --workspaces && npm install && npm run check-versions",
+		"build": "pnpm -r build",
 		"changeset": "changeset",
-		"pack": "npm run pack --workspaces --if-present"
-	},
-	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.2",
-		"@biomejs/biome": "2.3.9",
-		"@changesets/cli": "^2.29.8",
-		"@types/node": "^25.0.2",
-		"husky": "^9.1.7",
-		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.15"
+		"compile": "pnpm -r compile",
+		"format": "oxfmt",
+		"format:check": "oxfmt --check",
+		"lint": "oxlint --type-aware",
+		"lint:fix": "oxlint --type-aware --fix",
+		"pack": "pnpm --filter \"*\" exec pnpm pack --pack-destination ../..",
+		"test": "pnpm -r test",
+		"update-deps": "pnpm update -r --latest",
+		"version-packages": "changeset version"
 	},
 	"dependencies": {
-		"esbuild": "0.27.1"
-	}
+		"esbuild": "catalog:"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "catalog:",
+		"@changesets/cli": "catalog:",
+		"@types/node": "catalog:",
+		"husky": "catalog:",
+		"lint-staged": "catalog:",
+		"oxfmt": "^0.33.0",
+		"oxlint": "^1.48.0",
+		"oxlint-tsgolint": "^0.14.0",
+		"tsup": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
+	},
+	"packageManager": "pnpm@9.15.0"
 }

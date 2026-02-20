@@ -1,5 +1,6 @@
 import { generateJSDoc } from "../generators/jsdoc-generator";
 import type { OpenAPISchema } from "../types";
+
 import { generateDependencies, generateDependentRequired, generateIfThenElse } from "./conditional-validator";
 
 /**
@@ -82,8 +83,9 @@ export function generateObjectSchema(
 			case "loose":
 				objectMethod = "z.looseObject";
 				break;
-			default:
+			case "normal":
 				objectMethod = "z.object";
+				break;
 		}
 	}
 
@@ -95,7 +97,7 @@ export function generateObjectSchema(
 			// Additional properties with specific schema
 			const additionalSchema = context.generatePropertySchema(schema.additionalProperties, currentSchema);
 			objectDef += `.catchall(${additionalSchema})`;
-		} else if (schema.additionalProperties === true) {
+		} else if (schema.additionalProperties) {
 			// Any additional properties allowed
 			objectDef += ".catchall(z.unknown())";
 		}

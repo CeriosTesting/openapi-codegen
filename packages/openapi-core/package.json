@@ -1,0 +1,73 @@
+{
+	"name": "@cerios/openapi-core",
+	"version": "0.0.0",
+	"description": "Core utilities for parsing and processing OpenAPI specifications. Shared foundation for OpenAPI code generators.",
+	"keywords": [
+		"api",
+		"cerios",
+		"core",
+		"openapi",
+		"parser",
+		"schema",
+		"typescript",
+		"yaml"
+	],
+	"homepage": "https://github.com/CeriosTesting/openapi-to-zod#readme",
+	"bugs": {
+		"url": "https://github.com/CeriosTesting/openapi-to-zod/issues"
+	},
+	"license": "MIT",
+	"author": "Ronald Veth - Cerios",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/CeriosTesting/openapi-to-zod.git",
+		"directory": "packages/openapi-core"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "commonjs",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"scripts": {
+		"build": "tsup",
+		"check-exports": "attw --pack .",
+		"compile": "tsc --noEmit",
+		"dev": "tsup --watch",
+		"pack": "pnpm pack --pack-destination=../..",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"cosmiconfig": "catalog:",
+		"esbuild": "catalog:",
+		"minimatch": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "catalog:",
+		"@types/node": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

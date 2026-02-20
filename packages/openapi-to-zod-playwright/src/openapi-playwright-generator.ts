@@ -1,11 +1,20 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, normalize, relative } from "node:path";
+
+import type { Generator } from "@cerios/openapi-core";
+import {
+	ConfigurationError,
+	FileOperationError,
+	LRUCache,
+	loadOpenAPISpecCached,
+	toPascalCase,
+	validateIgnorePatterns,
+} from "@cerios/openapi-core";
+import { TypeScriptGenerator } from "@cerios/openapi-to-typescript";
 import type { OpenAPISpec } from "@cerios/openapi-to-zod";
 import { OpenApiGenerator } from "@cerios/openapi-to-zod";
-import type { Generator } from "@cerios/openapi-to-zod/internal";
-import { LRUCache, toPascalCase } from "@cerios/openapi-to-zod/internal";
-import { parse } from "yaml";
-import { ClientGenerationError, ConfigurationError, FileOperationError, SpecValidationError } from "./errors";
+
+import { ClientGenerationError } from "./errors";
 import { generateClientClass } from "./generators/client-generator";
 import { generateInlineRequestSchemas, generateInlineResponseSchemas } from "./generators/inline-schema-generator";
 import {
@@ -14,7 +23,42 @@ import {
 	generateServiceClass,
 } from "./generators/service-generator";
 import type { OpenApiPlaywrightGeneratorOptions } from "./types";
-import { validateIgnorePatterns } from "./utils/header-filters";
+
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
+type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** Parameter structure for type-safe access */
+interface OpenAPIParameter {
+	in?: string;
+	$ref?: string;
+}
+
+/** Response structure for type-safe access */
+interface OpenAPIResponse {
+	content?: Record<string, { schema?: { $ref?: string } }>;
+}
+
+/** Operation structure for type-safe access */
+interface OpenAPIOperation {
+	parameters?: OpenAPIParameter[];
+	responses?: Record<string, OpenAPIResponse>;
+}
+
+/** Type guard for OpenAPI operation */
+function isOpenAPIOperation(value: unknown): value is OpenAPIOperation {
+	return typeof value === "object" && value !== null;
+}
+
+/** Type guard for OpenAPI path item */
+function isOpenAPIPathItem(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+/** Helper to safely get operation from path item */
+function getOperation(pathItem: Record<string, unknown>, method: HttpMethod): OpenAPIOperation | undefined {
+	const operation = pathItem[method];
+	return isOpenAPIOperation(operation) ? operation : undefined;
+}
 
 /**
  * Main generator class for Playwright API clients
@@ -23,7 +67,10 @@ import { validateIgnorePatterns } from "./utils/header-filters";
 export class OpenApiPlaywrightGenerator implements Generator {
 	private options: OpenApiPlaywrightGeneratorOptions & { schemaType: "all" };
 	private spec: OpenAPISpec | null = null;
+	private schemasStringCache: string | null = null;
 	private static specCache = new LRUCache<string, OpenAPISpec>(50); // Cache for parsed specs
+	/** Separate schemas mode - when outputZodSchemas is specified */
+	private separateSchemasMode: boolean;
 
 	constructor(options: OpenApiPlaywrightGeneratorOptions) {
 		// Input validation
@@ -34,6 +81,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		if (!existsSync(options.input)) {
 			throw new FileOperationError(`Input file not found: ${options.input}`, options.input);
 		}
+
+		// Determine if we're in separate schemas mode
+		this.separateSchemasMode = Boolean(options.outputZodSchemas);
 
 		this.options = {
 			mode: options.mode || "normal",
@@ -61,13 +111,15 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 	/**
 	 * Generate output files with mandatory file splitting
-	 * - Main file: Always contains schemas and types
+	 * - Types file (outputTypes): TypeScript type definitions
+	 * - Schemas file (outputZodSchemas): Zod schemas with z.ZodType<TypeAlias> (when separate mode)
+	 * - Combined file (outputTypes without outputZodSchemas): Zod schemas + inferred types
 	 * - Client file: Always generated (outputClient is required)
 	 * - Service file: Optional, generated when outputService is specified
 	 */
 	generate(): void {
 		try {
-			const { output, outputClient, outputService } = this.options;
+			const { outputTypes: output, outputZodSchemas, outputClient, outputService } = this.options;
 
 			// Ensure spec is parsed
 			if (!this.spec) {
@@ -76,14 +128,32 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 			// Normalize paths for cross-platform compatibility
 			const normalizedOutput = normalize(output);
+			const normalizedZodSchemas = outputZodSchemas ? normalize(outputZodSchemas) : undefined;
 			const normalizedClient = outputClient ? normalize(outputClient) : undefined;
 			const normalizedService = outputService ? normalize(outputService) : undefined;
 
-			// Always generate schemas
-			const schemasString = this.generateSchemasString();
-			this.ensureDirectoryExists(normalizedOutput);
-			writeFileSync(normalizedOutput, schemasString, "utf-8");
-			console.log(`  ✓ Generated ${normalizedOutput}`);
+			// Determine which file contains the schemas for service imports
+			const schemasFile = normalizedZodSchemas || normalizedOutput;
+
+			if (this.separateSchemasMode && normalizedZodSchemas) {
+				// Generate TypeScript types to outputTypes
+				const typesString = this.generateTypesString();
+				this.ensureDirectoryExists(normalizedOutput);
+				writeFileSync(normalizedOutput, typesString, "utf-8");
+				console.log(`  ✓ Generated ${normalizedOutput}`);
+
+				// Generate Zod schemas to outputZodSchemas
+				const schemasString = this.generateSchemasString();
+				this.ensureDirectoryExists(normalizedZodSchemas);
+				writeFileSync(normalizedZodSchemas, schemasString, "utf-8");
+				console.log(`  ✓ Generated ${normalizedZodSchemas}`);
+			} else {
+				// Original behavior: combined schemas and types in one file
+				const schemasString = this.generateSchemasString();
+				this.ensureDirectoryExists(normalizedOutput);
+				writeFileSync(normalizedOutput, schemasString, "utf-8");
+				console.log(`  ✓ Generated ${normalizedOutput}`);
+			}
 
 			// Conditionally generate client
 			if (normalizedClient) {
@@ -102,7 +172,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 						outputClient: undefined,
 					});
 				}
-				const serviceOutput = this.generateServiceFile(normalizedService, normalizedOutput, normalizedClient);
+				// Service imports schemas from the schemas file
+				// In separate mode, types come from the types file (normalizedOutput)
+				const typesFile = this.separateSchemasMode ? normalizedOutput : schemasFile;
+				const serviceOutput = this.generateServiceFile(normalizedService, schemasFile, normalizedClient, typesFile);
 				this.ensureDirectoryExists(normalizedService);
 				writeFileSync(normalizedService, serviceOutput, "utf-8");
 				console.log(`  ✓ Generated ${normalizedService}`);
@@ -120,6 +193,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 * @returns The generated Zod schemas TypeScript code
 	 */
 	generateSchemasString(): string {
+		if (this.schemasStringCache !== null) {
+			return this.schemasStringCache;
+		}
+
 		// Ensure spec is parsed
 		if (!this.spec) {
 			this.spec = this.parseSpec();
@@ -127,10 +204,11 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 		// Validate ignoreHeaders patterns and warn about issues
 		if (this.options.ignoreHeaders) {
-			validateIgnorePatterns(this.options.ignoreHeaders, this.spec);
+			validateIgnorePatterns(this.options.ignoreHeaders, this.spec, "openapi-to-zod-playwright");
 		}
 
-		const schemaGenerator = new OpenApiGenerator(this.options);
+		const schemaGeneratorOptions = { ...this.options };
+		const schemaGenerator = new OpenApiGenerator(schemaGeneratorOptions);
 		let schemasString = schemaGenerator.generateString();
 
 		// Common options for inline schema generation
@@ -144,6 +222,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			defaultNullable: this.options.defaultNullable,
 			emptyObjectBehavior: this.options.emptyObjectBehavior,
+			// Skip type inference when in separate schemas mode (types come from separate file)
+			skipTypeInference: this.separateSchemasMode,
+			// Use z.ZodType<TypeAlias> syntax when types are in a separate file
+			separateTypesFile: this.separateSchemasMode,
 		};
 
 		// Collect inline schemas
@@ -185,7 +267,32 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			}
 		}
 
-		return schemasString;
+		this.schemasStringCache = schemasString;
+		return this.schemasStringCache;
+	}
+
+	/**
+	 * Generate TypeScript types as a string (for outputZodSchemas mode)
+	 * Uses @cerios/openapi-to-typescript internally
+	 * @returns The generated TypeScript types code
+	 */
+	generateTypesString(): string {
+		const tsGenerator = new TypeScriptGenerator({
+			input: this.options.input,
+			outputTypes: this.options.outputTypes,
+			includeDescriptions: this.options.includeDescriptions,
+			defaultNullable: this.options.defaultNullable,
+			prefix: this.options.prefix,
+			suffix: this.options.suffix,
+			stripSchemaPrefix: this.options.stripSchemaPrefix,
+			stripPathPrefix: this.options.stripPathPrefix,
+			operationFilters: this.options.operationFilters,
+			showStats: this.options.showStats,
+			enumFormat: this.options.enumFormat ?? "const-object",
+			useOperationId: this.options.useOperationId ?? false,
+		});
+
+		return tsGenerator.generateString();
 	}
 
 	/**
@@ -198,7 +305,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			this.spec = this.parseSpec();
 		}
 
-		const clientClassName = this.deriveClassName(this.options.outputClient || this.options.output, "Client");
+		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
 		return generateClientClass(
 			this.spec,
 			clientClassName,
@@ -220,8 +327,8 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}
 
 		const schemaImports = new Set<string>();
-		const serviceClassName = this.deriveClassName(this.options.outputService || this.options.output, "Service");
-		const clientClassName = this.deriveClassName(this.options.outputClient || this.options.output, "Client");
+		const serviceClassName = this.deriveClassName(this.options.outputService || this.options.outputClient, "Service");
+		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
 		return generateServiceClass(
 			this.spec,
 			schemaImports,
@@ -246,81 +353,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 * Enhanced with error context for better debugging
 	 */
 	private parseSpec(): OpenAPISpec {
-		// Check cache first for performance
-		const cached = OpenApiPlaywrightGenerator.specCache.get(this.options.input);
-		if (cached) {
-			return cached;
-		}
-
-		const errorContext: { inputPath: string; fileSize?: string } = { inputPath: this.options.input };
-
-		try {
-			const content = readFileSync(this.options.input, "utf-8");
-			const fileSize = content.length;
-			Object.assign(errorContext, { fileSize: `${(fileSize / 1024).toFixed(2)} KB` });
-
-			// Try parsing as YAML first (works for both YAML and JSON)
-			let spec: OpenAPISpec;
-			let yamlError: Error | null = null;
-			let jsonError: Error | null = null;
-
-			try {
-				spec = parse(content) as OpenAPISpec;
-			} catch (error) {
-				yamlError = error instanceof Error ? error : new Error(String(error));
-
-				// If YAML parsing fails, try JSON
-				try {
-					spec = JSON.parse(content) as OpenAPISpec;
-				} catch (error) {
-					jsonError = error instanceof Error ? error : new Error(String(error));
-
-					// Both YAML and JSON parsing failed - provide detailed error
-					const errorLines = [
-						`Failed to parse OpenAPI specification from: ${this.options.input}`,
-						`File size: ${errorContext.fileSize}`,
-						"",
-						"YAML parsing error:",
-						`  ${yamlError.message}`,
-						"",
-						"JSON parsing error:",
-						`  ${jsonError.message}`,
-						"",
-						"Please ensure:",
-						"  - The file exists and is readable",
-						"  - The file contains valid YAML or JSON syntax",
-						"  - The file is a valid OpenAPI 3.x specification",
-					];
-
-					throw new SpecValidationError(errorLines.join("\n"), this.options.input, yamlError);
-				}
-			}
-
-			// Validate basic spec structure
-			if (!("openapi" in spec) && !("swagger" in spec)) {
-				throw new SpecValidationError(
-					`Invalid OpenAPI specification: Missing 'openapi' or 'swagger' version field\n` +
-						`File: ${this.options.input}\n` +
-						`Size: ${errorContext.fileSize}`,
-					this.options.input
-				);
-			}
-
-			// Cache the parsed spec for performance
-			OpenApiPlaywrightGenerator.specCache.set(this.options.input, spec);
-			return spec;
-		} catch (error) {
-			if (error instanceof SpecValidationError) {
-				throw error;
-			}
-			const errorMessage = [
-				`Failed to read OpenAPI specification file: ${this.options.input}`,
-				`Context: ${JSON.stringify(errorContext)}`,
-				`Error: ${error instanceof Error ? error.message : String(error)}`,
-			].join("\n");
-
-			throw new FileOperationError(errorMessage, this.options.input, error instanceof Error ? error : undefined);
-		}
+		// Use core utility with caching
+		const spec = loadOpenAPISpecCached(this.options.input, OpenApiPlaywrightGenerator.specCache);
+		return spec;
 	}
 
 	/**
@@ -346,41 +381,76 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 	/**
 	 * Generate service file with proper imports and statistics
+	 * @param servicePath - Path to the service file being generated
+	 * @param schemasPath - Path to the schemas file (for schema value imports)
+	 * @param clientPath - Path to the client file
+	 * @param typesPath - Path to the types file (for type imports, defaults to schemasPath in combined mode)
 	 */
-	private generateServiceFile(servicePath: string, mainPath: string, clientPath: string): string {
+	private generateServiceFile(
+		servicePath: string,
+		schemasPath: string,
+		clientPath: string,
+		typesPath?: string
+	): string {
 		const serviceString = this.generateServiceString();
-		const relativeImportMain = this.generateRelativeImport(servicePath, mainPath);
+		const relativeImportSchemas = this.generateRelativeImport(servicePath, schemasPath);
 		const relativeImportClient = this.generateRelativeImport(servicePath, clientPath);
+
+		// In separate schemas mode, types come from a different file
+		// If typesPath is not provided, default to schemasPath (combined mode)
+		const effectiveTypesPath = typesPath ?? schemasPath;
+		const isSeparateMode = effectiveTypesPath !== schemasPath;
+		const relativeImportTypes = isSeparateMode
+			? this.generateRelativeImport(servicePath, effectiveTypesPath)
+			: relativeImportSchemas;
 
 		// Derive the client class name from the client file path
 		const clientClassName = this.deriveClassName(clientPath, "Client");
 
-		// Extract schema/type names and filter to only those used in service
+		// Extract schema names from schemas file
 		const allSchemas = this.extractSchemaNames();
 
 		// Schemas ending with "Schema" are used as values for .parse()
 		const schemaValues = allSchemas.filter(name => name.endsWith("Schema") && serviceString.includes(name));
 
-		// For types, import those used in:
-		// 1. Return type annotations: Promise<TypeName>
-		// 2. Parameter types (e.g., request bodies): data: TypeName
-		// 3. Query parameter types: params?: TypeName
-		// 4. Header parameter types: headers?: TypeName
-		const schemaTypes = allSchemas.filter(name => {
-			if (name.endsWith("Schema")) return false; // Skip schemas
-			if (!serviceString.includes(name)) return false; // Must appear in the code
-			// Match return types, parameter types, query param types, or header param types
-			const returnPattern = new RegExp(`Promise<${name}(?:\\[\\])?>`);
-			const paramPattern = new RegExp(`(?:data|form|multipart)\\??:\\s*${name}\\b`);
-			const queryParamPattern = new RegExp(`params\\??:\\s*${name}\\b`);
-			const headerParamPattern = new RegExp(`headers\\??:\\s*${name}\\b`);
-			return (
-				returnPattern.test(serviceString) ||
-				paramPattern.test(serviceString) ||
-				queryParamPattern.test(serviceString) ||
-				headerParamPattern.test(serviceString)
-			);
-		});
+		// For types in separate mode, extract from types file
+		// For types in combined mode, extract from schemas file (same as before)
+		let schemaTypes: string[];
+		if (isSeparateMode) {
+			// Extract types from the types file
+			const typeNames = this.extractTypeNamesFromTypesFile();
+			schemaTypes = typeNames.filter(name => {
+				if (!serviceString.includes(name)) return false;
+				// Match return types, parameter types, query param types, or header param types
+				const returnPattern = new RegExp(`Promise<${name}(?:\\[\\])?>`);
+				const paramPattern = new RegExp(`(?:data|form|multipart)\\??:\\s*${name}\\b`);
+				const queryParamPattern = new RegExp(`params\\??:\\s*${name}\\b`);
+				const headerParamPattern = new RegExp(`headers\\??:\\s*${name}\\b`);
+				return (
+					returnPattern.test(serviceString) ||
+					paramPattern.test(serviceString) ||
+					queryParamPattern.test(serviceString) ||
+					headerParamPattern.test(serviceString)
+				);
+			});
+		} else {
+			// Combined mode - types come from schemas file
+			schemaTypes = allSchemas.filter(name => {
+				if (name.endsWith("Schema")) return false; // Skip schemas
+				if (!serviceString.includes(name)) return false; // Must appear in the code
+				// Match return types, parameter types, query param types, or header param types
+				const returnPattern = new RegExp(`Promise<${name}(?:\\[\\])?>`);
+				const paramPattern = new RegExp(`(?:data|form|multipart)\\??:\\s*${name}\\b`);
+				const queryParamPattern = new RegExp(`params\\??:\\s*${name}\\b`);
+				const headerParamPattern = new RegExp(`headers\\??:\\s*${name}\\b`);
+				return (
+					returnPattern.test(serviceString) ||
+					paramPattern.test(serviceString) ||
+					queryParamPattern.test(serviceString) ||
+					headerParamPattern.test(serviceString)
+				);
+			});
+		}
 
 		const output: string[] = [];
 
@@ -390,12 +460,15 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			output.push("");
 		}
 
+		// Build import statements - schemas and types may come from different files
 		let schemaImportStatement = "";
 		if (schemaValues.length > 0) {
-			schemaImportStatement += `import { ${schemaValues.join(", ")} } from "${relativeImportMain}";\n`;
+			schemaImportStatement += `import { ${schemaValues.join(", ")} } from "${relativeImportSchemas}";\n`;
 		}
+
+		let typeImportStatement = "";
 		if (schemaTypes.length > 0) {
-			schemaImportStatement += `import type { ${schemaTypes.join(", ")} } from "${relativeImportMain}";\n`;
+			typeImportStatement = `import type { ${schemaTypes.join(", ")} } from "${relativeImportTypes}";\n`;
 		}
 
 		// Check for type aliases that are needed from the runtime package
@@ -456,6 +529,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		if (schemaImportStatement) {
 			output.push(schemaImportStatement.trim());
 		}
+		if (typeImportStatement) {
+			output.push(typeImportStatement.trim());
+		}
 		output.push("");
 
 		// Remove the existing package import from service string if present (we already added it above)
@@ -498,8 +574,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		const schemasString = this.generateSchemasString();
 		const names = new Set<string>();
 
-		// Match export const X = z.object...
-		const schemaRegex = /export const (\w+)\s*=/g;
+		// Match export const X = z.object... or export const X: Type = z.object...
+		// The type annotation is optional, so we use a non-greedy match for the part between name and =
+		const schemaRegex = /export const (\w+)(?:\s*:[^=]+)?\s*=/g;
 		let match = schemaRegex.exec(schemasString);
 		while (match !== null) {
 			names.add(match[1]);
@@ -512,6 +589,35 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		while (match !== null) {
 			names.add(match[1]);
 			match = typeRegex.exec(schemasString);
+		}
+
+		return Array.from(names);
+	}
+
+	/**
+	 * Extract type names from generated types file (for separate schemas mode)
+	 * This extracts types from the TypeScript types file (generated by openapi-to-typescript)
+	 */
+	private extractTypeNamesFromTypesFile(): string[] {
+		// In separate mode, types come from generateTypesString()
+		const typesString = this.generateTypesString();
+		const names = new Set<string>();
+
+		// Match export type X = ...
+		const typeRegex = /export type (\w+)\s*=/g;
+		let match = typeRegex.exec(typesString);
+		while (match !== null) {
+			names.add(match[1]);
+			match = typeRegex.exec(typesString);
+		}
+
+		// Match const object pattern: export const X = { ... } as const; export type X = ...
+		// These generate both a const and a type with the same name (for enums)
+		const constObjectRegex = /export const (\w+)\s*=\s*\{[^}]*\}\s*as\s*const/g;
+		match = constObjectRegex.exec(typesString);
+		while (match !== null) {
+			names.add(match[1]);
+			match = constObjectRegex.exec(typesString);
 		}
 
 		return Array.from(names);
@@ -604,12 +710,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}> = [];
 
 		for (const [path, pathItem] of Object.entries(this.spec.paths)) {
-			if (!pathItem) continue;
+			if (!isOpenAPIPathItem(pathItem)) continue;
 
-			const methods = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
-
-			for (const method of methods) {
-				const operation = pathItem[method];
+			for (const method of HTTP_METHODS) {
+				const operation = getOperation(pathItem, method);
 				if (!operation) continue;
 
 				// Extract path parameters
@@ -617,26 +721,26 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 				// Check for query parameters
 				const queryParamSchemaName = operation.parameters?.some(
-					(p: any) => p.in === "query" || p.$ref?.includes("/parameters/")
+					p => p.in === "query" || p.$ref?.includes("/parameters/")
 				)
 					? "queryParams"
 					: undefined;
 
 				// Extract response schemas
-				const responses =
-					operation.responses &&
-					Object.values(operation.responses)
-						.map((response: any) => {
-							const content = response.content;
-							if (!content) return { schemaName: undefined };
+				const responses = operation.responses
+					? Object.values(operation.responses)
+							.map(response => {
+								const content = response.content;
+								if (!content) return { schemaName: undefined };
 
-							const jsonContent = content["application/json"];
-							if (!jsonContent?.schema?.$ref) return { schemaName: undefined };
+								const jsonContent = content["application/json"];
+								if (!jsonContent?.schema?.$ref) return { schemaName: undefined };
 
-							const refParts = jsonContent.schema.$ref.split("/");
-							return { schemaName: refParts[refParts.length - 1] };
-						})
-						.filter(r => r.schemaName);
+								const refParts = jsonContent.schema.$ref.split("/");
+								return { schemaName: refParts[refParts.length - 1] };
+							})
+							.filter(r => r.schemaName)
+					: [];
 
 				endpoints.push({
 					path,
@@ -644,7 +748,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 					methodName: `${method}${path.replace(/\{[^}]+\}/g, "param")}`,
 					pathParams,
 					queryParamSchemaName,
-					responses: responses || [],
+					responses,
 				});
 			}
 		}

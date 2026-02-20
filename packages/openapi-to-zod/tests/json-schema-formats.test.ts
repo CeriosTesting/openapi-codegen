@@ -1,6 +1,12 @@
+// oxlint-disable typescript/no-unsafe-assignment
+// oxlint-disable typescript/no-unsafe-member-access
+// oxlint-disable typescript/no-unsafe-call
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("JSON Schema Formats", () => {
@@ -10,7 +16,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for json-pointer format", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -25,7 +31,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate JSON Pointer format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -35,17 +41,35 @@ describe("JSON Schema Formats", () => {
 			const { jsonPointerExampleSchema } = await import(outputPath);
 
 			// Valid JSON Pointers (RFC 6901)
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "" })).not.toThrow(); // Empty string is valid
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo" })).not.toThrow();
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo/bar" })).not.toThrow();
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo/0" })).not.toThrow();
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo~0bar" })).not.toThrow(); // ~0 encodes ~
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo~1bar" })).not.toThrow(); // ~1 encodes /
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "" });
+			}).not.toThrow(); // Empty string is valid
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo" });
+			}).not.toThrow();
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo/bar" });
+			}).not.toThrow();
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo/0" });
+			}).not.toThrow();
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo~0bar" });
+			}).not.toThrow(); // ~0 encodes ~
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo~1bar" });
+			}).not.toThrow(); // ~1 encodes /
 
 			// Invalid JSON Pointers
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "foo" })).toThrow(); // Missing leading /
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo~" })).toThrow(); // Invalid escape
-			expect(() => jsonPointerExampleSchema.parse({ pointer: "/foo~2" })).toThrow(); // Invalid escape sequence
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "foo" });
+			}).toThrow(); // Missing leading /
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo~" });
+			}).toThrow(); // Invalid escape
+			expect(() => {
+				jsonPointerExampleSchema.parse({ pointer: "/foo~2" });
+			}).toThrow(); // Invalid escape sequence
 		});
 	});
 
@@ -53,7 +77,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for relative-json-pointer format", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -68,7 +92,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate relative JSON Pointer format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -78,17 +102,35 @@ describe("JSON Schema Formats", () => {
 			const { relativeJsonPointerExampleSchema } = await import(outputPath);
 
 			// Valid relative JSON Pointers
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "0" })).not.toThrow();
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "1/foo" })).not.toThrow();
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "2/bar/baz" })).not.toThrow();
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "0#" })).not.toThrow();
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "1#" })).not.toThrow();
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "0" });
+			}).not.toThrow();
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "1/foo" });
+			}).not.toThrow();
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "2/bar/baz" });
+			}).not.toThrow();
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "0#" });
+			}).not.toThrow();
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "1#" });
+			}).not.toThrow();
 
 			// Invalid relative JSON Pointers
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "" })).toThrow(); // Empty
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "/foo" })).toThrow(); // Absolute pointer
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "foo" })).toThrow(); // Missing number
-			expect(() => relativeJsonPointerExampleSchema.parse({ relativePointer: "-1/foo" })).toThrow(); // Negative number
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "" });
+			}).toThrow(); // Empty
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "/foo" });
+			}).toThrow(); // Absolute pointer
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "foo" });
+			}).toThrow(); // Missing number
+			expect(() => {
+				relativeJsonPointerExampleSchema.parse({ relativePointer: "-1/foo" });
+			}).toThrow(); // Negative number
 		});
 	});
 
@@ -96,7 +138,7 @@ describe("JSON Schema Formats", () => {
 		it("should generate validation for duration format with full ISO 8601 support", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -111,7 +153,7 @@ describe("JSON Schema Formats", () => {
 		it("should validate ISO 8601 duration format", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -121,20 +163,44 @@ describe("JSON Schema Formats", () => {
 			const { durationExampleSchema } = await import(outputPath);
 
 			// Valid ISO 8601 durations
-			expect(() => durationExampleSchema.parse({ period: "P1Y" })).not.toThrow();
-			expect(() => durationExampleSchema.parse({ period: "P3Y6M4D" })).not.toThrow();
-			expect(() => durationExampleSchema.parse({ period: "PT12H30M" })).not.toThrow();
-			expect(() => durationExampleSchema.parse({ period: "P1DT12H" })).not.toThrow();
-			expect(() => durationExampleSchema.parse({ period: "PT1M30S" })).not.toThrow();
-			expect(() => durationExampleSchema.parse({ period: "PT0.5S" })).not.toThrow(); // Fractional seconds
-			expect(() => durationExampleSchema.parse({ period: "P1W" })).not.toThrow(); // Week
+			expect(() => {
+				durationExampleSchema.parse({ period: "P1Y" });
+			}).not.toThrow();
+			expect(() => {
+				durationExampleSchema.parse({ period: "P3Y6M4D" });
+			}).not.toThrow();
+			expect(() => {
+				durationExampleSchema.parse({ period: "PT12H30M" });
+			}).not.toThrow();
+			expect(() => {
+				durationExampleSchema.parse({ period: "P1DT12H" });
+			}).not.toThrow();
+			expect(() => {
+				durationExampleSchema.parse({ period: "PT1M30S" });
+			}).not.toThrow();
+			expect(() => {
+				durationExampleSchema.parse({ period: "PT0.5S" });
+			}).not.toThrow(); // Fractional seconds
+			expect(() => {
+				durationExampleSchema.parse({ period: "P1W" });
+			}).not.toThrow(); // Week
 
 			// Invalid durations
-			expect(() => durationExampleSchema.parse({ period: "P" })).toThrow(); // Empty duration
-			expect(() => durationExampleSchema.parse({ period: "1Y" })).toThrow(); // Missing P
-			expect(() => durationExampleSchema.parse({ period: "PT" })).toThrow(); // T without time components
-			expect(() => durationExampleSchema.parse({ period: "P1Y2W" })).toThrow(); // Weeks can't mix with years
-			expect(() => durationExampleSchema.parse({ period: "P3W2D" })).toThrow(); // Weeks can't mix with days
+			expect(() => {
+				durationExampleSchema.parse({ period: "P" });
+			}).toThrow(); // Empty duration
+			expect(() => {
+				durationExampleSchema.parse({ period: "1Y" });
+			}).toThrow(); // Missing P
+			expect(() => {
+				durationExampleSchema.parse({ period: "PT" });
+			}).toThrow(); // T without time components
+			expect(() => {
+				durationExampleSchema.parse({ period: "P1Y2W" });
+			}).toThrow(); // Weeks can't mix with years
+			expect(() => {
+				durationExampleSchema.parse({ period: "P3W2D" });
+			}).toThrow(); // Weeks can't mix with days
 		});
 	});
 
@@ -142,7 +208,7 @@ describe("JSON Schema Formats", () => {
 		it("should handle all new formats in one schema", async () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("json-schema-formats.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 				mode: "normal",
 				showStats: false,
 			});
@@ -157,14 +223,18 @@ describe("JSON Schema Formats", () => {
 				duration: "P1Y2M3DT4H5M6S",
 			};
 
-			expect(() => allFormatsExampleSchema.parse(validData)).not.toThrow();
+			expect(() => {
+				allFormatsExampleSchema.parse(validData);
+			}).not.toThrow();
 
 			const invalidPointer = {
 				jsonPointer: "foo", // Missing leading /
 				relativeJsonPointer: "1/baz",
 				duration: "P1Y",
 			};
-			expect(() => allFormatsExampleSchema.parse(invalidPointer)).toThrow();
+			expect(() => {
+				allFormatsExampleSchema.parse(invalidPointer);
+			}).toThrow();
 		});
 	});
 });

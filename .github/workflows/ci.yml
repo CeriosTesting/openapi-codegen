@@ -17,19 +17,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: npm run check
-
-      - name: Check dependency versions
-        run: npm run check-versions
+        run: pnpm format:check
 
   build:
     name: Build Packages
@@ -37,19 +36,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: npm run compile
+        run: pnpm compile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm build
 
   test:
     name: Test (Node ${{ matrix.node-version }})
@@ -60,19 +61,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm build
 
       - name: Run tests
-        run: npm run test
+        run: pnpm test
 
   validate:
     name: Validate Package Exports
@@ -80,21 +83,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm build
 
       - name: Validate openapi-to-zod exports
         working-directory: packages/openapi-to-zod
-        run: npx @arethetypeswrong/cli --pack . --ignore-rules=no-resolution
+        run: pnpm dlx @arethetypeswrong/cli --pack . --ignore-rules=no-resolution
 
       - name: Validate openapi-to-zod-playwright exports
         working-directory: packages/openapi-to-zod-playwright
-        run: npx @arethetypeswrong/cli --pack . --ignore-rules=no-resolution
+        run: pnpm dlx @arethetypeswrong/cli --pack . --ignore-rules=no-resolution

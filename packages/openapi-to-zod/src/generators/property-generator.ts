@@ -1,9 +1,17 @@
+import {
+	getPrimaryType,
+	hasMultipleTypes,
+	isNullable,
+	LRUCache,
+	type NamingOptions,
+	resolveRefName,
+	stripPrefix,
+	toCamelCase,
+	toPascalCase,
+} from "@cerios/openapi-core";
+
 import type { OpenAPISchema, OpenAPISpec } from "../types";
-import { LRUCache } from "../utils/lru-cache";
-import type { NamingOptions } from "../utils/name-utils";
-import { resolveRef, toCamelCase } from "../utils/name-utils";
-import { stripPrefix } from "../utils/pattern-utils";
-import { addDescription, getPrimaryType, hasMultipleTypes, isNullable, wrapNullable } from "../utils/string-utils";
+import { addDescription, wrapNullable } from "../utils/string-utils";
 import { generateArrayValidation } from "../validators/array-validator";
 import { generateAllOf, generateUnion } from "../validators/composition-validator";
 import { generateNumberValidation } from "../validators/number-validator";
@@ -19,7 +27,7 @@ export interface PropertyGeneratorContext {
 	includeDescriptions: boolean;
 	useDescribe: boolean;
 	namingOptions: NamingOptions;
-	stripSchemaPrefix?: string;
+	stripSchemaPrefix?: string | string[];
 	/**
 	 * Default nullable behavior when not explicitly specified
 	 * @default false
@@ -39,6 +47,13 @@ export interface PropertyGeneratorContext {
 	 * Instance-level cache for escaped regex patterns (parallel-safe)
 	 */
 	patternCache: LRUCache<string, string>;
+	/**
+	 * Whether types are generated in a separate file (imported) vs inline (z.infer)
+	 * When true, z.lazy uses z.ZodType<TypeName> for proper type inference
+	 * When false, z.lazy uses z.ZodTypeAny to avoid circular type references
+	 * @default false
+	 */
+	separateTypesFile: boolean;
 }
 
 /**
@@ -50,6 +65,10 @@ export class PropertyGenerator {
 	private filteredPropsCache = new Map<string, OpenAPISchema>();
 	// Performance optimization: LRU cache for generated schemas
 	private schemaCache = new LRUCache<string, string>(500);
+	// Track allOf conflicts detected during schema generation
+	private allOfConflicts: string[] = [];
+	// Schemas that are part of circular dependency chains (need z.lazy for forward refs)
+	private circularDependencies: Set<string> = new Set();
 
 	// Performance optimization: Lookup table for faster inclusion checks
 	static readonly INCLUSION_RULES = {
@@ -60,6 +79,29 @@ export class PropertyGenerator {
 
 	constructor(context: PropertyGeneratorContext) {
 		this.context = context;
+	}
+
+	/**
+	 * Set the schemas that are involved in circular dependency chains.
+	 * These schemas will use z.lazy() for forward references.
+	 */
+	setCircularDependencies(deps: Set<string>): void {
+		this.circularDependencies = deps;
+	}
+
+	/**
+	 * Get allOf conflicts detected during the last schema generation
+	 * @returns Array of conflict description strings
+	 */
+	getAllOfConflicts(): string[] {
+		return [...this.allOfConflicts];
+	}
+
+	/**
+	 * Clear tracked allOf conflicts (call before generating a new schema)
+	 */
+	clearAllOfConflicts(): void {
+		this.allOfConflicts = [];
 	}
 
 	/**
@@ -100,7 +142,9 @@ export class PropertyGenerator {
 	private filterNestedProperties(schema: OpenAPISchema): OpenAPISchema {
 		// Performance optimization: More efficient cache key generation
 		const propKeys = schema.properties ? Object.keys(schema.properties).sort().join(",") : "";
-		const cacheKey = `${this.context.schemaType}:${schema.type || "unknown"}:${propKeys}:${schema.required?.join(",") || ""}`;
+		const requiredKeys = Array.isArray(schema.required) ? schema.required.join(",") : String(schema.required ?? "");
+		const schemaType = Array.isArray(schema.type) ? schema.type.join("|") : schema.type || "unknown";
+		const cacheKey = `${this.context.schemaType}:${schemaType}:${propKeys}:${requiredKeys}`;
 		const cached = this.filteredPropsCache.get(cacheKey);
 		if (cached) {
 			return cached;
@@ -236,7 +280,7 @@ export class PropertyGenerator {
 			!schema.oneOf &&
 			!schema.anyOf
 		) {
-			const targetName = resolveRef(schema.allOf[0].$ref);
+			const targetName = resolveRefName(schema.allOf[0].$ref);
 			// Recursively resolve in case of chained aliases
 			return this.resolveSchemaAlias(targetName);
 		}
@@ -253,7 +297,7 @@ export class PropertyGenerator {
 
 		// Check if toSchema is a simple alias (allOf with single $ref)
 		if (toSchemaSpec.allOf && toSchemaSpec.allOf.length === 1 && toSchemaSpec.allOf[0].$ref) {
-			const aliasTarget = resolveRef(toSchemaSpec.allOf[0].$ref);
+			const aliasTarget = resolveRefName(toSchemaSpec.allOf[0].$ref);
 			// If the alias points back to the original schema, it's circular
 			return aliasTarget === fromSchema;
 		}
@@ -399,7 +443,7 @@ export class PropertyGenerator {
 
 		// Handle $ref
 		if (schema.$ref) {
-			const refName = resolveRef(schema.$ref);
+			const refName = resolveRefName(schema.$ref);
 			// Resolve through any aliases to get the actual schema
 			const resolvedRefName = this.resolveSchemaAlias(refName);
 
@@ -413,10 +457,26 @@ export class PropertyGenerator {
 			// Use the resolved name for the schema reference
 			// Apply stripSchemaPrefix to get consistent schema names
 			const strippedRefName = stripPrefix(resolvedRefName, this.context.stripSchemaPrefix);
-			const schemaName = `${toCamelCase(strippedRefName, this.context.namingOptions)}Schema`; // Check for direct self-reference or circular dependency through alias
-			if (currentSchema && (refName === currentSchema || this.isCircularThroughAlias(currentSchema, refName))) {
-				// Use lazy evaluation for circular references with explicit type annotation
-				const lazySchema = `z.lazy((): z.ZodTypeAny => ${schemaName})`;
+			const schemaName = `${toCamelCase(strippedRefName, this.context.namingOptions)}Schema`;
+			const typeName = toPascalCase(strippedRefName);
+
+			// Check for direct self-reference, circular dependency through alias,
+			// or mutual circular dependency (both schemas are part of a circular chain)
+			const isDirectSelfRef = currentSchema && refName === currentSchema;
+			const isCircularAlias = currentSchema && this.isCircularThroughAlias(currentSchema, refName);
+			// Only use lazy for refs within a circular chain when BOTH schemas are circular.
+			// If only the target is circular (e.g., self-referencing), the current schema
+			// referencing it doesn't need lazy because the target is defined first in
+			// topological sort order.
+			const isMutuallyCircular =
+				currentSchema && this.circularDependencies.has(currentSchema) && this.circularDependencies.has(refName);
+
+			if (isDirectSelfRef || isCircularAlias || isMutuallyCircular) {
+				// Use lazy evaluation for circular references
+				// When types are in a separate file (imported), use z.ZodType<TypeName> for proper type inference
+				// When types are inline (z.infer), use z.ZodTypeAny to avoid circular type references
+				const lazyTypeAnnotation = this.context.separateTypesFile ? `z.ZodType<${typeName}>` : "z.ZodTypeAny";
+				const lazySchema = `z.lazy((): ${lazyTypeAnnotation} => ${schemaName})`;
 				return wrapNullable(lazySchema, nullable);
 			}
 
@@ -467,7 +527,7 @@ export class PropertyGenerator {
 			// not property values. The .nullable() on individual properties inside the composition
 			// is handled by generateInlineObjectShape which respects defaultNullable.
 			const compositionNullable = isNullable(schema, false);
-			let composition = generateAllOf(
+			const allOfResult = generateAllOf(
 				schema.allOf,
 				compositionNullable,
 				{
@@ -477,6 +537,13 @@ export class PropertyGenerator {
 				},
 				currentSchema
 			);
+
+			// Track any conflicts detected
+			if (allOfResult.conflicts.length > 0) {
+				this.allOfConflicts.push(...allOfResult.conflicts);
+			}
+
+			let composition = allOfResult.schema;
 
 			// Apply unevaluatedProperties if specified
 			if (schema.unevaluatedProperties !== undefined) {
@@ -627,13 +694,14 @@ export class PropertyGenerator {
 						case "loose":
 							validation = "z.looseObject({})";
 							break;
-						default:
+						case "record":
 							validation = "z.record(z.string(), z.unknown())";
 							break;
 					}
 					validation = addDescription(validation, schema.description, this.context.useDescribe);
 				}
 				break;
+			case undefined:
 			default:
 				validation = "z.unknown()";
 				validation = addDescription(validation, schema.description, this.context.useDescribe);

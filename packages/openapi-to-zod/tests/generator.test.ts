@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -14,7 +16,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -61,7 +63,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -95,7 +97,7 @@ describe("OpenApiGenerator", () => {
 		function generateFromFormats(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: formatsPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -104,7 +106,7 @@ describe("OpenApiGenerator", () => {
 		function generateFromAdvancedFormats(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: advancedFormatsPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -177,7 +179,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -204,7 +206,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -252,7 +254,7 @@ describe("OpenApiGenerator", () => {
 		function generateFromSimple(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: simplePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -291,13 +293,13 @@ describe("OpenApiGenerator", () => {
 
 	describe("Statistics Generation", () => {
 		const complexPath = TestUtils.getFixturePath("complex.yaml");
-		const circularPath = TestUtils.getFixturePath("circular.yaml");
+		const circularPath = TestUtils.getCoreFixturePath("references", "circular.yaml");
 		const compositionPath = TestUtils.getFixturePath("composition.yaml");
 
 		function generateFromComplex(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: complexPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -306,7 +308,7 @@ describe("OpenApiGenerator", () => {
 		function generateFromCircular(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: circularPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -315,7 +317,7 @@ describe("OpenApiGenerator", () => {
 		function generateFromComposition(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: compositionPath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -357,7 +359,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -403,7 +405,7 @@ describe("OpenApiGenerator", () => {
 		function generateOutput(options?: Partial<OpenApiGeneratorOptions>): string {
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				...options,
 			});
 			return generator.generateString();
@@ -441,12 +443,12 @@ describe("OpenApiGenerator", () => {
 		it("should parse JSON files identically to YAML files", () => {
 			const yamlGenerator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("simple.yaml"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 			});
 			const jsonGenerator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("simple.json"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 				showStats: false,
 			});
 
@@ -460,7 +462,7 @@ describe("OpenApiGenerator", () => {
 		it("should handle complex JSON specs with nested objects", () => {
 			const generator = new OpenApiGenerator({
 				input: TestUtils.getFixturePath("type-mode.json"),
-				output: "output.ts",
+				outputTypes: "output.ts",
 			});
 
 			const output = generator.generateString();
@@ -475,7 +477,7 @@ describe("OpenApiGenerator", () => {
 			expect(() => {
 				new OpenApiGenerator({
 					input: TestUtils.getFixturePath("invalid-json.txt"),
-					output: "output.ts",
+					outputTypes: "output.ts",
 				});
 			}).toThrow(/Failed to parse OpenAPI specification/);
 		});

@@ -1,7 +1,10 @@
 import { writeFileSync } from "node:fs";
+
+import { escapeJSDoc } from "@cerios/openapi-core";
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
-import { escapeJSDoc } from "../src/utils/string-utils";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -38,11 +41,11 @@ describe("JSDoc Security", () => {
 			expect(escapeJSDoc("*/")).toBe("*\\/");
 		});
 
-		it("should preserve other special characters", () => {
+		it("should escape @ symbols to prevent JSDoc tag injection", () => {
 			const text = "Price: $10.00 @deprecated (yes!)";
 			const escaped = escapeJSDoc(text);
 			expect(escaped).toContain("$10.00");
-			expect(escaped).toContain("@deprecated");
+			expect(escaped).toContain("\\@deprecated");
 			expect(escaped).toContain("(yes!)");
 		});
 	});
@@ -70,7 +73,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -104,7 +107,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -135,7 +138,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 			});
 
@@ -170,7 +173,7 @@ components:
 
 			const generator = new OpenApiGenerator({
 				input: fixturePath,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				includeDescriptions: true,
 				useDescribe: true,
 			});

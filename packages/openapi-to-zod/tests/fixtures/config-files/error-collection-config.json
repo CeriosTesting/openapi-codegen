@@ -2,11 +2,11 @@
 	"specs": [
 		{
 			"input": "tests/fixtures/invalid-yaml.yaml",
-			"output": "tests/output/invalid.ts"
+			"outputTypes": "tests/output/invalid.ts"
 		},
 		{
 			"input": "tests/fixtures/simple.yaml",
-			"output": "tests/output/valid.ts"
+			"outputTypes": "tests/output/valid.ts"
 		}
 	]
 }

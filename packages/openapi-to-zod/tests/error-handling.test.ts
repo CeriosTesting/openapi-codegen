@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
 import type { OpenApiGeneratorOptions } from "../src/types";
+
 import { TestUtils } from "./utils/test-utils";
 
 /**
@@ -15,7 +17,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid YAML syntax", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -26,7 +28,7 @@ describe("Error Handling", () => {
 		it("should throw error for non-existent file", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("does-not-exist.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -37,7 +39,7 @@ describe("Error Handling", () => {
 		it("should include file path in YAML error message", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-yaml.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -50,7 +52,7 @@ describe("Error Handling", () => {
 		it("should throw error when components is missing", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("empty-components.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -61,7 +63,7 @@ describe("Error Handling", () => {
 		it("should throw error when components.schemas is missing", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("no-schemas.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -72,7 +74,7 @@ describe("Error Handling", () => {
 		it("should include input file path in validation error", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("empty-components.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -85,7 +87,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in properties", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -96,7 +98,7 @@ describe("Error Handling", () => {
 		it("should include reference path in error message", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -107,7 +109,7 @@ describe("Error Handling", () => {
 		it("should identify non-existent schema name", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -118,7 +120,7 @@ describe("Error Handling", () => {
 		it("should show full $ref path in error", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -129,7 +131,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in array items", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			// Will throw on first schema with error (User), but Product also has invalid array items
@@ -143,7 +145,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in allOf", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-specs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -157,7 +159,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in oneOf", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-oneof.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -168,7 +170,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in anyOf", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-anyof.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -179,7 +181,7 @@ describe("Error Handling", () => {
 		it("should throw error for invalid $ref in nested properties", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-nested.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -192,7 +194,7 @@ describe("Error Handling", () => {
 		it("should handle empty schemas gracefully", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("empty-schemas.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			// Empty schema should default to z.unknown() - should not throw during construction
@@ -204,7 +206,7 @@ describe("Error Handling", () => {
 		it("should handle schema with only description", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("empty-schemas.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {
@@ -217,7 +219,7 @@ describe("Error Handling", () => {
 		it("should report first invalid reference found", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			// Should throw on first schema with error (User schema)
@@ -229,7 +231,7 @@ describe("Error Handling", () => {
 		it("should include schema name in error", () => {
 			const options: OpenApiGeneratorOptions = {
 				input: TestUtils.getFixturePath("invalid-refs.yaml"),
-				output: outputPath,
+				outputTypes: outputPath,
 			};
 
 			expect(() => {

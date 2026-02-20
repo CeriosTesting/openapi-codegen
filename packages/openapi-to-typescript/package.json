@@ -1,0 +1,79 @@
+{
+	"name": "@cerios/openapi-to-typescript",
+	"version": "0.0.0",
+	"description": "Generate TypeScript types from OpenAPI specifications",
+	"keywords": [
+		"api",
+		"cerios",
+		"code-generation",
+		"codegen",
+		"openapi",
+		"swagger",
+		"types",
+		"typescript"
+	],
+	"homepage": "https://github.com/CeriosTesting/openapi-to-typescript#readme",
+	"bugs": {
+		"url": "https://github.com/CeriosTesting/openapi-to-typescript/issues"
+	},
+	"license": "MIT",
+	"author": "Ronald Veth - Cerios",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/CeriosTesting/openapi-to-typescript.git",
+		"directory": "packages/openapi-to-typescript"
+	},
+	"bin": {
+		"openapi-to-typescript": "./dist/cli.js"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "commonjs",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"scripts": {
+		"build": "tsup",
+		"compile": "tsc --noEmit",
+		"prepublishOnly": "npm run build",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"@cerios/openapi-core": "workspace:*",
+		"commander": "catalog:",
+		"cosmiconfig": "catalog:",
+		"prompts": "catalog:",
+		"yaml": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@types/prompts": "catalog:",
+		"tsup": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

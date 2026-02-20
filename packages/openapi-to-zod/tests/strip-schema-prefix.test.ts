@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
+
 import { OpenApiGenerator } from "../src/openapi-generator";
+
 import { TestUtils } from "./utils/test-utils";
 
 describe("stripSchemaPrefix option", () => {
 	const fixtureFile = TestUtils.getFixturePath("strip-schema-prefix.yaml");
 
 	describe("literal string prefix stripping", () => {
-		it("should strip literal string prefix from schema names", async () => {
+		it("should strip literal string prefix from schema names", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 			});
 
@@ -35,10 +37,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("role: userRoleSchema");
 		});
 
-		it("should not strip schemas that don't match the prefix", async () => {
+		it("should not strip schemas that don't match the prefix", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 			});
 
@@ -49,10 +51,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export type AppV1Comment =");
 		});
 
-		it("should work with prefix and suffix options", async () => {
+		it("should work with prefix and suffix options", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				prefix: "api",
 				suffix: "dto",
@@ -75,10 +77,10 @@ describe("stripSchemaPrefix option", () => {
 	});
 
 	describe("glob pattern prefix stripping", () => {
-		it("should strip using glob pattern with wildcard", async () => {
+		it("should strip using glob pattern with wildcard", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "*.Models.",
 			});
 
@@ -92,10 +94,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const appV1CommentSchema");
 		});
 
-		it("should strip exact namespace prefix", async () => {
+		it("should strip exact namespace prefix", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 			});
 
@@ -110,10 +112,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const appV1CommentSchema");
 		});
 
-		it("should handle glob pattern that matches multiple prefixes", async () => {
+		it("should handle glob pattern that matches multiple prefixes", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "*.{Models,V1}.",
 			});
 
@@ -129,10 +131,10 @@ describe("stripSchemaPrefix option", () => {
 	});
 
 	describe("edge cases", () => {
-		it("should handle empty stripSchemaPrefix", async () => {
+		it("should handle empty stripSchemaPrefix", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "",
 			});
 
@@ -143,10 +145,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const companyModelsPostSchema");
 		});
 
-		it("should handle undefined stripSchemaPrefix", async () => {
+		it("should handle undefined stripSchemaPrefix", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: undefined,
 			});
 
@@ -157,10 +159,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const companyModelsPostSchema");
 		});
 
-		it("should handle prefix that matches no schemas", async () => {
+		it("should handle prefix that matches no schemas", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "NonExistent.Prefix.",
 			});
 
@@ -172,29 +174,29 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const appV1CommentSchema");
 		});
 
-		it.skip("should handle circular references after stripping", async () => {
+		it.skip("should handle circular references after stripping", () => {
 			// Note: Circular reference test skipped - fixture modified to avoid circular deps
 			// which trigger a separate bug in topological sort
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 			});
 
 			const output = generator.generateString();
 
 			// User has circular reference through posts -> Post -> author -> User
-			// Should use lazy evaluation
+			// Should use lazy evaluation (combined mode uses ZodTypeAny)
 			expect(output).toContain("posts: z.array(z.lazy((): z.ZodTypeAny => postSchema))");
 			expect(output).toContain("author: z.lazy((): z.ZodTypeAny => userSchema)");
 		});
 	});
 
 	describe("schema type filtering with stripSchemaPrefix", () => {
-		it("should work with request schemaType", async () => {
+		it("should work with request schemaType", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				schemaType: "request",
 			});
@@ -206,10 +208,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export const postSchema");
 		});
 
-		it("should work with response schemaType", async () => {
+		it("should work with response schemaType", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				schemaType: "response",
 			});
@@ -222,10 +224,10 @@ describe("stripSchemaPrefix option", () => {
 	});
 
 	describe("stripSchemaPrefix with validation modes", () => {
-		it("should work with strict mode", async () => {
+		it("should work with strict mode", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				mode: "strict",
 			});
@@ -236,10 +238,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("z.strictObject(");
 		});
 
-		it("should work with loose mode", async () => {
+		it("should work with loose mode", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				mode: "loose",
 			});
@@ -252,10 +254,10 @@ describe("stripSchemaPrefix option", () => {
 	});
 
 	describe("generateString() method", () => {
-		it("should generate string output with stripped schema names", async () => {
+		it("should generate string output with stripped schema names", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 			});
 
@@ -267,10 +269,10 @@ describe("stripSchemaPrefix option", () => {
 			expect(output).toContain("export type User =");
 		});
 
-		it("should generate with custom naming options", async () => {
+		it("should generate with custom naming options", () => {
 			const generator = new OpenApiGenerator({
 				input: fixtureFile,
-				output: "output.ts",
+				outputTypes: "output.ts",
 				stripSchemaPrefix: "Company.Models.",
 				prefix: "api",
 			});
