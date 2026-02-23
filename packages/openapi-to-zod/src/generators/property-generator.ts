@@ -54,6 +54,11 @@ export interface PropertyGeneratorContext {
 	 * @default false
 	 */
 	separateTypesFile: boolean;
+	/**
+	 * Warning function for non-fatal issues during schema generation
+	 * If not provided, warnings are silently ignored
+	 */
+	warn?: (message: string) => void;
 }
 
 /**
@@ -534,6 +539,7 @@ export class PropertyGenerator {
 					generatePropertySchema: this.generatePropertySchema.bind(this),
 					generateInlineObjectShape: this.generateInlineObjectShape.bind(this),
 					resolveSchemaRef: this.resolveSchemaRef.bind(this),
+					warn: this.context.warn,
 				},
 				currentSchema
 			);
@@ -567,6 +573,7 @@ export class PropertyGenerator {
 					generatePropertySchema: this.generatePropertySchema.bind(this),
 					resolveDiscriminatorMapping: this.resolveDiscriminatorMapping.bind(this),
 					resolveSchemaRef: this.resolveSchemaRef.bind(this),
+					warn: this.context.warn,
 				},
 				{
 					passthrough: needsPassthrough,
@@ -597,6 +604,7 @@ export class PropertyGenerator {
 					generatePropertySchema: this.generatePropertySchema.bind(this),
 					resolveDiscriminatorMapping: this.resolveDiscriminatorMapping.bind(this),
 					resolveSchemaRef: this.resolveSchemaRef.bind(this),
+					warn: this.context.warn,
 				},
 				{
 					passthrough: needsPassthrough,

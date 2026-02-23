@@ -213,6 +213,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			prefix: defaults.prefix,
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
+			showWarnings: defaults.showWarnings,
 			validateServiceRequest: defaults.validateServiceRequest,
 			ignoreHeaders: defaults.ignoreHeaders,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,

@@ -5,13 +5,15 @@ import type { Generator } from "@cerios/openapi-core";
 import {
 	ConfigurationError,
 	FileOperationError,
+	generateFileHeader,
 	LRUCache,
 	loadOpenAPISpecCached,
 	toPascalCase,
 	validateIgnorePatterns,
+	WarningCollector,
 } from "@cerios/openapi-core";
-import { TypeScriptGenerator } from "@cerios/openapi-to-typescript";
-import type { OpenAPISpec } from "@cerios/openapi-to-zod";
+import { type InternalTypeScriptGeneratorOptions, TypeScriptGenerator } from "@cerios/openapi-to-typescript";
+import type { InternalOpenApiGeneratorOptions, OpenAPISpec } from "@cerios/openapi-to-zod";
 import { OpenApiGenerator } from "@cerios/openapi-to-zod";
 
 import { ClientGenerationError } from "./errors";
@@ -71,6 +73,8 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	private static specCache = new LRUCache<string, OpenAPISpec>(50); // Cache for parsed specs
 	/** Separate schemas mode - when outputZodSchemas is specified */
 	private separateSchemasMode: boolean;
+	/** Warning collector for deferred output */
+	private readonly warningCollector: WarningCollector;
 
 	constructor(options: OpenApiPlaywrightGeneratorOptions) {
 		// Input validation
@@ -85,6 +89,12 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		// Determine if we're in separate schemas mode
 		this.separateSchemasMode = Boolean(options.outputZodSchemas);
 
+		const showWarnings = options.showWarnings !== false;
+		this.warningCollector = new WarningCollector({
+			packageName: "@cerios/openapi-to-zod-playwright",
+			enabled: showWarnings,
+		});
+
 		this.options = {
 			mode: options.mode || "normal",
 			includeDescriptions: options.includeDescriptions ?? true,
@@ -93,6 +103,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			prefix: options.prefix || "",
 			suffix: options.suffix || "",
 			useOperationId: options.useOperationId ?? false, // Default to false
+			showWarnings,
 			...options,
 			schemaType: "all", // Always enforce all schemas
 		};
@@ -180,6 +191,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 				writeFileSync(normalizedService, serviceOutput, "utf-8");
 				console.log(`  ✓ Generated ${normalizedService}`);
 			}
+
+			// Flush all collected warnings at the end
+			this.warningCollector.flush();
 		} catch (error) {
 			throw new ClientGenerationError(
 				`Failed to generate Playwright client: ${error instanceof Error ? error.message : String(error)}`,
@@ -204,12 +218,26 @@ export class OpenApiPlaywrightGenerator implements Generator {
 
 		// Validate ignoreHeaders patterns and warn about issues
 		if (this.options.ignoreHeaders) {
-			validateIgnorePatterns(this.options.ignoreHeaders, this.spec, "openapi-to-zod-playwright");
+			validateIgnorePatterns(this.options.ignoreHeaders, this.spec, msg => {
+				this.warningCollector.add(msg);
+			});
 		}
 
-		const schemaGeneratorOptions = { ...this.options };
+		const schemaGeneratorOptions: InternalOpenApiGeneratorOptions = {
+			...this.options,
+			includeHeader: false, // We add our own header for consistent branding
+			showWarnings: true, // Let inner generator emit its own warnings (e.g., allOf conflicts)
+		};
 		const schemaGenerator = new OpenApiGenerator(schemaGeneratorOptions);
 		let schemasString = schemaGenerator.generateString();
+
+		// Add Playwright-specific header
+		const header = generateFileHeader({
+			packageName: "@cerios/openapi-to-zod-playwright",
+			apiTitle: this.spec.info?.title,
+			apiVersion: this.spec.info?.version,
+		});
+		schemasString = header + schemasString;
 
 		// Common options for inline schema generation
 		const inlineSchemaOptions = {
@@ -226,6 +254,9 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			skipTypeInference: this.separateSchemasMode,
 			// Use z.ZodType<TypeAlias> syntax when types are in a separate file
 			separateTypesFile: this.separateSchemasMode,
+			warn: (msg: string) => {
+				this.warningCollector.add(msg);
+			},
 		};
 
 		// Collect inline schemas
@@ -268,6 +299,10 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}
 
 		this.schemasStringCache = schemasString;
+
+		// Flush warnings when generating standalone string
+		this.warningCollector.flush();
+
 		return this.schemasStringCache;
 	}
 
@@ -277,7 +312,12 @@ export class OpenApiPlaywrightGenerator implements Generator {
 	 * @returns The generated TypeScript types code
 	 */
 	generateTypesString(): string {
-		const tsGenerator = new TypeScriptGenerator({
+		// Ensure spec is parsed
+		if (!this.spec) {
+			this.spec = this.parseSpec();
+		}
+
+		const internalOptions: InternalTypeScriptGeneratorOptions = {
 			input: this.options.input,
 			outputTypes: this.options.outputTypes,
 			includeDescriptions: this.options.includeDescriptions,
@@ -290,9 +330,17 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			showStats: this.options.showStats,
 			enumFormat: this.options.enumFormat ?? "const-object",
 			useOperationId: this.options.useOperationId ?? false,
-		});
+			includeHeader: false, // We add our own header for consistent branding
+			showWarnings: false, // We handle warnings ourselves
+		};
+		const tsGenerator = new TypeScriptGenerator(internalOptions);
 
-		return tsGenerator.generateString();
+		const header = generateFileHeader({
+			packageName: "@cerios/openapi-to-zod-playwright",
+			apiTitle: this.spec.info?.title,
+			apiVersion: this.spec.info?.version,
+		});
+		return header + tsGenerator.generateString();
 	}
 
 	/**
@@ -306,14 +354,22 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		}
 
 		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
-		return generateClientClass(
+		const result = generateClientClass(
 			this.spec,
 			clientClassName,
 			this.options.basePath,
 			this.options.operationFilters,
 			this.options.useOperationId ?? false,
-			this.options.stripPathPrefix
+			this.options.stripPathPrefix,
+			msg => {
+				this.warningCollector.add(msg);
+			}
 		);
+
+		// Flush warnings when generating standalone string
+		this.warningCollector.flush();
+
+		return result;
 	}
 
 	/**
@@ -329,7 +385,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		const schemaImports = new Set<string>();
 		const serviceClassName = this.deriveClassName(this.options.outputService || this.options.outputClient, "Service");
 		const clientClassName = this.deriveClassName(this.options.outputClient, "Client");
-		return generateServiceClass(
+		const result = generateServiceClass(
 			this.spec,
 			schemaImports,
 			serviceClassName,
@@ -344,8 +400,16 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			this.options.suffix,
 			this.options.fallbackContentTypeParsing,
 			this.options.validateServiceRequest ?? false,
-			this.options.zodErrorFormat ?? "standard"
+			this.options.zodErrorFormat ?? "standard",
+			msg => {
+				this.warningCollector.add(msg);
+			}
 		);
+
+		// Flush warnings when generating standalone string
+		this.warningCollector.flush();
+
+		return result;
 	}
 
 	/**
@@ -650,10 +714,13 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			.join(", ");
 
 		return [
-			"// Auto-generated by @cerios/openapi-to-zod-playwright",
-			"// Do not edit this file manually",
+			generateFileHeader({
+				packageName: "@cerios/openapi-to-zod-playwright",
+				apiTitle: this.spec?.info?.title,
+				apiVersion: this.spec?.info?.version,
+			}).trimEnd(),
 			"",
-			"// Client Statistics:",
+			"// Generation Statistics:",
 			`//   Total endpoints: ${endpoints.length}`,
 			`//   HTTP methods: ${methodStats}`,
 			`//   Unique path parameters: ${pathParams.size}`,
@@ -674,10 +741,13 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		const withQueryParams = endpoints.filter(e => e.queryParamSchemaName).length;
 
 		return [
-			"// Auto-generated by @cerios/openapi-to-zod-playwright",
-			"// Do not edit this file manually",
+			generateFileHeader({
+				packageName: "@cerios/openapi-to-zod-playwright",
+				apiTitle: this.spec?.info?.title,
+				apiVersion: this.spec?.info?.version,
+			}).trimEnd(),
 			"",
-			"// Service Statistics:",
+			"// Generation Statistics:",
 			`//   Total methods: ${endpoints.length}`,
 			`//   With response validation: ${withValidation}`,
 			`//   With query parameters: ${withQueryParams}`,

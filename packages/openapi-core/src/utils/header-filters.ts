@@ -142,18 +142,23 @@ function collectAllHeaderNames(spec: { paths?: Record<string, unknown> }): Set<s
  *
  * @param ignorePatterns - Patterns to validate
  * @param spec - OpenAPI specification object
- * @param packageName - Name of the package for warning messages (default: "openapi-core")
+ * @param warn - Warning function to call with warning messages. If not provided, no warnings are emitted.
  *
  * @example
- * validateIgnorePatterns(["x-custom-*"], spec, "openapi-to-zod-playwright");
+ * validateIgnorePatterns(["x-custom-*"], spec, (msg) => console.warn(msg));
  * // Logs warning if no headers match the pattern
  */
 export function validateIgnorePatterns(
 	ignorePatterns: string[] | undefined,
 	spec: { paths?: Record<string, unknown> },
-	packageName = "openapi-core"
+	warn?: (message: string) => void
 ): void {
 	if (!ignorePatterns || ignorePatterns.length === 0) {
+		return;
+	}
+
+	// If no warn function provided, skip validation
+	if (!warn) {
 		return;
 	}
 
@@ -165,8 +170,8 @@ export function validateIgnorePatterns(
 	const allHeaders = collectAllHeaderNames(spec);
 
 	if (allHeaders.size === 0) {
-		console.warn(
-			`[${packageName}] Warning: ignoreHeaders specified but no header parameters found in spec. ` +
+		warn(
+			`ignoreHeaders specified but no header parameters found in spec. ` +
 				`Patterns will have no effect: ${ignorePatterns.join(", ")}`
 		);
 		return;
@@ -185,8 +190,8 @@ export function validateIgnorePatterns(
 		}
 
 		if (!matched) {
-			console.warn(
-				`[${packageName}] Warning: ignoreHeaders pattern "${pattern}" ` +
+			warn(
+				`ignoreHeaders pattern "${pattern}" ` +
 					`does not match any header parameters in the spec. ` +
 					`Available headers: ${Array.from(allHeaders).join(", ")}`
 			);

@@ -60,6 +60,11 @@ export interface InlineSchemaGeneratorOptions {
 	 * @default false
 	 */
 	separateTypesFile?: boolean;
+	/**
+	 * Warning function for non-fatal issues during schema generation
+	 * If not provided, warnings are silently ignored
+	 */
+	warn?: (message: string) => void;
 }
 
 /**
@@ -86,6 +91,7 @@ function createPropertyGeneratorContext(
 		dateTimeValidation: buildDateTimeValidation(),
 		patternCache: new LRUCache<string, string>(100),
 		separateTypesFile: options.separateTypesFile ?? false,
+		warn: options.warn,
 	};
 }
 
@@ -126,8 +132,8 @@ function generateInlineSchema(
 			schemaVarName,
 		};
 	} catch (error) {
-		console.warn(
-			`[openapi-to-zod-playwright] Failed to generate inline schema "${schemaName}": ${error instanceof Error ? error.message : String(error)}`
+		options.warn?.(
+			`Failed to generate inline schema "${schemaName}": ${error instanceof Error ? error.message : String(error)}`
 		);
 		return null;
 	}

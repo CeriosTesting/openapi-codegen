@@ -198,9 +198,13 @@ export function generateK6TypesCode(spec: OpenAPISpec, options: OpenApiK6Generat
  * Generates the complete K6 client code
  * @param spec - OpenAPI specification
  * @param options - Generator options
- * @param typesImportPath - Optional relative import path for types (when using separate types file)
+ * @param warn - Optional warning function for non-fatal issues
  */
-export function generateK6ClientCode(spec: OpenAPISpec, options: OpenApiK6GeneratorOptions): string {
+export function generateK6ClientCode(
+	spec: OpenAPISpec,
+	options: OpenApiK6GeneratorOptions,
+	warn?: (message: string) => void
+): string {
 	const endpoints = extractEndpoints(spec, {
 		useOperationId: options.useOperationId,
 		operationFilters: options.operationFilters,
@@ -223,9 +227,7 @@ export function generateK6ClientCode(spec: OpenAPISpec, options: OpenApiK6Genera
 		}
 
 		if (totalOperations > 0) {
-			console.warn(
-				`⚠️  Warning: All ${totalOperations} operations were filtered out. Check your operationFilters configuration.`
-			);
+			warn?.(`All ${totalOperations} operations were filtered out. Check your operationFilters configuration.`);
 		}
 
 		return "";

@@ -16,6 +16,11 @@ export interface CompositionValidatorContext {
 	generateInlineObjectShape?: (schema: OpenAPISchema, currentSchema?: string) => string;
 	resolveDiscriminatorMapping?: (mapping: Record<string, string>, schemas: OpenAPISchema[]) => OpenAPISchema[];
 	resolveSchemaRef?: (ref: string) => OpenAPISchema | undefined;
+	/**
+	 * Warning function for non-fatal issues during composition validation
+	 * If not provided, warnings are silently ignored
+	 */
+	warn?: (message: string) => void;
 }
 
 export interface UnionOptions {
@@ -72,8 +77,8 @@ export function generateUnion(
 ): string {
 	// Handle empty oneOf/anyOf - malformed spec, warn and return z.never()
 	if (schemas.length === 0) {
-		console.warn(
-			"[openapi-to-zod] Warning: Empty oneOf/anyOf array encountered. This is likely a malformed OpenAPI spec. Generating z.never() as fallback."
+		context.warn?.(
+			"Empty oneOf/anyOf array encountered. This is likely a malformed OpenAPI spec. Generating z.never() as fallback."
 		);
 		return wrapNullable(
 			'z.never().describe("Empty oneOf/anyOf in OpenAPI spec - no valid schema defined")',
@@ -103,8 +108,8 @@ export function generateUnion(
 
 		if (!discriminatorCheck.valid) {
 			// Discriminator is not required in all schemas - fallback to z.union()
-			console.warn(
-				`[openapi-to-zod] Warning: Discriminator "${discriminator}" is not required in schemas: ${discriminatorCheck.invalidSchemas.join(", ")}. ` +
+			context.warn?.(
+				`Discriminator "${discriminator}" is not required in schemas: ${discriminatorCheck.invalidSchemas.join(", ")}. ` +
 					"Falling back to z.union() instead of z.discriminatedUnion()."
 			);
 
@@ -255,7 +260,7 @@ export function generateAllOf(
 	const uniqueConflicts = [...new Set(conflicts)];
 	if (uniqueConflicts.length > 0) {
 		for (const conflict of uniqueConflicts) {
-			console.warn(`[openapi-to-zod] Warning: allOf composition conflict - ${conflict}`);
+			context.warn?.(`allOf composition conflict - ${conflict}`);
 		}
 	}
 

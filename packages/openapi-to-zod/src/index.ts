@@ -29,6 +29,7 @@ export type {
 	CommonSchemaOptions,
 	ConfigFile,
 	ExecutionMode,
+	InternalOpenApiGeneratorOptions,
 	OpenAPIParameter,
 	OpenAPIRequestBody,
 	OpenAPIResponse,

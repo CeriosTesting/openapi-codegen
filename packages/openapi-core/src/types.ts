@@ -347,6 +347,19 @@ export interface BaseGeneratorOptions {
 	showStats?: boolean;
 
 	/**
+	 * Enable or disable warning messages during generation
+	 *
+	 * When enabled (default), warnings are logged for:
+	 * - Unmatched filter patterns
+	 * - Deprecated options
+	 * - AllOf property conflicts
+	 * - Unmatched ignoreHeaders patterns
+	 *
+	 * @default true
+	 */
+	showWarnings?: boolean;
+
+	/**
 	 * Batch size for parallel execution
 	 * Controls how many specifications are processed concurrently in parallel mode
 	 * Higher values increase memory usage but may improve throughput

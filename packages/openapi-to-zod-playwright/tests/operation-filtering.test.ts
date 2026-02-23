@@ -503,7 +503,8 @@ describe("Operation Filtering", () => {
 
 			generator.generateClientString();
 
-			expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("operations were filtered out"));
+			// Warnings are output via WarningCollector.flush() format
+			expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("filtered out"));
 
 			consoleWarnSpy.mockRestore();
 		});

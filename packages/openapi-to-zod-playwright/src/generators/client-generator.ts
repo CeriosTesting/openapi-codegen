@@ -36,6 +36,7 @@ interface EndpointInfo {
  * @param operationFilters - Optional operation filters to apply
  * @param useOperationId - Whether to use operationId for method names (default: false)
  * @param stripPrefix - Optional path prefix to strip before processing
+ * @param warn - Optional warning function for non-fatal issues
  */
 export function generateClientClass(
 	spec: OpenAPISpec,
@@ -43,7 +44,8 @@ export function generateClientClass(
 	basePath?: string,
 	operationFilters?: PlaywrightOperationFilters,
 	useOperationId: boolean = false,
-	stripPrefix?: string
+	stripPrefix?: string,
+	warn?: (message: string) => void
 ): string {
 	const endpoints = extractEndpoints(spec, operationFilters, useOperationId, stripPrefix);
 
@@ -61,9 +63,7 @@ export function generateClientClass(
 		}
 
 		if (totalOperations > 0) {
-			console.warn(
-				`⚠️  Warning: All ${totalOperations} operations were filtered out. Check your operationFilters configuration.`
-			);
+			warn?.(`All ${totalOperations} operations were filtered out. Check your operationFilters configuration.`);
 		}
 	}
 
