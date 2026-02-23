@@ -4,6 +4,7 @@ import { dirname, normalize, relative } from "node:path";
 import type { Generator, OpenAPISpec } from "@cerios/openapi-core";
 import {
 	FileOperationError,
+	generateCustomFileHeader,
 	generateFileHeader,
 	LRUCache,
 	loadOpenAPISpecCached,
@@ -197,12 +198,17 @@ export class OpenApiK6Generator implements Generator {
 			const spec = this.parseSpec();
 			const normalizedClientOutput = normalize(this.options.outputClient);
 
+			// Generate custom file header comments (at very top)
+			const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
 			// Generate header
-			const header = generateFileHeader({
-				packageName: "@cerios/openapi-to-k6",
-				apiTitle: spec.info?.title,
-				apiVersion: spec.info?.version,
-			});
+			const header =
+				customHeader +
+				generateFileHeader({
+					packageName: "@cerios/openapi-to-k6",
+					apiTitle: spec.info?.title,
+					apiVersion: spec.info?.version,
+				});
 
 			// Determine if we're using separate types file
 			const useSeparateTypes = !!this.options.outputTypes;

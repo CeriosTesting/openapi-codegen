@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generateFileHeader } from "../src/utils/header-utils";
+import { generateCustomFileHeader, generateFileHeader } from "../src/utils/header-utils";
 
 describe("header-utils", () => {
 	describe("generateFileHeader", () => {
@@ -68,6 +68,49 @@ describe("header-utils", () => {
 
 		it("should return string with double trailing newline", () => {
 			const result = generateFileHeader({ packageName: "@cerios/openapi-to-zod" });
+
+			expect(result.endsWith("\n\n")).toBe(true);
+		});
+	});
+
+	describe("generateCustomFileHeader", () => {
+		it("should return empty string for undefined input", () => {
+			const result = generateCustomFileHeader(undefined);
+
+			expect(result).toBe("");
+		});
+
+		it("should return empty string for empty array", () => {
+			const result = generateCustomFileHeader([]);
+
+			expect(result).toBe("");
+		});
+
+		it("should generate header from single line", () => {
+			const result = generateCustomFileHeader(["// oxlint-disable"]);
+
+			expect(result).toBe("// oxlint-disable\n\n");
+		});
+
+		it("should generate header from multiple lines", () => {
+			const result = generateCustomFileHeader([
+				"// oxlint-disable typescript/no-unsafe-type-assertion",
+				"// oxlint-disable typescript/no-unsafe-assignment",
+			]);
+
+			expect(result).toBe(
+				"// oxlint-disable typescript/no-unsafe-type-assertion\n// oxlint-disable typescript/no-unsafe-assignment\n\n"
+			);
+		});
+
+		it("should preserve any string format (not just comments)", () => {
+			const result = generateCustomFileHeader(["/* eslint-disable */", "// @ts-nocheck", "'use strict';"]);
+
+			expect(result).toBe("/* eslint-disable */\n// @ts-nocheck\n'use strict';\n\n");
+		});
+
+		it("should end with double newline", () => {
+			const result = generateCustomFileHeader(["// test"]);
 
 			expect(result.endsWith("\n\n")).toBe(true);
 		});

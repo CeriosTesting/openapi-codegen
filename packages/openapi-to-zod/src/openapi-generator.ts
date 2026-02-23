@@ -10,6 +10,7 @@ import {
 	extractSchemaRefs,
 	type FilterStatistics,
 	formatFilterStatistics,
+	generateCustomFileHeader,
 	generateFileHeader,
 	getOperationName,
 	LRUCache,
@@ -180,6 +181,7 @@ export class OpenApiGenerator {
 			batchSize: options.batchSize ?? 10,
 			customDateTimeFormatRegex: options.customDateTimeFormatRegex,
 			includeHeader: (options as InternalOpenApiGeneratorOptions).includeHeader,
+			fileHeader: options.fileHeader,
 		};
 
 		// Create instance-level pattern cache (parallel-safe)
@@ -272,6 +274,13 @@ export class OpenApiGenerator {
 
 		// Build output
 		const output: string[] = [];
+
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+		if (customHeader) {
+			output.push(customHeader.trimEnd());
+			output.push("");
+		}
 
 		// Add header comment if enabled (default: true)
 		if (this.options.includeHeader !== false) {
@@ -422,14 +431,23 @@ export class OpenApiGenerator {
 		const orderedSchemaNames = this.topologicalSort();
 
 		// Build output
-		const output: string[] = [
+		const output: string[] = [];
+
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+		if (customHeader) {
+			output.push(customHeader.trimEnd());
+			output.push("");
+		}
+
+		output.push(
 			generateFileHeader({
 				packageName: "@cerios/openapi-to-zod",
 				apiTitle: this.spec.info?.title,
 				apiVersion: this.spec.info?.version,
-			}).trimEnd(),
-			"",
-		];
+			}).trimEnd()
+		);
+		output.push("");
 
 		// Add statistics
 		if (this.options.showStats === true) {
@@ -500,12 +518,15 @@ export class OpenApiGenerator {
 		};
 		const tsGenerator = new TypeScriptGenerator(internalOptions);
 
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
 		const header = generateFileHeader({
 			packageName: "@cerios/openapi-to-zod",
 			apiTitle: this.spec.info?.title,
 			apiVersion: this.spec.info?.version,
 		});
-		return header + tsGenerator.generateString();
+		return customHeader + header + tsGenerator.generateString();
 	}
 
 	/**

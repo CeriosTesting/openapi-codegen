@@ -5,6 +5,7 @@ import type { Generator } from "@cerios/openapi-core";
 import {
 	ConfigurationError,
 	FileOperationError,
+	generateCustomFileHeader,
 	generateFileHeader,
 	LRUCache,
 	loadOpenAPISpecCached,
@@ -231,13 +232,16 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		const schemaGenerator = new OpenApiGenerator(schemaGeneratorOptions);
 		let schemasString = schemaGenerator.generateString();
 
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
 		// Add Playwright-specific header
 		const header = generateFileHeader({
 			packageName: "@cerios/openapi-to-zod-playwright",
 			apiTitle: this.spec.info?.title,
 			apiVersion: this.spec.info?.version,
 		});
-		schemasString = header + schemasString;
+		schemasString = customHeader + header + schemasString;
 
 		// Common options for inline schema generation
 		const inlineSchemaOptions = {
@@ -335,12 +339,15 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		};
 		const tsGenerator = new TypeScriptGenerator(internalOptions);
 
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
 		const header = generateFileHeader({
 			packageName: "@cerios/openapi-to-zod-playwright",
 			apiTitle: this.spec.info?.title,
 			apiVersion: this.spec.info?.version,
 		});
-		return header + tsGenerator.generateString();
+		return customHeader + header + tsGenerator.generateString();
 	}
 
 	/**
@@ -713,19 +720,31 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			.map(([method, count]) => `${method}: ${count}`)
 			.join(", ");
 
-		return [
+		// Build output with custom header first
+		const output: string[] = [];
+
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+		if (customHeader) {
+			output.push(customHeader.trimEnd());
+			output.push("");
+		}
+
+		output.push(
 			generateFileHeader({
 				packageName: "@cerios/openapi-to-zod-playwright",
 				apiTitle: this.spec?.info?.title,
 				apiVersion: this.spec?.info?.version,
-			}).trimEnd(),
-			"",
-			"// Generation Statistics:",
-			`//   Total endpoints: ${endpoints.length}`,
-			`//   HTTP methods: ${methodStats}`,
-			`//   Unique path parameters: ${pathParams.size}`,
-			`//   Generated at: ${new Date().toISOString()}`,
-		];
+			}).trimEnd()
+		);
+		output.push("");
+		output.push("// Generation Statistics:");
+		output.push(`//   Total endpoints: ${endpoints.length}`);
+		output.push(`//   HTTP methods: ${methodStats}`);
+		output.push(`//   Unique path parameters: ${pathParams.size}`);
+		output.push(`//   Generated at: ${new Date().toISOString()}`);
+
+		return output;
 	}
 
 	/**
@@ -740,21 +759,33 @@ export class OpenApiPlaywrightGenerator implements Generator {
 		const withValidation = endpoints.filter(e => e.responses.some(r => r.schemaName)).length;
 		const withQueryParams = endpoints.filter(e => e.queryParamSchemaName).length;
 
-		return [
+		// Build output with custom header first
+		const output: string[] = [];
+
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+		if (customHeader) {
+			output.push(customHeader.trimEnd());
+			output.push("");
+		}
+
+		output.push(
 			generateFileHeader({
 				packageName: "@cerios/openapi-to-zod-playwright",
 				apiTitle: this.spec?.info?.title,
 				apiVersion: this.spec?.info?.version,
-			}).trimEnd(),
-			"",
-			"// Generation Statistics:",
-			`//   Total methods: ${endpoints.length}`,
-			`//   With response validation: ${withValidation}`,
-			`//   With query parameters: ${withQueryParams}`,
-			`//   Schema imports: ${schemaImports}`,
-			`//   Type imports: ${typeImports}`,
-			`//   Generated at: ${new Date().toISOString()}`,
-		];
+			}).trimEnd()
+		);
+		output.push("");
+		output.push("// Generation Statistics:");
+		output.push(`//   Total methods: ${endpoints.length}`);
+		output.push(`//   With response validation: ${withValidation}`);
+		output.push(`//   With query parameters: ${withQueryParams}`);
+		output.push(`//   Schema imports: ${schemaImports}`);
+		output.push(`//   Type imports: ${typeImports}`);
+		output.push(`//   Generated at: ${new Date().toISOString()}`);
+
+		return output;
 	}
 
 	/**

@@ -69,6 +69,10 @@ export interface DefaultOptions {
 	showStats?: boolean;
 	showWarnings?: boolean;
 	batchSize?: number;
+	/**
+	 * Custom comment lines to add at the very top of generated files
+	 */
+	fileHeader?: string[];
 }
 
 /**

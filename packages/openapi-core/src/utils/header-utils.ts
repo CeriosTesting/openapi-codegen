@@ -14,6 +14,23 @@ export interface FileHeaderOptions {
 }
 
 /**
+ * Generate custom file header from an array of comment lines
+ *
+ * @param lines - Array of comment lines to include at the top of generated files
+ * @returns Formatted header string with trailing double newline, or empty string if no lines
+ *
+ * @example
+ * generateCustomFileHeader(["// oxlint-disable", "// eslint-disable"])
+ * // Returns: "// oxlint-disable\n// eslint-disable\n\n"
+ */
+export function generateCustomFileHeader(lines?: string[]): string {
+	if (!lines || lines.length === 0) {
+		return "";
+	}
+	return lines.join("\n") + "\n\n";
+}
+
+/**
  * Generate a consistent file header comment for generated files
  *
  * @param options - Header generation options

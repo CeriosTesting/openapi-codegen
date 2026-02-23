@@ -17,6 +17,7 @@ import {
 	extractSchemaRefs,
 	type FilterStatistics,
 	formatFilterStatistics,
+	generateCustomFileHeader,
 	generateFileHeader,
 	generateHeaderParamsTypeName,
 	generateInlineRequestTypeName,
@@ -181,6 +182,7 @@ export class TypeScriptGenerator {
 			showWarnings,
 			batchSize: options.batchSize ?? 10,
 			includeHeader: (options as InternalTypeScriptGeneratorOptions).includeHeader,
+			fileHeader: options.fileHeader,
 		};
 
 		// Load and parse the OpenAPI specification using core utility
@@ -981,6 +983,13 @@ export class TypeScriptGenerator {
 
 		// Build output
 		const output: string[] = [];
+
+		// Add custom file header comments first (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+		if (customHeader) {
+			output.push(customHeader.trimEnd());
+			output.push("");
+		}
 
 		// Add header comment if enabled (default: true)
 		if (this.options.includeHeader !== false) {
