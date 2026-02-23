@@ -94,7 +94,7 @@ describe("fileHeader option", () => {
 			const output = generateOutput({
 				fileHeader: ["// custom-header"],
 				includeHeader: false,
-			});
+			} as Partial<OpenApiGeneratorOptions>);
 
 			// Custom header should be first
 			expect(output.startsWith("// custom-header")).toBe(true);
