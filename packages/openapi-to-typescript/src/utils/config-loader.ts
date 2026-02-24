@@ -114,6 +114,7 @@ export function mergeConfigWithDefaults(config: ConfigFile): TypeScriptGenerator
 			operationFilters: defaults.operationFilters,
 			showStats: defaults.showStats,
 			batchSize: defaults.batchSize,
+			fileHeader: defaults.fileHeader,
 
 			// Override with spec-specific values (including required input/output)
 			...spec,

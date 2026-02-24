@@ -174,7 +174,8 @@ export function generateServiceClass(
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
 	validateServiceRequest?: boolean,
-	zodErrorFormat: ZodErrorFormat = "standard"
+	zodErrorFormat: ZodErrorFormat = "standard",
+	warn?: (message: string) => void
 ): string {
 	const endpoints = extractEndpoints(
 		spec,
@@ -200,7 +201,8 @@ export function generateServiceClass(
 				suffix,
 				fallbackContentTypeParsing,
 				validateServiceRequest,
-				zodErrorFormat
+				zodErrorFormat,
+				warn
 			)
 		)
 		.join("\n\n");
@@ -454,7 +456,8 @@ function generateSuccessMethods(
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
 	validateServiceRequest?: boolean,
-	zodErrorFormat: ZodErrorFormat = "standard"
+	zodErrorFormat: ZodErrorFormat = "standard",
+	warn?: (message: string) => void
 ): string[] {
 	const { responses } = endpoint;
 	const methods: string[] = [];
@@ -473,7 +476,8 @@ function generateSuccessMethods(
 				suffix,
 				fallbackContentTypeParsing,
 				validateServiceRequest,
-				zodErrorFormat
+				zodErrorFormat,
+				warn
 			),
 		];
 	}
@@ -503,7 +507,8 @@ function generateSuccessMethods(
 				suffix,
 				fallbackContentTypeParsing,
 				validateServiceRequest,
-				zodErrorFormat
+				zodErrorFormat,
+				warn
 			)
 		);
 	}
@@ -596,7 +601,8 @@ function generateServiceMethod(
 	suffix?: string,
 	fallbackContentTypeParsing?: FallbackContentTypeParsing,
 	validateServiceRequest?: boolean,
-	zodErrorFormat: ZodErrorFormat = "standard"
+	zodErrorFormat: ZodErrorFormat = "standard",
+	warn?: (message: string) => void
 ): string {
 	const { path, method, methodName, pathParams, requestBody } = endpoint;
 
@@ -839,8 +845,8 @@ function generateServiceMethod(
 		// Determine parse method based on content type
 		const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
 		if (parseResult.isUnknown) {
-			console.warn(
-				`[openapi-to-zod-playwright] Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
+			warn?.(
+				`Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
 			);
 		}
 
@@ -863,8 +869,8 @@ function generateServiceMethod(
 		// Determine parse method based on content type
 		const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
 		if (parseResult.isUnknown) {
-			console.warn(
-				`[openapi-to-zod-playwright] Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
+			warn?.(
+				`Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
 			);
 		}
 
@@ -887,8 +893,8 @@ function generateServiceMethod(
 			// Determine parse method based on content type
 			const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
 			if (parseResult.isUnknown) {
-				console.warn(
-					`[openapi-to-zod-playwright] Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
+				warn?.(
+					`Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
 				);
 			}
 
@@ -908,8 +914,8 @@ function generateServiceMethod(
 			// Determine parse method based on content type
 			const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
 			if (parseResult.isUnknown) {
-				console.warn(
-					`[openapi-to-zod-playwright] Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
+				warn?.(
+					`Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
 				);
 			}
 
@@ -930,8 +936,8 @@ function generateServiceMethod(
 		// Determine parse method based on content type
 		const parseResult = getResponseParseMethod(response.contentType, fallbackContentTypeParsing);
 		if (parseResult.isUnknown) {
-			console.warn(
-				`[openapi-to-zod-playwright] Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
+			warn?.(
+				`Unknown content type "${response.contentType}" for ${endpoint.method} ${endpoint.path}, using fallback "${parseResult.method}"`
 			);
 		}
 

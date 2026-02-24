@@ -119,10 +119,12 @@ export function shouldIncludeStatusCode(
  *
  * @param stats - Playwright filter statistics object
  * @param filters - The filter configuration to validate
+ * @param warn - Optional warning function for non-fatal issues
  */
 export function validatePlaywrightFilters(
 	stats: PlaywrightFilterStatistics,
-	filters?: PlaywrightOperationFilters
+	filters?: PlaywrightOperationFilters,
+	warn?: (message: string) => void
 ): void {
 	if (!filters || stats.totalOperations === 0) {
 		return;
@@ -130,9 +132,7 @@ export function validatePlaywrightFilters(
 
 	// If all operations were filtered out, emit a warning
 	if (stats.includedOperations === 0) {
-		console.warn(
-			`⚠️  Warning: All ${stats.totalOperations} operations were filtered out. Check your operationFilters configuration.`
-		);
+		warn?.(`All ${stats.totalOperations} operations were filtered out. Check your operationFilters configuration.`);
 
 		// Provide specific guidance about which filters might be the issue
 		const filterBreakdown: string[] = [];
@@ -144,7 +144,7 @@ export function validatePlaywrightFilters(
 		if (stats.filteredByStatusCodes > 0) filterBreakdown.push(`${stats.filteredByStatusCodes} by status codes`);
 
 		if (filterBreakdown.length > 0) {
-			console.warn(`   Filtered: ${filterBreakdown.join(", ")}`);
+			warn?.(`Filtered: ${filterBreakdown.join(", ")}`);
 		}
 	}
 }

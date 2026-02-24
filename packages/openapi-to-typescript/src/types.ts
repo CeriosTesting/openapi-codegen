@@ -28,6 +28,19 @@ export interface TypeScriptGeneratorOptions extends BaseGeneratorOptions {
 }
 
 /**
+ * Internal options that extend public options with internal-only properties
+ * @internal
+ */
+export interface InternalTypeScriptGeneratorOptions extends TypeScriptGeneratorOptions {
+	/**
+	 * Whether to include the auto-generated header comment in output
+	 * Used internally by downstream packages for consistent branding
+	 * @internal
+	 */
+	includeHeader?: boolean;
+}
+
+/**
  * Resolved options with defaults applied
  */
 export interface ResolvedOptions extends RequireExcept<
@@ -54,7 +67,12 @@ export interface DefaultOptions {
 	useOperationId?: boolean;
 	operationFilters?: OperationFilters;
 	showStats?: boolean;
+	showWarnings?: boolean;
 	batchSize?: number;
+	/**
+	 * Custom comment lines to add at the very top of generated files
+	 */
+	fileHeader?: string[];
 }
 
 /**

@@ -213,6 +213,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			prefix: defaults.prefix,
 			suffix: defaults.suffix,
 			showStats: defaults.showStats,
+			showWarnings: defaults.showWarnings,
 			validateServiceRequest: defaults.validateServiceRequest,
 			ignoreHeaders: defaults.ignoreHeaders,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
@@ -220,6 +221,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			fallbackContentTypeParsing: defaults.fallbackContentTypeParsing,
 			zodErrorFormat: defaults.zodErrorFormat,
 			enumFormat: defaults.enumFormat,
+			fileHeader: defaults.fileHeader,
 			// outputClient and outputService are intentionally NOT inherited from defaults
 			// Each spec should define its own file paths
 

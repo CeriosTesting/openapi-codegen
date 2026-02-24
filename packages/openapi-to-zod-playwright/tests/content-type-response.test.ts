@@ -177,9 +177,9 @@ describe("Content Type Response Handling", () => {
 
 			generator.generateServiceString();
 
-			// Should have warned about unknown content type
+			// Should have warned about unknown content type (warnings are output in WarningCollector format)
 			expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown content type"));
-			expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("application/x-custom-type"));
+			expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("x-custom-type"));
 		});
 
 		it("should use .json() when fallbackContentTypeParsing is 'json'", () => {

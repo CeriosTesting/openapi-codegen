@@ -267,6 +267,19 @@ export interface OpenApiGeneratorOptions extends BaseGeneratorOptions {
 }
 
 /**
+ * Internal options that extend public options with internal-only properties
+ * @internal
+ */
+export interface InternalOpenApiGeneratorOptions extends OpenApiGeneratorOptions {
+	/**
+	 * Whether to include the auto-generated header comment in output
+	 * Used internally by downstream packages for consistent branding
+	 * @internal
+	 */
+	includeHeader?: boolean;
+}
+
+/**
  * Root configuration file structure
  */
 export interface ConfigFile {

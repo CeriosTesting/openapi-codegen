@@ -163,3 +163,9 @@ export {
 // JSDoc Utilities
 export type { GenerateMinimalJSDocOptions, GenerateOperationJSDocOptions } from "./utils/jsdoc-utils";
 export { generateMinimalJSDoc, generateOperationJSDoc } from "./utils/jsdoc-utils";
+// Header Utilities
+export type { FileHeaderOptions } from "./utils/header-utils";
+export { generateCustomFileHeader, generateFileHeader } from "./utils/header-utils";
+// Warning Utilities
+export type { WarningContext } from "./utils/warning-utils";
+export { createWarningLogger, WarningCollector } from "./utils/warning-utils";

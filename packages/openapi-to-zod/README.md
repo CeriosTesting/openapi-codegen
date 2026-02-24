@@ -188,6 +188,7 @@ Examples:
 | `name`                | `string`                               | Optional identifier for logging                                                                                   |
 | `input`               | `string`                               | Input OpenAPI YAML file path (required)                                                                           |
 | `outputTypes`         | `string`                               | Preferred output TypeScript file path (required unless deprecated `output` is set)                                |
+| `outputZodSchemas`    | `string`                               | Separate output path for Zod schemas (recommended for circular references, see below)                             |
 | `output`              | `string`                               | Deprecated alias for `outputTypes`; allowed for backward compatibility                                            |
 | `mode`                | `"strict"` \| `"normal"` \| `"loose"`  | Validation mode for top-level schemas (default: `"normal"`)                                                       |
 | `emptyObjectBehavior` | `"strict"` \| `"loose"` \| `"record"`  | How to handle empty objects (default: `"loose"`)                                                                  |
@@ -1086,6 +1087,54 @@ export default defineConfig({
 3. **Shorter References**: Simpler schema references in composed types
 4. **Better Code Completion**: Easier to find schemas in IDE autocomplete
 5. **Flexible Pattern Matching**: Use regex for dynamic prefixes
+
+## Circular References and `z.lazy()`
+
+When your OpenAPI spec contains circular references (schemas that reference themselves or each other), Zod requires using `z.lazy()` for recursive types. However, this creates a TypeScript challenge:
+
+```typescript
+// Combined mode - can cause TypeScript errors
+export const nodeSchema = z.object({
+	id: z.string(),
+	parent: z.lazy(() => nodeSchema).optional(), // ❌ Type errors with circular inference
+});
+export type Node = z.infer<typeof nodeSchema>; // Circular type reference
+```
+
+**Recommendation:** Use separate type and schema files (`outputZodSchemas`) for specs with circular references:
+
+```typescript
+import { defineConfig } from "@cerios/openapi-to-zod";
+
+export default defineConfig({
+	specs: [
+		{
+			input: "openapi.yaml",
+			outputTypes: "src/generated/types.ts", // TypeScript types
+			outputZodSchemas: "src/generated/schemas.ts", // Zod schemas
+		},
+	],
+});
+```
+
+This generates proper forward-declared types:
+
+```typescript
+// types.ts
+export interface Node {
+	id?: string;
+	parent?: Node;
+}
+
+// schemas.ts
+import type { Node } from "./types";
+export const nodeSchema: z.ZodType<Node> = z.object({
+	id: z.string().optional(),
+	parent: z.lazy(() => nodeSchema).optional(),
+});
+```
+
+This approach also helps avoid "Type instantiation is excessively deep" errors (TS2589) with large schemas.
 
 ## Generation Statistics
 

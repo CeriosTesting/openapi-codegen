@@ -127,7 +127,7 @@ function generateServiceMethod(endpoint: EndpointInfo, includeDescriptions: bool
     if (!requestParameters) {
       requestParameters = {};
     }
-    requestParameters.headers = { ...(requestParameters.headers || {}), ...headers };
+    requestParameters.headers = { ...requestParameters.headers, ...headers };
 
 `;
 	}

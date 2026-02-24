@@ -347,10 +347,38 @@ export interface BaseGeneratorOptions {
 	showStats?: boolean;
 
 	/**
+	 * Enable or disable warning messages during generation
+	 *
+	 * When enabled (default), warnings are logged for:
+	 * - Unmatched filter patterns
+	 * - Deprecated options
+	 * - AllOf property conflicts
+	 * - Unmatched ignoreHeaders patterns
+	 *
+	 * @default true
+	 */
+	showWarnings?: boolean;
+
+	/**
 	 * Batch size for parallel execution
 	 * Controls how many specifications are processed concurrently in parallel mode
 	 * Higher values increase memory usage but may improve throughput
 	 * @default 10
 	 */
 	batchSize?: number;
+
+	/**
+	 * Custom comment lines to add at the very top of generated files
+	 * Each string will be output as-is on its own line
+	 * Useful for adding linter disable comments (e.g., oxlint, eslint)
+	 *
+	 * @example
+	 * ```typescript
+	 * fileHeader: [
+	 *   "// oxlint-disable typescript/no-unsafe-type-assertion",
+	 *   "// oxlint-disable typescript/no-unsafe-assignment"
+	 * ]
+	 * ```
+	 */
+	fileHeader?: string[];
 }

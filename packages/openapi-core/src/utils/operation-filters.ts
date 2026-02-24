@@ -187,18 +187,24 @@ export function shouldIncludeOperation(
  *
  * @param stats - Filter statistics object
  * @param filters - The filter configuration to validate
+ * @param warn - Warning function to call. If not provided, no warnings are emitted.
  */
-export function validateFilters(stats: FilterStatistics, filters?: OperationFilters): void {
+export function validateFilters(
+	stats: FilterStatistics,
+	filters?: OperationFilters,
+	warn?: (message: string) => void
+): void {
 	if (!filters || stats.totalOperations === 0) {
+		return;
+	}
+
+	// If no warn function provided, skip validation
+	if (!warn) {
 		return;
 	}
 
 	// If all operations were filtered out, emit a warning
 	if (stats.includedOperations === 0) {
-		console.warn(
-			`⚠️  Warning: All ${stats.totalOperations} operations were filtered out. Check your operationFilters configuration.`
-		);
-
 		// Provide specific guidance about which filters might be the issue
 		const filterBreakdown: string[] = [];
 		if (stats.filteredByTags > 0) filterBreakdown.push(`${stats.filteredByTags} by tags`);
@@ -207,9 +213,12 @@ export function validateFilters(stats: FilterStatistics, filters?: OperationFilt
 		if (stats.filteredByOperationIds > 0) filterBreakdown.push(`${stats.filteredByOperationIds} by operationIds`);
 		if (stats.filteredByDeprecated > 0) filterBreakdown.push(`${stats.filteredByDeprecated} by deprecated flag`);
 
+		let message = `All ${stats.totalOperations} operations were filtered out. Check your operationFilters configuration.`;
 		if (filterBreakdown.length > 0) {
-			console.warn(`   Filtered: ${filterBreakdown.join(", ")}`);
+			message += ` Filtered: ${filterBreakdown.join(", ")}`;
 		}
+
+		warn(message);
 	}
 }
 

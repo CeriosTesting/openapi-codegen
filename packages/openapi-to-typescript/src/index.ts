@@ -52,6 +52,7 @@ export type {
 	DefaultOptions,
 	EnumFormat,
 	ExecutionMode,
+	InternalTypeScriptGeneratorOptions,
 	ResolvedOptions,
 	SpecOptions,
 	TypeScriptGeneratorOptions,

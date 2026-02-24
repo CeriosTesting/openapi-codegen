@@ -185,6 +185,7 @@ export function mergeConfigWithDefaults(config: ConfigFile): OpenApiGeneratorOpt
 			showStats: defaults.showStats,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
 			enumFormat: defaults.enumFormat,
+			fileHeader: defaults.fileHeader,
 
 			// Override with spec-specific values
 			...specWithoutDeprecatedOutput,

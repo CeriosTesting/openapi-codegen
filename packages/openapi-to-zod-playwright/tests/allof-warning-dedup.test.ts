@@ -35,11 +35,10 @@ describe("allOf warning deduplication", () => {
 			generator.generate();
 
 			const targetConflict = 'Property "name" has conflicting definitions in BaseWithName and inline';
-			const allOfConflictMessages = consoleWarnSpy.mock.calls
-				.map((call: unknown[]) => call[0])
-				.filter((msg: unknown) => typeof msg === "string" && msg.includes("allOf composition conflict")) as string[];
-
-			const targetMessageCount = allOfConflictMessages.filter(msg => msg.includes(targetConflict)).length;
+			// Debug: log all warning calls
+			const allCalls = consoleWarnSpy.mock.calls.map((call: unknown[]) => call[0] as string);
+			// Filter for warnings containing the target conflict (now formatted with ⚠️  prefix by WarningCollector)
+			const targetMessageCount = allCalls.filter(msg => msg?.includes(targetConflict)).length;
 			expect(targetMessageCount).toBe(1);
 		} finally {
 			consoleWarnSpy.mockRestore();

@@ -146,11 +146,12 @@ describe("Edge Case Improvements", () => {
 			expect(warnCalls).toHaveLength(1);
 		});
 
-		it("should include allOf conflicts count in statistics", () => {
+		it("should emit allOf conflicts through warning system", () => {
 			const output = generateOutput({ showStats: true });
 
-			// Statistics should include allOf conflicts count
-			expect(output).toMatch(/AllOf conflicts:\s*\d+/);
+			// allOf conflicts are now in warning section, not stats
+			// Verify the JSDoc warning is in the schema
+			expect(output).toContain("@warning allOf property conflicts detected");
 		});
 
 		it("should not have .describe() calls for conflicts (use JSDoc instead)", () => {
