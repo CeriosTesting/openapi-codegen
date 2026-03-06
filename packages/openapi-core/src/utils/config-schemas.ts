@@ -63,9 +63,11 @@ export const BaseGeneratorOptionsSchema = z.strictObject({
 	suffix: z.string().optional(),
 	operationFilters: OperationFiltersSchema.optional(),
 	showStats: z.boolean().optional(),
+	showWarnings: z.boolean().optional(),
 	cacheSize: z.number().positive().optional(),
 	batchSize: z.number().positive().optional(),
 	name: z.string().optional(),
+	fileHeader: z.array(z.string()).optional(),
 });
 
 /**

@@ -85,19 +85,30 @@ export class OpenApiK6Generator implements Generator {
 	}
 
 	/**
-	 * Generate the K6 client as a string
-	 * @returns The generated K6 client TypeScript code
+	 * Generate the K6 client as a string (with headers)
+	 * @returns The generated K6 client TypeScript code including file headers
 	 */
 	generateString(): string {
 		const spec = this.parseSpec();
-		const result = generateK6ClientCode(spec, this.options, msg => {
+
+		// Generate custom file header comments (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
+		// Generate standard header
+		const header = generateFileHeader({
+			packageName: "@cerios/openapi-to-k6",
+			apiTitle: spec.info?.title,
+			apiVersion: spec.info?.version,
+		});
+
+		const clientCode = generateK6ClientCode(spec, this.options, msg => {
 			this.warningCollector.add(msg);
 		});
 
 		// Flush warnings when generating standalone string
 		this.warningCollector.flush();
 
-		return result;
+		return customHeader + header + clientCode;
 	}
 
 	/**
@@ -134,14 +145,27 @@ export class OpenApiK6Generator implements Generator {
 	}
 
 	/**
-	 * Generate K6 service as a string
+	 * Generate K6 service as a string (with headers)
 	 * @param clientImportPath - Relative import path for the client
 	 * @param typesImportPath - Relative import path for types
-	 * @returns The generated K6 service TypeScript code
+	 * @returns The generated K6 service TypeScript code including file headers
 	 */
 	generateServiceString(clientImportPath: string, typesImportPath: string): string {
 		const spec = this.parseSpec();
-		return generateK6ServiceCode(spec, this.options, clientImportPath, typesImportPath);
+
+		// Generate custom file header comments (at very top)
+		const customHeader = generateCustomFileHeader(this.options.fileHeader);
+
+		// Generate standard header
+		const header = generateFileHeader({
+			packageName: "@cerios/openapi-to-k6",
+			apiTitle: spec.info?.title,
+			apiVersion: spec.info?.version,
+		});
+
+		const serviceCode = generateK6ServiceCode(spec, this.options, clientImportPath, typesImportPath);
+
+		return customHeader + header + serviceCode;
 	}
 
 	/**
