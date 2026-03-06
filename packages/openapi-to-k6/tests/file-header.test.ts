@@ -184,7 +184,7 @@ describe("fileHeader option", () => {
 				fileHeader: ["// service-header"],
 			});
 
-			const serviceOutput = generator.generateServiceString();
+			const serviceOutput = generator.generateServiceString("./test-client", "./test-types");
 
 			// Should start with custom header
 			expect(serviceOutput.startsWith("// service-header")).toBe(true);
