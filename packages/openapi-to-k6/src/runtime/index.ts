@@ -56,6 +56,8 @@ export type HttpHeaders = Record<string, unknown>;
  * Merges request parameters with common parameters
  * Request-specific parameters take precedence over common parameters
  *
+ * Deep-merges nested object properties: headers, tags, cookies
+ *
  * @param requestParams - Request-specific K6 parameters
  * @param commonParams - Common K6 parameters set on the client
  * @returns Merged parameters with request params taking precedence
@@ -64,6 +66,10 @@ export function mergeRequestParameters(requestParams: Params, commonParams: Para
 	return {
 		...commonParams,
 		...requestParams,
+		cookies: {
+			...commonParams?.cookies,
+			...requestParams?.cookies,
+		},
 		headers: {
 			...commonParams?.headers,
 			...requestParams?.headers,

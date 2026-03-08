@@ -25,3 +25,7 @@ Generated k6 files now import from `@cerios/openapi-to-k6/runtime` automatically
 - import { buildQueryString, cleanBaseUrl } from "@cerios/openapi-to-k6";
 + import { buildQueryString, cleanBaseUrl } from "@cerios/openapi-to-k6/runtime";
 ```
+
+### Other improvements
+
+- `mergeRequestParameters` now also deep-merges `cookies` (in addition to `headers` and `tags`)
