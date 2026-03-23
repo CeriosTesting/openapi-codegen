@@ -16,6 +16,25 @@ export type {
 import type { BaseGeneratorOptions, ExecutionMode } from "@cerios/openapi-core";
 
 /**
+ * UUID/GUID format option for controlling how `format: "uuid"` and `format: "guid"` are translated to Zod validators
+ *
+ * - `"uuid"`: Uses `z.uuid()` (default)
+ * - `"guid"`: Uses `z.guid()`
+ * - `"uuidv1"` through `"uuidv8"`: Uses `z.uuid({ version: "v1" })` through `z.uuid({ version: "v8" })`
+ */
+export type UuidFormat =
+	| "uuid"
+	| "guid"
+	| "uuidv1"
+	| "uuidv2"
+	| "uuidv3"
+	| "uuidv4"
+	| "uuidv5"
+	| "uuidv6"
+	| "uuidv7"
+	| "uuidv8";
+
+/**
  * Common options shared by both request and response contexts
  */
 export interface CommonSchemaOptions {
@@ -190,6 +209,18 @@ export interface OpenApiGeneratorOptions extends BaseGeneratorOptions {
 	 * @default "z.iso.datetime()" (requires Z suffix per ISO 8601)
 	 */
 	customDateTimeFormatRegex?: string | RegExp;
+
+	/**
+	 * UUID/GUID format for Zod validation
+	 * Controls how OpenAPI `format: "uuid"` and `format: "guid"` are translated to Zod validators
+	 *
+	 * - `"uuid"`: Uses `z.uuid()` (default)
+	 * - `"guid"`: Uses `z.guid()`
+	 * - `"uuidv1"` through `"uuidv8"`: Uses `z.uuid({ version: "v1" })` through `z.uuid({ version: "v8" })`
+	 *
+	 * @default "uuid"
+	 */
+	uuidFormat?: UuidFormat;
 
 	/**
 	 * Output path for Zod schemas when using separate type/schema files.

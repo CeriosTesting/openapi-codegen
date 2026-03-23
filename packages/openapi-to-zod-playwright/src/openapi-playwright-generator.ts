@@ -254,6 +254,7 @@ export class OpenApiPlaywrightGenerator implements Generator {
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			defaultNullable: this.options.defaultNullable,
 			emptyObjectBehavior: this.options.emptyObjectBehavior,
+			uuidFormat: this.options.uuidFormat,
 			// Skip type inference when in separate schemas mode (types come from separate file)
 			skipTypeInference: this.separateSchemasMode,
 			// Use z.ZodType<TypeAlias> syntax when types are in a separate file

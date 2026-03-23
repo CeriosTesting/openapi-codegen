@@ -40,3 +40,6 @@ components:
         binaryData:
           type: string
           format: binary
+        guidId:
+          type: string
+          format: guid
