@@ -99,23 +99,23 @@ export function stringifyHeaders(headers: HttpHeaders): Record<string, string> {
  * @returns Query string starting with '?' or empty string if no params
  */
 export function buildQueryString(params?: QueryParams): string {
-  if (!params || Object.keys(params).length === 0) return "";
+	if (!params || Object.keys(params).length === 0) return "";
 
-  const queryParts: string[] = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null) {
-      if (Array.isArray(value)) {
-        for (const v of value) {
-          queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
-        }
-      } else {
-        queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-      }
-    }
-  }
+	const queryParts: string[] = [];
+	for (const [key, value] of Object.entries(params)) {
+		if (value !== undefined && value !== null) {
+			if (Array.isArray(value)) {
+				for (const v of value) {
+					queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
+				}
+			} else {
+				queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+			}
+		}
+	}
 
-  const queryString = queryParts.join("&");
-  return queryString ? `?${queryString}` : "";
+	const queryString = queryParts.join("&");
+	return queryString ? `?${queryString}` : "";
 }
 
 /**
