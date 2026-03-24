@@ -44,6 +44,11 @@ export interface PropertyGeneratorContext {
 	 */
 	dateTimeValidation: string;
 	/**
+	 * Zod validation string for uuid/guid format fields
+	 * @default "z.uuid()"
+	 */
+	uuidValidation: string;
+	/**
 	 * Instance-level cache for escaped regex patterns (parallel-safe)
 	 */
 	patternCache: LRUCache<string, string>;
@@ -647,6 +652,7 @@ export class PropertyGenerator {
 			case "string":
 				validation = generateStringValidation(schema, this.context.useDescribe, {
 					dateTimeValidation: this.context.dateTimeValidation,
+					uuidValidation: this.context.uuidValidation,
 					patternCache: this.context.patternCache,
 				});
 				break;

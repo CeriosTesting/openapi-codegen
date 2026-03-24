@@ -542,6 +542,36 @@ When using a custom regex, the generator will produce:
 
 **Note:** This option only affects `date-time` format fields. Other formats (like `date`, `email`, `uuid`) remain unchanged.
 
+### UUID Format
+
+By default, the generator uses `z.uuid()` for `uuid` and `guid` format fields. You can change this with the `uuidFormat` option to use a specific UUID version or GUID validation:
+
+```typescript
+import { defineConfig } from "@cerios/openapi-to-zod";
+
+export default defineConfig({
+	defaults: {
+		uuidFormat: "uuidv4",
+	},
+	specs: [
+		{
+			input: "openapi.yaml",
+			outputTypes: "src/schemas.ts",
+		},
+	],
+});
+```
+
+**Available values:**
+
+| Value                   | Generated Output                 |
+| ----------------------- | -------------------------------- |
+| `"uuid"` (default)      | `z.uuid()`                       |
+| `"guid"`                | `z.guid()`                       |
+| `"uuidv1"` – `"uuidv8"` | `z.uuid({ version: "v1" })` etc. |
+
+**Note:** Both `format: "uuid"` and `format: "guid"` in OpenAPI specs follow the configured `uuidFormat` setting.
+
 ## Advanced Features
 
 ### Operation Filtering

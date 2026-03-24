@@ -40,5 +40,6 @@ export type {
 	RequestOptions,
 	ResponseOptions,
 } from "./types";
+export type { UuidFormat } from "./types";
 export { defineConfig } from "./types";
-export { buildDateTimeValidation } from "./validators/string-validator";
+export { buildDateTimeValidation, buildUuidValidation } from "./validators/string-validator";

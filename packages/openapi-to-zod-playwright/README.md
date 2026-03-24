@@ -520,6 +520,7 @@ Common inherited options:
 - `prefix`/`suffix`: Add prefixes/suffixes to schema names
 - `defaultNullable`: Treat properties as nullable by default when not explicitly specified (default: `false`)
 - `customDateTimeFormatRegex`: Custom regex pattern for date-time validation (see below)
+- `uuidFormat`: UUID/GUID validation format — `"uuid"` (default), `"guid"`, or `"uuidv1"` through `"uuidv8"` (see below)
 
 #### Custom Date-Time Format
 
@@ -556,6 +557,29 @@ export default defineConfig({
 ```
 
 See the [@cerios/openapi-to-zod Custom Date-Time Format documentation](../openapi-to-zod/README.md#custom-date-time-format) for more examples and patterns.
+
+#### UUID Format
+
+By default, `uuid` and `guid` format fields use `z.uuid()`. You can change this with the `uuidFormat` option:
+
+```typescript
+import { defineConfig } from "@cerios/openapi-to-zod-playwright";
+
+export default defineConfig({
+	defaults: {
+		uuidFormat: "uuidv4",
+	},
+	specs: [
+		{
+			input: "openapi.yaml",
+			outputTypes: "src/schemas.ts",
+			outputClient: "src/client.ts",
+		},
+	],
+});
+```
+
+See the [@cerios/openapi-to-zod UUID Format documentation](../openapi-to-zod/README.md#uuid-format) for all available values.
 
 ## Response Handling
 

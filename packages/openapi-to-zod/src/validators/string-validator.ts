@@ -1,6 +1,6 @@
 import { escapePattern, type LRUCache } from "@cerios/openapi-core";
 
-import type { OpenAPISchema } from "../types";
+import type { OpenAPISchema, UuidFormat } from "../types";
 import { addDescription } from "../utils/string-utils";
 
 /**
@@ -12,14 +12,17 @@ export interface StringValidatorContext {
 	 */
 	dateTimeValidation: string;
 	/**
+	 * Zod validation string for uuid/guid format fields
+	 */
+	uuidValidation: string;
+	/**
 	 * Instance-level cache for escaped regex patterns
 	 */
 	patternCache: LRUCache<string, string>;
 }
 
-// Default format map (immutable, without date-time which is passed via context)
+// Default format map (immutable, without date-time and uuid/guid which are passed via context)
 const DEFAULT_FORMAT_MAP: Record<string, string> = {
-	uuid: "z.uuid()",
 	email: "z.email()",
 	uri: "z.url()",
 	url: "z.url()",
@@ -70,6 +73,32 @@ const DEFAULT_FORMAT_MAP: Record<string, string> = {
  * // RegExp literal (TypeScript configs)
  * buildDateTimeValidation(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
  */
+/**
+ * Build the Zod validation string for uuid/guid format
+ * Pure function that returns the validation string without side effects
+ *
+ * @param format - UUID format option
+ * @returns Zod validation string
+ *
+ * @example
+ * buildUuidValidation() // Returns "z.uuid()"
+ * buildUuidValidation("guid") // Returns "z.guid()"
+ * buildUuidValidation("uuidv4") // Returns 'z.uuid({ version: "v4" })'
+ */
+export function buildUuidValidation(format?: UuidFormat): string {
+	if (!format || format === "uuid") {
+		return "z.uuid()";
+	}
+
+	if (format === "guid") {
+		return "z.guid()";
+	}
+
+	// Extract version number from "uuidv1" through "uuidv8"
+	const version = format.replace("uuid", "");
+	return `z.uuid({ version: "${version}" })`;
+}
+
 export function buildDateTimeValidation(pattern?: string | RegExp): string {
 	if (!pattern) {
 		return "z.iso.datetime()";
@@ -120,6 +149,8 @@ export function generateStringValidation(
 
 	if (format === "date-time") {
 		validation = context.dateTimeValidation;
+	} else if (format === "uuid" || format === "guid") {
+		validation = context.uuidValidation;
 	} else {
 		validation = DEFAULT_FORMAT_MAP[format] || "z.string()";
 	}

@@ -1,6 +1,11 @@
 import { LRUCache, type OpenAPISchema, toCamelCase, toPascalCase } from "@cerios/openapi-core";
-import type { OpenAPISpec } from "@cerios/openapi-to-zod";
-import { buildDateTimeValidation, PropertyGenerator, type PropertyGeneratorContext } from "@cerios/openapi-to-zod";
+import type { OpenAPISpec, UuidFormat } from "@cerios/openapi-to-zod";
+import {
+	buildDateTimeValidation,
+	buildUuidValidation,
+	PropertyGenerator,
+	type PropertyGeneratorContext,
+} from "@cerios/openapi-to-zod";
 
 /**
  * Information about an inline response schema
@@ -51,6 +56,11 @@ export interface InlineSchemaGeneratorOptions {
 	includeDescriptions?: boolean;
 	useDescribe?: boolean;
 	emptyObjectBehavior?: "strict" | "loose" | "record";
+	/**
+	 * UUID/GUID format for Zod validation
+	 * @default "uuid"
+	 */
+	uuidFormat?: UuidFormat;
 	/** When true, skip generating z.infer type exports (used in separate schemas mode) */
 	skipTypeInference?: boolean;
 	/**
@@ -89,6 +99,7 @@ function createPropertyGeneratorContext(
 		defaultNullable: options.defaultNullable ?? false,
 		emptyObjectBehavior: options.emptyObjectBehavior ?? "loose",
 		dateTimeValidation: buildDateTimeValidation(),
+		uuidValidation: buildUuidValidation(options.uuidFormat),
 		patternCache: new LRUCache<string, string>(100),
 		separateTypesFile: options.separateTypesFile ?? false,
 		warn: options.warn,

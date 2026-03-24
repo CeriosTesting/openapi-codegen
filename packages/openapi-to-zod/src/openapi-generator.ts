@@ -41,7 +41,7 @@ import type {
 	OpenApiGeneratorOptions,
 	ResolvedOptions,
 } from "./types";
-import { buildDateTimeValidation } from "./validators/string-validator";
+import { buildDateTimeValidation, buildUuidValidation } from "./validators/string-validator";
 
 /**
  * OpenAPI operation structure for path methods
@@ -132,6 +132,8 @@ export class OpenApiGenerator {
 	private patternCache: LRUCache<string, string>;
 	/** Instance-level date-time validation string for parallel-safe execution */
 	private dateTimeValidation: string;
+	/** Instance-level uuid validation string for parallel-safe execution */
+	private uuidValidation: string;
 	/** Track schemas involved in circular dependency chains */
 	private circularDependencies: Set<string> = new Set();
 	/** Separate schemas mode - when outputZodSchemas is specified */
@@ -180,6 +182,7 @@ export class OpenApiGenerator {
 			cacheSize: options.cacheSize ?? 1000,
 			batchSize: options.batchSize ?? 10,
 			customDateTimeFormatRegex: options.customDateTimeFormatRegex,
+			uuidFormat: options.uuidFormat,
 			includeHeader: (options as InternalOpenApiGeneratorOptions).includeHeader,
 			fileHeader: options.fileHeader,
 		};
@@ -189,6 +192,9 @@ export class OpenApiGenerator {
 
 		// Build date-time validation string (parallel-safe, no global state)
 		this.dateTimeValidation = buildDateTimeValidation(this.options.customDateTimeFormatRegex);
+
+		// Build uuid validation string (parallel-safe, no global state)
+		this.uuidValidation = buildUuidValidation(this.options.uuidFormat);
 
 		// Load and parse the OpenAPI specification using core utility
 		this.spec = loadOpenAPISpec(this.options.input);
@@ -219,6 +225,7 @@ export class OpenApiGenerator {
 			},
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			dateTimeValidation: this.dateTimeValidation,
+			uuidValidation: this.uuidValidation,
 			patternCache: this.patternCache,
 			separateTypesFile: this.separateSchemasMode,
 			warn: msg => {
@@ -946,6 +953,7 @@ export class OpenApiGenerator {
 			},
 			stripSchemaPrefix: this.options.stripSchemaPrefix,
 			dateTimeValidation: this.dateTimeValidation,
+			uuidValidation: this.uuidValidation,
 			patternCache: this.patternCache,
 			separateTypesFile: this.separateSchemasMode,
 			warn: msg => {
@@ -1301,7 +1309,8 @@ export class OpenApiGenerator {
 				email: "z.email()",
 				uri: "z.url()",
 				url: "z.url()",
-				uuid: "z.uuid()",
+				uuid: this.uuidValidation,
+				guid: this.uuidValidation,
 			};
 
 			// Check if format has a dedicated Zod v4 validator

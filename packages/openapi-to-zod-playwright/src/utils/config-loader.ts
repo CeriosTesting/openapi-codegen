@@ -46,6 +46,9 @@ const PlaywrightSpecificOptionsSchema = z.strictObject({
 	fallbackContentTypeParsing: z.enum(["text", "json", "body"]).optional(),
 	zodErrorFormat: ZodErrorFormatSchema.optional(),
 	customDateTimeFormatRegex: z.union([RegexPatternSchema, z.instanceof(RegExp)]).optional(),
+	uuidFormat: z
+		.enum(["uuid", "guid", "uuidv1", "uuidv2", "uuidv3", "uuidv4", "uuidv5", "uuidv6", "uuidv7", "uuidv8"])
+		.optional(),
 	outputZodSchemas: z.string().optional(),
 	enumFormat: z.enum(["union", "const-object"]).optional(),
 	typeAssertionThreshold: z.number().int().gte(0).optional(),
@@ -217,6 +220,7 @@ export function mergeConfigWithDefaults(config: PlaywrightConfigFile): OpenApiPl
 			validateServiceRequest: defaults.validateServiceRequest,
 			ignoreHeaders: defaults.ignoreHeaders,
 			customDateTimeFormatRegex: defaults.customDateTimeFormatRegex,
+			uuidFormat: defaults.uuidFormat,
 			preferredContentTypes: defaults.preferredContentTypes,
 			fallbackContentTypeParsing: defaults.fallbackContentTypeParsing,
 			zodErrorFormat: defaults.zodErrorFormat,
