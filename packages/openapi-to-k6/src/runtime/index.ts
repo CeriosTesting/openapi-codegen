@@ -98,6 +98,10 @@ export function stringifyHeaders(headers: HttpHeaders): Record<string, string> {
  * @param params - Query parameters object
  * @returns Query string starting with '?' or empty string if no params
  */
+function encodeParam(s: string): string {
+	return encodeURIComponent(s).replace(/%20/g, "+");
+}
+
 export function buildQueryString(params?: QueryParams): string {
 	if (!params || Object.keys(params).length === 0) return "";
 
@@ -106,10 +110,10 @@ export function buildQueryString(params?: QueryParams): string {
 		if (value !== undefined && value !== null) {
 			if (Array.isArray(value)) {
 				for (const v of value) {
-					queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
+					queryParts.push(`${encodeParam(key)}=${encodeParam(String(v))}`);
 				}
 			} else {
-				queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+				queryParts.push(`${encodeParam(key)}=${encodeParam(String(value))}`);
 			}
 		}
 	}
