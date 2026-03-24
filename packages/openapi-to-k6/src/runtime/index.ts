@@ -98,23 +98,27 @@ export function stringifyHeaders(headers: HttpHeaders): Record<string, string> {
  * @param params - Query parameters object
  * @returns Query string starting with '?' or empty string if no params
  */
+function encodeParam(s: string): string {
+	return encodeURIComponent(s).replace(/%20/g, "+");
+}
+
 export function buildQueryString(params?: QueryParams): string {
 	if (!params || Object.keys(params).length === 0) return "";
 
-	const searchParams = new URLSearchParams();
+	const queryParts: string[] = [];
 	for (const [key, value] of Object.entries(params)) {
 		if (value !== undefined && value !== null) {
 			if (Array.isArray(value)) {
 				for (const v of value) {
-					searchParams.append(key, String(v));
+					queryParts.push(`${encodeParam(key)}=${encodeParam(String(v))}`);
 				}
 			} else {
-				searchParams.append(key, String(value));
+				queryParts.push(`${encodeParam(key)}=${encodeParam(String(value))}`);
 			}
 		}
 	}
 
-	const queryString = searchParams.toString();
+	const queryString = queryParts.join("&");
 	return queryString ? `?${queryString}` : "";
 }
 
