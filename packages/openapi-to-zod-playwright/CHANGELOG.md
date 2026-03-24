@@ -1,5 +1,23 @@
 # @cerios/openapi-to-zod-playwright
 
+## 1.9.0
+
+### Minor Changes
+
+- fef02cc: Add `uuidFormat` option to configure UUID/GUID validation output
+
+  New option `uuidFormat` allows selecting the Zod validator used for `format: "uuid"` and `format: "guid"` fields in OpenAPI specs:
+  - `"uuid"` (default) — generates `z.uuid()`
+  - `"guid"` — generates `z.guid()`
+  - `"uuidv1"` through `"uuidv8"` — generates `z.uuid({ version: "v1" })` etc.
+
+  Both `format: "uuid"` and `format: "guid"` in OpenAPI specs follow the configured `uuidFormat` setting.
+
+### Patch Changes
+
+- Updated dependencies [fef02cc]
+  - @cerios/openapi-to-zod@1.7.0
+
 ## 1.8.1
 
 ### Patch Changes
