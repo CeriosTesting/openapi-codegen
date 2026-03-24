@@ -118,7 +118,6 @@ export function buildQueryString(params?: QueryParams): string {
   return queryString ? `?${queryString}` : "";
 }
 
-
 /**
  * Cleans a base URL by removing trailing slashes
  *
