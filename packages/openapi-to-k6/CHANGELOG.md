@@ -1,5 +1,11 @@
 # @cerios/openapi-to-k6
 
+## 1.2.1
+
+### Patch Changes
+
+- 0d0bd51: Replace URLSearchParams with encodeURIComponent in buildQueryString to fix ReferenceError in k6 runtime
+
 ## 1.2.0
 
 ### Minor Changes
